@@ -1,0 +1,23 @@
+{
+  "postes_cibles": [
+    "motion designer",
+    "ux designer",
+    "ui designer",
+    "product designer",
+    "web designer"
+  ],
+  "mots_cles_positifs": [],
+  "mots_cles_negatifs": [
+    "senior",
+    "commercial",
+    "print"
+  ],
+  "types_contrat": [
+    "alternance"
+  ],
+  "zone_geo": "Ile-de-France",
+  "zone_mode": "idf",
+  "rayon_km": 30,
+  "score_min": 0,
+  "inclure_remote": true
+}

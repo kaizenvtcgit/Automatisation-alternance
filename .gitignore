@@ -1,0 +1,41 @@
+.env
+.venv/
+.claude/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Local runtime artifacts
+app_server.pid
+server_stdout.log
+server_stderr.log
+logs/
+
+# Local browser / automation state
+browser_profile/
+comptes_crees.json
+
+# Personal history and backups
+historique_postulations.json
+historique_postulations.backup_*.json
+
+# Exported runtime data
+export/*.json
+export/*.csv
+export/*.tmp
+export/messages/
+!export/.gitkeep
+!export/messages/.gitkeep
+!export/profil_recherche.example.json
+
+# Scratch and helper files
+tmp_front_script.js
+__script.js
+__tmp_block.txt
+__vm_check.js
+__vm_check2.js
+
+# OS / editor noise
+.DS_Store
+Thumbs.db

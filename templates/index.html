@@ -1,0 +1,2612 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alternance Auto</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f1ea;
+      --panel: #fffaf2;
+      --panel-strong: #fff;
+      --line: #d9d0bf;
+      --text: #2f2a23;
+      --muted: #70675a;
+      --blue: #1f5eff;
+      --green: #227a49;
+      --amber: #b27a17;
+      --red: #b4473d;
+      --rose: #d7647f;
+      --ink: #273046;
+    }
+
+    body {
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(31, 94, 255, 0.08), transparent 24%),
+        radial-gradient(circle at top right, rgba(217, 100, 127, 0.10), transparent 22%),
+        linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    .navbar {
+      background: rgba(255, 250, 242, 0.9);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(217, 208, 191, 0.8);
+    }
+
+    .navbar-brand {
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--ink);
+    }
+
+    .navbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .page-shell {
+      max-width: 1440px;
+    }
+
+    .card,
+    .modal-content {
+      background: rgba(255, 250, 242, 0.92);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      box-shadow: 0 16px 42px rgba(74, 58, 40, 0.08);
+      width: 100%;
+      min-width: 0;
+    }
+
+    .row > * {
+      min-width: 0;
+    }
+
+    .metric-card {
+      min-height: 132px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .metric-card::after {
+      content: "";
+      position: absolute;
+      inset: auto -25px -25px auto;
+      width: 90px;
+      height: 90px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .metric-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .metric-value {
+      font-size: 2.2rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+
+    .metric-note {
+      font-size: 0.85rem;
+      color: var(--muted);
+      overflow-wrap: anywhere;
+    }
+
+    .action-card {
+      min-height: 180px;
+    }
+
+    .action-card .d-flex > :last-child,
+    .summary-line,
+    .fw-bold,
+    .text-secondary.small {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .action-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      display: grid;
+      place-items: center;
+      font-size: 1.35rem;
+    }
+
+    .tab-content {
+      animation: fadeUp 0.28s ease;
+    }
+
+    .nav-tabs {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .nav-tabs .nav-link {
+      border: 0;
+      color: var(--muted);
+      font-weight: 600;
+      border-radius: 999px;
+      margin-right: 0.35rem;
+    }
+
+    .nav-tabs .nav-link.active {
+      background: var(--panel-strong);
+      color: var(--ink);
+      box-shadow: 0 8px 20px rgba(39, 48, 70, 0.08);
+    }
+
+    .filter-bar .form-control,
+    .filter-bar .form-select,
+    .modal textarea,
+    .modal select {
+      background: rgba(255, 255, 255, 0.7);
+      border-color: var(--line);
+      color: var(--text);
+    }
+
+    .table {
+      --bs-table-bg: transparent;
+      --bs-table-color: var(--text);
+      margin-bottom: 0;
+    }
+
+    .table th {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-color: rgba(217, 208, 191, 0.65);
+    }
+    .sortable-header {
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.18s ease;
+    }
+    .sortable-header:hover,
+    .sortable-header.active {
+      color: var(--text);
+    }
+
+    .table td {
+      border-color: rgba(217, 208, 191, 0.65);
+      vertical-align: middle;
+    }
+
+    .table-status-col {
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    .table-status-col .badge-soft {
+      display: inline-flex;
+      white-space: nowrap;
+      max-width: none;
+    }
+
+    .historique-table th:nth-child(4),
+    .historique-table th:nth-child(5),
+    .historique-table td:nth-child(4),
+    .historique-table td:nth-child(5) {
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    .selected-offer-row td {
+      background: rgba(31, 94, 255, 0.08) !important;
+      box-shadow: inset 0 1px 0 rgba(31, 94, 255, 0.1), inset 0 -1px 0 rgba(31, 94, 255, 0.1);
+    }
+
+    .selected-offer-row .fw-semibold {
+      color: var(--blue);
+    }
+
+    .badge-soft {
+      padding: 0.45rem 0.7rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.74rem;
+      letter-spacing: 0.02em;
+    }
+
+    .status-nouvelle { background: rgba(31, 94, 255, 0.12); color: var(--blue); }
+    .status-a_analyser { background: rgba(178, 122, 23, 0.14); color: #7a5205; }
+    .status-interessante { background: rgba(34, 122, 73, 0.14); color: var(--green); }
+    .status-lettre_generee { background: rgba(215, 100, 127, 0.14); color: var(--rose); }
+    .status-postule { background: rgba(39, 48, 70, 0.12); color: var(--ink); }
+    .status-refusee { background: rgba(180, 71, 61, 0.14); color: var(--red); }
+
+    .kanban-grid {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(280px, 1fr));
+      gap: 1.35rem;
+      overflow-x: auto;
+      padding-bottom: 0.85rem;
+      align-items: start;
+    }
+
+    .kanban-col {
+      min-height: 460px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.72) 0%, rgba(255, 250, 242, 0.84) 100%);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 1.2rem;
+      min-width: 0;
+      box-shadow: 0 14px 34px rgba(74, 58, 40, 0.07);
+    }
+
+    .kanban-col.status-shell-nouvelle {
+      background: linear-gradient(180deg, rgba(31, 94, 255, 0.08) 0%, rgba(255, 250, 242, 0.9) 100%);
+    }
+
+    .kanban-col.status-shell-a_analyser {
+      background: linear-gradient(180deg, rgba(178, 122, 23, 0.1) 0%, rgba(255, 250, 242, 0.92) 100%);
+    }
+
+    .kanban-col.status-shell-interessante {
+      background: linear-gradient(180deg, rgba(34, 122, 73, 0.1) 0%, rgba(255, 250, 242, 0.92) 100%);
+    }
+
+    .kanban-col.status-shell-lettre_generee {
+      background: linear-gradient(180deg, rgba(215, 100, 127, 0.1) 0%, rgba(255, 250, 242, 0.92) 100%);
+    }
+
+    .kanban-col.status-shell-postule {
+      background: linear-gradient(180deg, rgba(39, 48, 70, 0.08) 0%, rgba(255, 250, 242, 0.92) 100%);
+    }
+
+    .kanban-col.status-shell-refusee {
+      background: linear-gradient(180deg, rgba(180, 71, 61, 0.1) 0%, rgba(255, 250, 242, 0.92) 100%);
+    }
+
+    .kanban-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      padding-bottom: 0.85rem;
+      border-bottom: 1px solid rgba(217, 208, 191, 0.8);
+    }
+
+    .kanban-head-main {
+      min-width: 0;
+    }
+
+    .kanban-head-title {
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1.2;
+    }
+
+    .kanban-head-note {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 0.2rem;
+    }
+
+    .kanban-stack {
+      display: grid;
+      gap: 1rem;
+      min-width: 0;
+    }
+
+    .offer-card {
+      border: 1px solid rgba(217, 208, 191, 0.9);
+      border-radius: 18px;
+      padding: 1rem;
+      background: var(--panel-strong);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      min-width: 0;
+      overflow: hidden;
+      box-shadow: 0 10px 24px rgba(39, 48, 70, 0.05);
+    }
+
+    .offer-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(39, 48, 70, 0.08);
+    }
+
+    .offer-title {
+      font-weight: 700;
+      color: var(--ink);
+      line-height: 1.4;
+      font-size: 1rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .offer-meta {
+      color: var(--muted);
+      font-size: 0.84rem;
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+
+    .offer-meta strong {
+      color: var(--text);
+      font-weight: 700;
+    }
+
+    .offer-submeta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      margin-bottom: 0.9rem;
+    }
+
+    .offer-submeta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.3rem 0.62rem;
+      border-radius: 999px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(217, 208, 191, 0.88);
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .score-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.34rem 0.66rem;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 0.78rem;
+      background: rgba(39, 48, 70, 0.08);
+      color: var(--ink);
+      max-width: 100%;
+      overflow-wrap: anywhere;
+    }
+
+    .score-pill-primary {
+      background: rgba(31, 94, 255, 0.1);
+      color: var(--blue);
+    }
+
+    .score-pill-success {
+      background: rgba(34, 122, 73, 0.12);
+      color: var(--green);
+    }
+
+    .score-pill-muted {
+      background: rgba(39, 48, 70, 0.08);
+      color: var(--muted);
+    }
+
+    .offer-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 0.85rem;
+      margin-bottom: 0.75rem;
+    }
+
+    .offer-card-status {
+      flex-shrink: 0;
+    }
+
+    .offer-card-summary {
+      min-height: 2.6em;
+      font-size: 0.86rem;
+      line-height: 1.45;
+      color: var(--muted);
+      margin-bottom: 0.95rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .offer-card-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.55rem;
+      margin-top: auto;
+    }
+
+    .offer-card-actions .btn {
+      border-radius: 12px;
+      font-weight: 600;
+      padding-top: 0.45rem;
+      padding-bottom: 0.45rem;
+    }
+
+    .offer-card > .d-flex,
+    .offer-card .d-flex > * {
+      min-width: 0;
+    }
+
+    .offer-card .btn {
+      white-space: normal;
+    }
+
+    .log-panel {
+      min-height: 220px;
+      max-height: 320px;
+      overflow: auto;
+      background: #1f2430;
+      color: #edf1fa;
+      border-radius: 14px;
+      padding: 1rem;
+      font-family: "Cascadia Code", "Consolas", monospace;
+      font-size: 0.84rem;
+      white-space: pre-wrap;
+    }
+
+    .log-ok { color: #8df0b4; }
+    .log-warn { color: #ffd07b; }
+    .log-err { color: #ff9e91; }
+
+    .empty-state {
+      padding: 2.5rem 1rem;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .empty-state i {
+      font-size: 2rem;
+      display: block;
+      margin-bottom: 0.6rem;
+    }
+
+    .pulse {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+      background: var(--green);
+      display: inline-block;
+      animation: pulse 1s infinite;
+      margin-right: 0.35rem;
+    }
+
+    .summary-list {
+      display: grid;
+      gap: 0.45rem;
+    }
+
+    .summary-line {
+      background: rgba(255, 255, 255, 0.65);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 0.65rem 0.8rem;
+      font-size: 0.92rem;
+    }
+
+    .description-box {
+      background: rgba(255, 255, 255, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.9rem;
+      max-height: 250px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-size: 0.92rem;
+    }
+
+    .sticky-actions {
+      position: sticky;
+      top: 76px;
+      z-index: 3;
+    }
+
+    .pipeline-toolbar {
+      padding: 1.1rem 1.15rem !important;
+      border-radius: 22px;
+      margin-bottom: 1rem;
+    }
+
+    .pipeline-toolbar-title {
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 0.15rem;
+    }
+
+    .pipeline-toolbar-subtitle {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .pipeline-toolbar .filter-bar {
+      margin-top: 0.9rem;
+      padding-top: 0.95rem;
+      border-top: 1px solid rgba(217, 208, 191, 0.75);
+    }
+
+    .settings-grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .settings-card {
+      padding: 1.25rem;
+      height: 100%;
+    }
+
+    .settings-card .form-label {
+      font-size: 0.84rem;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.4rem;
+    }
+
+    .settings-card .form-control,
+    .settings-card .form-select,
+    .settings-card .form-range {
+      background: rgba(255, 255, 255, 0.75);
+      border-color: var(--line);
+    }
+
+    .settings-subtitle {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .settings-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+       flex-wrap: wrap;
+    }
+
+    .tag-editor {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.45rem;
+      align-items: center;
+      min-height: 48px;
+      padding: 0.55rem 0.65rem;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(255, 255, 255, 0.75);
+    }
+
+    .tag-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.32rem 0.6rem;
+      border-radius: 999px;
+      background: rgba(31, 94, 255, 0.1);
+      color: var(--blue);
+      font-size: 0.82rem;
+      font-weight: 600;
+    }
+
+    .tag-chip button {
+      border: 0;
+      background: transparent;
+      color: inherit;
+      padding: 0;
+      line-height: 1;
+    }
+
+    .tag-editor-input {
+      flex: 1 1 160px;
+      min-width: 120px;
+      border: 0;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      padding: 0.2rem 0;
+    }
+
+    .settings-value {
+      font-size: 0.82rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .api-key-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.65rem;
+      align-items: end;
+    }
+
+    .api-key-actions {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .api-status-badge {
+      min-width: 92px;
+      justify-content: center;
+    }
+
+    .coach-launch {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 0.7rem;
+    }
+
+    .coach-chat {
+      display: grid;
+      gap: 0.9rem;
+      max-height: 420px;
+      overflow: auto;
+      padding-right: 0.2rem;
+    }
+
+    .coach-bubble {
+      max-width: 86%;
+      padding: 0.8rem 0.95rem;
+      border-radius: 16px;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      border: 1px solid var(--line);
+    }
+
+    .coach-bubble-user {
+      margin-left: auto;
+      background: rgba(31, 94, 255, 0.11);
+      color: var(--ink);
+    }
+
+    .coach-bubble-assistant {
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--text);
+    }
+
+    .coach-suggestions {
+      background: rgba(255, 255, 255, 0.76);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 0.9rem;
+      display: grid;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .coach-typing {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+
+    .coach-typing span {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(31, 94, 255, 0.45);
+      animation: coachTyping 1s infinite ease-in-out;
+    }
+
+    .coach-typing span:nth-child(2) { animation-delay: 0.12s; }
+    .coach-typing span:nth-child(3) { animation-delay: 0.24s; }
+
+    .toast-shell {
+      position: fixed;
+      top: 5.2rem;
+      right: 1rem;
+      z-index: 1200;
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .app-toast {
+      min-width: 300px;
+      max-width: 420px;
+      background: rgba(255, 250, 242, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      box-shadow: 0 18px 36px rgba(39, 48, 70, 0.16);
+      overflow: hidden;
+    }
+
+    .app-toast .toast-header {
+      background: rgba(255, 255, 255, 0.72);
+      border-bottom: 1px solid rgba(217, 208, 191, 0.7);
+    }
+
+    .app-toast-success { border-left: 4px solid var(--green); }
+    .app-toast-error { border-left: 4px solid var(--red); }
+    .app-toast-warn { border-left: 4px solid var(--amber); }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(0.7); opacity: 0.4; }
+    }
+
+    @keyframes coachTyping {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
+      40% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    @media (max-width: 991px) {
+      .kanban-grid {
+        grid-template-columns: repeat(6, minmax(300px, 1fr));
+      }
+    }
+
+    @media (max-width: 767px) {
+      .page-shell {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+      }
+
+      .sticky-actions {
+        position: static;
+      }
+
+      .metric-value {
+        font-size: 1.8rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar sticky-top px-3 px-lg-4 py-3">
+    <div class="container-fluid page-shell">
+      <div class="navbar-brand mb-0">
+        <i class="bi bi-briefcase-fill me-2" style="color:var(--blue)"></i>Alternance.Auto
+      </div>
+      <div class="navbar-actions">
+        <div id="process-status" class="small text-secondary"></div>
+        <button class="btn btn-sm btn-outline-danger" onclick="fermerServeur()">
+          <i class="bi bi-power me-1"></i>Fermer le serveur
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="toast-shell" id="toast-shell"></div>
+
+  <div class="container-fluid page-shell py-4">
+    <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
+      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-dashboard">Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-pipeline">Pipeline <span class="badge text-bg-light ms-1" id="badge-pipeline">0</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-offres">Offres <span class="badge text-bg-light ms-1" id="badge-offres">0</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-historique">Historique <span class="badge text-bg-light ms-1" id="badge-histo">0</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-relances">Relances <span class="badge text-bg-warning ms-1" id="badge-relances">0</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Parametres</a></li>
+    </ul>
+
+    <div class="tab-content">
+      <div class="tab-pane fade show active" id="tab-dashboard">
+        <div class="row g-3 mb-4">
+          <div class="col-6 col-xl-3">
+            <div class="card metric-card p-3">
+              <div class="metric-label">Offres exportees</div>
+              <div class="metric-value text-primary" id="stat-offres">0</div>
+              <div class="metric-note" id="stat-offres-note">Dernier export charge</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="card metric-card p-3">
+              <div class="metric-label">Nouvelles offres</div>
+              <div class="metric-value" style="color:var(--blue)" id="stat-nouvelles">0</div>
+              <div class="metric-note" id="stat-last-scan">Aucun scan</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="card metric-card p-3">
+              <div class="metric-label">Offres interessantes</div>
+              <div class="metric-value" style="color:var(--green)" id="stat-interessantes">0</div>
+              <div class="metric-note" id="stat-interessantes-note">Priorites du pipeline</div>
+            </div>
+          </div>
+          <div class="col-6 col-xl-3">
+            <div class="card metric-card p-3">
+              <div class="metric-label">Postulations / relances</div>
+              <div class="metric-value" style="color:var(--ink)" id="stat-postulations">0</div>
+              <div class="metric-note" id="stat-relances-note">0 relance a faire</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          <div class="col-lg-4">
+            <div class="card action-card p-3 d-flex flex-column">
+              <div class="d-flex gap-3 mb-3">
+                <div class="action-icon" style="background:rgba(31,94,255,0.12);color:var(--blue)">
+                  <i class="bi bi-cloud-download"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">Lancer un scan</div>
+                  <div class="text-secondary small">Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.</div>
+                </div>
+              </div>
+              <button class="btn btn-primary mt-auto btn-recuperer" onclick="lancerStream('recuperer')">Scanner les sources</button>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="card action-card p-3 d-flex flex-column">
+              <div class="d-flex gap-3 mb-3">
+                <div class="action-icon" style="background:rgba(34,122,73,0.12);color:var(--green)">
+                  <i class="bi bi-envelope-paper"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">Generer les lettres</div>
+                  <div class="text-secondary small">Utilise Groq pour rediger les lettres manquantes et met a jour le pipeline.</div>
+                </div>
+              </div>
+              <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Generer</button>
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="card action-card p-3 d-flex flex-column">
+              <div class="d-flex gap-3 mb-3">
+                <div class="action-icon" style="background:rgba(39,48,70,0.12);color:var(--ink)">
+                  <i class="bi bi-send-check"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">Lancer l'agent</div>
+                  <div class="text-secondary small">Ouvre le navigateur et tente les candidatures automatiques a partir des lettres generees.</div>
+                </div>
+              </div>
+              <button class="btn btn-dark mt-auto btn-postuler" onclick="lancerStream('postuler')">Postuler</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-lg-5">
+            <div class="card p-3 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <div class="fw-bold">Dernier scan</div>
+                  <div class="text-secondary small" id="scan-summary">En attente</div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="chargerTout()" title="Actualiser les donnees">Actualiser</button>
+              </div>
+              <div id="scan-sources" class="summary-list"></div>
+            </div>
+          </div>
+          <div class="col-lg-7">
+            <div class="card p-3 h-100">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="fw-bold">Journal du pipeline</div>
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm btn-outline-secondary" onclick="copierLog()" title="Copier tout le journal du pipeline"><i class="bi bi-clipboard me-1"></i>Copier</button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="arreter()" title="Arreter le processus en cours"><i class="bi bi-stop-circle me-1"></i>Arreter</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="viderLog()" title="Vider le journal affiche">Vider</button>
+                </div>
+              </div>
+              <div class="log-panel" id="log-panel">Pret.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-pipeline">
+        <div class="card sticky-actions pipeline-toolbar">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+              <div class="pipeline-toolbar-title">Pipeline de candidature</div>
+              <div class="pipeline-toolbar-subtitle">Vue Kanban pour prioriser les offres, suivre les actions et laisser respirer davantage les cartes.</div>
+            </div>
+            <div class="badge text-bg-light px-3 py-2" id="pipeline-toolbar-count">0 offre</div>
+          </div>
+          <div class="row g-3 filter-bar">
+            <div class="col-md-3"><input class="form-control" id="pipeline-q" placeholder="Recherche" oninput="renderPipeline()"></div>
+            <div class="col-md-3">
+              <select class="form-select" id="pipeline-source" onchange="renderPipeline()">
+                <option value="">Toutes les sources</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" id="pipeline-pertinence" onchange="renderPipeline()">
+                <option value="">Toutes les pertinences</option>
+                <option value="forte">Score fort (75+)</option>
+                <option value="moyenne">Score moyen (50-74)</option>
+                <option value="faible">Score faible (&lt; 50)</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <select class="form-select" id="pipeline-status-filter" onchange="renderPipeline()">
+                <option value="">Tous les statuts</option>
+                <option value="nouvelle">Nouvelle offre</option>
+                <option value="a_analyser">A analyser</option>
+                <option value="interessante">Interessante</option>
+                <option value="lettre_generee">Lettre generee</option>
+                <option value="postule">Postule</option>
+                <option value="refusee">Refusee</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="kanban-grid" id="kanban-grid"></div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-offres">
+        <div class="card p-3 mb-3">
+          <div class="row g-2 filter-bar">
+            <div class="col-md-2"><input class="form-control" id="offres-q" placeholder="Recherche" oninput="renderOffers()"></div>
+            <div class="col-md-2">
+              <select class="form-select" id="offres-source" onchange="renderOffers()">
+                <option value="">Toutes les sources</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" id="offres-status" onchange="renderOffers()">
+                <option value="">Tous les statuts</option>
+                <option value="nouvelle">Nouvelle offre</option>
+                <option value="a_analyser">A analyser</option>
+                <option value="interessante">Interessante</option>
+                <option value="lettre_generee">Lettre generee</option>
+                <option value="postule">Postule</option>
+                <option value="refusee">Refusee</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" id="offres-pertinence" onchange="renderOffers()">
+                <option value="">Toutes les pertinences</option>
+                <option value="forte">Score fort</option>
+                <option value="moyenne">Score moyen</option>
+                <option value="faible">Score faible</option>
+              </select>
+            </div>
+            <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" onclick="scorerOffresSansScore(this)">Scorer sans score</button></div>
+            <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" onclick="chargerTout()">Actualiser</button></div>
+          </div>
+        </div>
+        <div class="card p-0 overflow-hidden">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th class="sortable-header" id="sort-poste" onclick="toggleOffersSort('poste')">Poste</th>
+                  <th class="sortable-header" id="sort-entreprise" onclick="toggleOffersSort('entreprise')">Entreprise</th>
+                  <th class="sortable-header" id="sort-source" onclick="toggleOffersSort('source')">Source</th>
+                  <th class="sortable-header table-status-col" id="sort-statut" onclick="toggleOffersSort('statut')">Statut</th>
+                  <th class="sortable-header" id="sort-score" onclick="toggleOffersSort('score')">Score</th>
+                  <th class="sortable-header" id="sort-lettre" onclick="toggleOffersSort('lettre')">Lettre</th>
+                  <th class="sortable-header" id="sort-date" onclick="toggleOffersSort('date')">Date</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-offres"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-historique">
+        <div class="card p-0 overflow-hidden">
+          <div class="table-responsive">
+            <table class="table table-hover historique-table">
+              <thead>
+                <tr>
+                  <th>Poste</th>
+                  <th>Entreprise</th>
+                  <th>Statut</th>
+                  <th>Date postulation</th>
+                  <th>Relance</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-historique"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-relances">
+        <div class="card p-0 overflow-hidden">
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>Poste</th>
+                  <th>Entreprise</th>
+                  <th>Postule le</th>
+                  <th>Relance prevue</th>
+                  <th>Notes</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-relances"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="tab-settings">
+        <div class="settings-actions mb-3">
+          <div>
+            <div class="fw-bold">Configuration du profil</div>
+            <div class="settings-subtitle">Les reglages sont sauvegardes dans `.env` et `export/profil_recherche.json`.</div>
+          </div>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" onclick="chargerSettings(true)">Recharger</button>
+            <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Sauvegarder les parametres</button>
+          </div>
+        </div>
+
+        <div class="row g-3 settings-grid">
+          <div class="col-xl-6">
+            <div class="card settings-card">
+              <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                <div>
+                  <div class="fw-bold">Mon profil</div>
+                  <div class="settings-subtitle">Informations reutilisees dans les lettres et l'agent.</div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-prenom">Prenom</label>
+                  <input class="form-control" id="settings-prenom">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-nom">Nom</label>
+                  <input class="form-control" id="settings-nom">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-email">Email</label>
+                  <input class="form-control" id="settings-email" type="email">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-tel">Telephone</label>
+                  <input class="form-control" id="settings-tel">
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-portfolio">Portfolio</label>
+                  <input class="form-control" id="settings-portfolio">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-linkedin">LinkedIn</label>
+                  <input class="form-control" id="settings-linkedin" placeholder="https://www.linkedin.com/in/...">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-github">GitHub</label>
+                  <input class="form-control" id="settings-github" placeholder="https://github.com/...">
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-cv-path">Chemin vers le CV</label>
+                  <div class="input-group">
+                    <input class="form-control" id="settings-cv-path" placeholder="C:\\Users\\...\\CV.pdf">
+                    <button class="btn btn-outline-secondary" type="button" id="settings-cv-browse-btn" onclick="browseCvPath()">Parcourir</button>
+                    <button class="btn btn-outline-primary" type="button" id="settings-cv-upload-btn" onclick="document.getElementById('settings-cv-file').click()">Importer</button>
+                  </div>
+                  <input type="file" id="settings-cv-file" class="d-none" accept=".pdf,.doc,.docx,.txt,.md" onchange="uploadCvFile(this)">
+                  <div class="small text-secondary mt-2" id="settings-cv-meta">Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l'application.</div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-presentation">Presentation courte</label>
+                  <textarea class="form-control" id="settings-presentation" rows="4" placeholder="3 ou 4 lignes pour personnaliser les lettres de motivation."></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-6">
+            <div class="card settings-card">
+              <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                <div>
+                  <div class="fw-bold">Ma recherche</div>
+                  <div class="settings-subtitle">Filtres reutilises au scan et au tri des offres.</div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-12">
+                  <div class="coach-launch">
+                    <label class="form-label mb-0">Postes cibles</label>
+                    <button class="btn btn-sm btn-outline-primary" type="button" onclick="ouvrirCoachRecherche()">
+                      <i class="bi bi-magic me-1"></i>M'aider avec l'IA
+                    </button>
+                  </div>
+                  <div class="tag-editor" id="editor-postes-cibles" data-placeholder="Ajouter un poste cible puis Entrer"></div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Mots-cles positifs supplementaires</label>
+                  <div class="tag-editor" id="editor-mots-cles-positifs" data-placeholder="Ajouter un mot-cle puis Entrer"></div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label">Mots-cles negatifs / exclusions</label>
+                  <div class="tag-editor" id="editor-mots-cles-negatifs" data-placeholder="Ajouter une exclusion puis Entrer"></div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label d-block">Types de contrat acceptes</label>
+                  <div class="d-grid gap-2">
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="contract-alternance"><label class="form-check-label" for="contract-alternance">Alternance</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="contract-stage"><label class="form-check-label" for="contract-stage">Stage</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="contract-cdd"><label class="form-check-label" for="contract-cdd">CDD</label></div>
+                    <div class="form-check"><input class="form-check-input" type="checkbox" id="contract-cdi"><label class="form-check-label" for="contract-cdi">CDI</label></div>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label" for="settings-zone-mode">Zone geographique</label>
+                  <select class="form-select mb-2" id="settings-zone-mode">
+                    <option value="idf">Ile-de-France</option>
+                    <option value="lyon">Lyon</option>
+                    <option value="bordeaux">Bordeaux</option>
+                    <option value="remote">Remote</option>
+                    <option value="france">France entiere</option>
+                    <option value="custom">Personnalisee</option>
+                  </select>
+                  <input class="form-control mb-2" id="settings-zone-geo" placeholder="Paris, Lyon, Bordeaux, Remote...">
+                  <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="settings-inclure-remote">
+                    <label class="form-check-label" for="settings-inclure-remote">Inclure les offres remote</label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label d-flex justify-content-between align-items-center" for="settings-rayon-km">
+                    <span>Rayon autour de la ville</span>
+                    <span class="settings-value" id="settings-rayon-km-value">30 km</span>
+                  </label>
+                  <input class="form-range" type="range" min="10" max="100" step="5" id="settings-rayon-km" oninput="updateRangeLabel('settings-rayon-km', 'settings-rayon-km-value', ' km')">
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label d-flex justify-content-between align-items-center" for="settings-score-min">
+                    <span>Score minimum a afficher</span>
+                    <span class="settings-value" id="settings-score-min-value">0 / 100</span>
+                  </label>
+                  <input class="form-range" type="range" min="0" max="100" step="5" id="settings-score-min" oninput="updateRangeLabel('settings-score-min', 'settings-score-min-value', ' / 100')">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-6">
+            <div class="card settings-card">
+              <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                <div>
+                  <div class="fw-bold">Cles API</div>
+                  <div class="settings-subtitle">Les valeurs restent masquees par defaut.</div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-12">
+                  <label class="form-label" for="settings-adzuna-app-id">ADZUNA_APP_ID</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-adzuna-app-id" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-adzuna-app-id"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-adzuna-app-id', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-adzuna-app-key">ADZUNA_APP_KEY</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-adzuna-app-key" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-adzuna-app-key"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-adzuna-app-key', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-ft-client-id">FT_CLIENT_ID</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-ft-client-id" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-ft-client-id"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-ft-client-id', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-ft-client-secret">FT_CLIENT_SECRET</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-ft-client-secret" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-ft-client-secret"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-ft-client-secret', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-lba-api-key">LBA_API_KEY</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-lba-api-key" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-lba-api-key"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-lba-api-key', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-groq-api-key">GROQ_API_KEY</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-groq-api-key" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-groq-api-key"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-groq-api-key', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label" for="settings-gemini-api-key">GEMINI_API_KEY</label>
+                  <div class="api-key-row">
+                    <input class="form-control api-key-input" id="settings-gemini-api-key" type="password">
+                    <div class="api-key-actions">
+                      <span class="badge badge-soft api-status-badge" id="status-settings-gemini-api-key"></span>
+                      <button class="btn btn-outline-secondary" type="button" onclick="toggleSecretVisibility('settings-gemini-api-key', this)"><i class="bi bi-eye"></i></button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-xl-6">
+            <div class="card settings-card">
+              <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
+                <div>
+                  <div class="fw-bold">Comportement de l'agent</div>
+                  <div class="settings-subtitle">Regles appliquees pendant les sessions de candidature.</div>
+                </div>
+              </div>
+              <div class="row g-3">
+                <div class="col-12">
+                  <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="settings-confirmation-required">
+                    <label class="form-check-label" for="settings-confirmation-required">Demander une confirmation avant chaque envoi</label>
+                  </div>
+                </div>
+                <div class="col-12">
+                  <label class="form-label d-flex justify-content-between align-items-center" for="settings-delay-seconds">
+                    <span>Delai entre les candidatures</span>
+                    <span class="settings-value" id="settings-delay-seconds-value">5 s</span>
+                  </label>
+                  <input class="form-range" type="range" min="1" max="30" step="1" id="settings-delay-seconds" oninput="updateRangeLabel('settings-delay-seconds', 'settings-delay-seconds-value', ' s')">
+                </div>
+                <div class="col-12">
+                  <label class="form-label d-flex justify-content-between align-items-center" for="settings-max-candidatures-session">
+                    <span>Nombre max de candidatures par session</span>
+                    <span class="settings-value" id="settings-max-candidatures-session-value">20</span>
+                  </label>
+                  <input class="form-range" type="range" min="1" max="100" step="1" id="settings-max-candidatures-session" oninput="updateRangeLabel('settings-max-candidatures-session', 'settings-max-candidatures-session-value', '')">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalAnalyse" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0" id="analyse-title">Analyse offre</h5>
+            <div class="text-secondary small" id="analyse-company"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-4">
+            <div class="col-lg-7">
+              <div class="d-flex flex-wrap gap-2 mb-3">
+                <span class="badge-soft status-a_analyser" id="analyse-status-badge">A analyser</span>
+                <span class="score-pill" id="analyse-score">Pas de score</span>
+                <span class="score-pill" id="analyse-source">Source</span>
+                <span class="score-pill" id="analyse-date">Date</span>
+              </div>
+              <div class="fw-bold mb-2">Synthese</div>
+              <div class="summary-list mb-3" id="analyse-summary"></div>
+              <div class="fw-bold mb-2">Description</div>
+              <div class="description-box" id="analyse-description"></div>
+            </div>
+            <div class="col-lg-5">
+              <div class="card p-3 h-100">
+                <div class="fw-bold mb-3">Actions pipeline</div>
+                <div class="mb-3">
+                  <label class="form-label small text-secondary">Changer le statut</label>
+                  <select class="form-select" id="analyse-status-select">
+                    <option value="nouvelle">Nouvelle offre</option>
+                    <option value="a_analyser">A analyser</option>
+                    <option value="interessante">Interessante</option>
+                    <option value="lettre_generee">Lettre generee</option>
+                    <option value="postule">Postule</option>
+                    <option value="refusee">Refusee</option>
+                  </select>
+                </div>
+                <div class="d-grid gap-2">
+                  <button class="btn btn-primary" onclick="sauvegarderStatutAnalyse()">Sauvegarder le statut</button>
+                  <button class="btn btn-outline-secondary" onclick="scorerAnalyse()">Scorer avec IA</button>
+                  <button class="btn btn-outline-success" onclick="ouvrirLettreDepuisAnalyse()">Voir la lettre</button>
+                  <a class="btn btn-outline-dark" id="analyse-annonce-link" href="#" target="_blank" rel="noopener noreferrer">Ouvrir l'annonce</a>
+                  <button class="btn btn-outline-dark" onclick="marquerCommePostule()">Marquer comme postule</button>
+                  <button class="btn btn-outline-danger" onclick="basculerRefusDepuisAnalyse()">Basculer refusee</button>
+                </div>
+                <hr>
+                <div class="small text-secondary">
+                  <div id="analyse-first-seen">Premiere detection : -</div>
+                  <div id="analyse-last-seen">Derniere detection : -</div>
+                  <div id="analyse-id" class="mt-2"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalLettre" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0" id="lettre-title">Lettre de motivation</h5>
+            <div class="text-secondary small" id="lettre-company"></div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="small text-secondary" id="lettre-meta">Aucune lettre</div>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-outline-secondary" onclick="copierLettre()">Copier</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="regenererLettre()">Regenerer</button>
+            </div>
+          </div>
+          <textarea class="form-control" rows="14" id="lettre-texte" placeholder="Aucune lettre generee pour cette offre."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-primary" onclick="sauvegarderLettre()">Sauvegarder</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="modalSearchCoach" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-0">Assistant IA de ciblage</h5>
+            <div class="text-secondary small">Une mini conversation pour affiner les postes ciblés et les filtres de recherche.</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="coach-chat mb-3" id="coach-chat"></div>
+          <div class="coach-suggestions mb-3" id="coach-suggestions-box" style="display:none"></div>
+          <div class="input-group">
+            <input class="form-control" id="coach-input" placeholder="Réponds ici pour préciser ce que tu cherches..." onkeydown="if(event.key === 'Enter'){ event.preventDefault(); envoyerMessageCoach(); }">
+            <button class="btn btn-primary" type="button" id="coach-send-btn" onclick="envoyerMessageCoach()">Envoyer</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
+          <button class="btn btn-success" type="button" id="coach-apply-btn" onclick="appliquerSuggestionsCoach()" disabled>Appliquer aux paramètres</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const STATUS_LABELS = {
+      nouvelle: 'Nouvelle offre',
+      a_analyser: 'A analyser',
+      interessante: 'Interessante',
+      lettre_generee: 'Lettre generee',
+      postule: 'Postule',
+      refusee: 'Refusee'
+    };
+
+    const KANBAN_ORDER = ['nouvelle', 'a_analyser', 'interessante', 'lettre_generee', 'postule', 'refusee'];
+
+    let offresData = [];
+    let histoData = [];
+    let lettresData = {};
+    let statsData = {};
+    let settingsData = null;
+    let evtSource = null;
+    let analyseCourante = null;
+    let modalAnalyse = null;
+    let modalLettre = null;
+    let modalSearchCoach = null;
+    let offersSort = { key: 'date', direction: 'desc' };
+    let selectedOfferId = '';
+    let coachMessages = [];
+    let coachSuggestions = null;
+    let coachLoading = false;
+    const TAB_REGISTRY_KEY = 'alternance_auto_open_tabs';
+    const tabSessionId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    let pendingServerStopOnClose = false;
+
+    const esc = value => String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    function getStatusBadge(status) {
+      const label = STATUS_LABELS[status] || status || 'Inconnu';
+      return `<span class="badge-soft status-${status || 'a_analyser'}">${esc(label)}</span>`;
+    }
+
+    function loadSelectedOfferId() {
+      try {
+        selectedOfferId = localStorage.getItem('selectedOfferId') || '';
+      } catch (_) {
+        selectedOfferId = '';
+      }
+    }
+
+    function setSelectedOffer(id, rerender = false) {
+      selectedOfferId = id || '';
+      try {
+        if (selectedOfferId) {
+          localStorage.setItem('selectedOfferId', selectedOfferId);
+        } else {
+          localStorage.removeItem('selectedOfferId');
+        }
+      } catch (_) {}
+      if (rerender) renderOffers();
+    }
+
+    function scoreLabel(offer) {
+      const level = offer.score_level ? ` (${offer.score_level})` : '';
+      return offer.score_value == null ? 'Pas de score' : `${offer.score_value}/100${level}`;
+    }
+
+    function formatDate(value) {
+      if (!value) return '-';
+      return String(value).slice(0, 16).replace('T', ' ');
+    }
+
+    function updateRangeLabel(inputId, outputId, suffix = '') {
+      const input = document.getElementById(inputId);
+      const output = document.getElementById(outputId);
+      if (input && output) output.textContent = `${input.value}${suffix}`;
+    }
+
+    function showToast(title, message, type = 'success') {
+      const shell = document.getElementById('toast-shell');
+      const toast = document.createElement('div');
+      toast.className = `toast app-toast app-toast-${type}`;
+      toast.setAttribute('role', 'alert');
+      toast.setAttribute('aria-live', 'assertive');
+      toast.setAttribute('aria-atomic', 'true');
+      toast.innerHTML = `
+        <div class="toast-header">
+          <strong class="me-auto">${esc(title)}</strong>
+          <small>${type === 'success' ? 'OK' : type === 'error' ? 'Erreur' : 'Info'}</small>
+          <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Fermer"></button>
+        </div>
+        <div class="toast-body">${esc(message)}</div>
+      `;
+      shell.appendChild(toast);
+      const instance = new bootstrap.Toast(toast, {delay: type === 'error' ? 7000 : 4500});
+      toast.addEventListener('hidden.bs.toast', () => toast.remove());
+      instance.show();
+    }
+
+    function getOpenTabIds() {
+      try {
+        return JSON.parse(localStorage.getItem(TAB_REGISTRY_KEY) || '[]').filter(Boolean);
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function setOpenTabIds(ids) {
+      try {
+        localStorage.setItem(TAB_REGISTRY_KEY, JSON.stringify(ids));
+      } catch (_) {}
+    }
+
+    function registerCurrentTab() {
+      const ids = getOpenTabIds();
+      if (!ids.includes(tabSessionId)) {
+        ids.push(tabSessionId);
+        setOpenTabIds(ids);
+      }
+    }
+
+    function unregisterCurrentTab() {
+      setOpenTabIds(getOpenTabIds().filter(id => id !== tabSessionId));
+    }
+
+    function isLastKnownTab() {
+      const ids = getOpenTabIds();
+      return ids.length <= 1 && ids.includes(tabSessionId);
+    }
+
+    function createTagEditor(root) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'tag-editor-input';
+      input.placeholder = root.dataset.placeholder || 'Ajouter un tag';
+      root.appendChild(input);
+      root._tags = [];
+
+      const render = () => {
+        root.querySelectorAll('.tag-chip').forEach(node => node.remove());
+        root._tags.forEach((tag, index) => {
+          const chip = document.createElement('span');
+          chip.className = 'tag-chip';
+          chip.innerHTML = `${esc(tag)} <button type="button" aria-label="Supprimer" data-index="${index}">&times;</button>`;
+          root.insertBefore(chip, input);
+        });
+      };
+
+      const addTag = raw => {
+        const value = String(raw || '').trim();
+        if (!value) return;
+        if (root._tags.some(tag => tag.toLowerCase() === value.toLowerCase())) return;
+        root._tags.push(value);
+        input.value = '';
+        render();
+      };
+
+      root.addEventListener('click', event => {
+        const button = event.target.closest('button[data-index]');
+        if (button) {
+          root._tags.splice(Number(button.dataset.index), 1);
+          render();
+          input.focus();
+          return;
+        }
+        input.focus();
+      });
+
+      input.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ',') {
+          event.preventDefault();
+          addTag(input.value);
+        } else if (event.key === 'Backspace' && !input.value && root._tags.length) {
+          root._tags.pop();
+          render();
+        }
+      });
+
+      input.addEventListener('blur', () => addTag(input.value));
+
+      root.setTags = values => {
+        root._tags = Array.isArray(values) ? [...values] : [];
+        input.value = '';
+        render();
+      };
+      root.getTags = () => [...root._tags];
+    }
+
+    function setupTagEditors() {
+      ['editor-postes-cibles', 'editor-mots-cles-positifs', 'editor-mots-cles-negatifs'].forEach(id => {
+        const root = document.getElementById(id);
+        if (root && !root._tags) createTagEditor(root);
+      });
+    }
+
+    function setApiKeyStatus(inputId, hasValue) {
+      const badge = document.getElementById(`status-${inputId}`);
+      if (!badge) return;
+      badge.className = `badge badge-soft api-status-badge ${hasValue ? 'status-interessante' : 'status-refusee'}`;
+      badge.textContent = hasValue ? 'Renseignee' : 'Manquante';
+    }
+
+    function renderCoachChat() {
+      const box = document.getElementById('coach-chat');
+      const messagesHtml = coachMessages.map(message => `
+        <div class="coach-bubble coach-bubble-${message.role === 'user' ? 'user' : 'assistant'}">${esc(message.content || '')}</div>
+      `).join('');
+      const typingHtml = coachLoading ? `
+        <div class="coach-bubble coach-bubble-assistant">
+          <div class="coach-typing" aria-label="L'assistant réfléchit">
+            <span></span><span></span><span></span>
+          </div>
+        </div>
+      ` : '';
+      box.innerHTML = messagesHtml + typingHtml;
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function renderCoachSuggestions() {
+      const box = document.getElementById('coach-suggestions-box');
+      const applyBtn = document.getElementById('coach-apply-btn');
+      if (!coachSuggestions) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        applyBtn.disabled = true;
+        return;
+      }
+      const parts = [];
+      if ((coachSuggestions.postes_cibles || []).length) parts.push(`<div><strong>Postes ciblés :</strong> ${esc(coachSuggestions.postes_cibles.join(', '))}</div>`);
+      if ((coachSuggestions.mots_cles_positifs || []).length) parts.push(`<div><strong>Mots-clés positifs :</strong> ${esc(coachSuggestions.mots_cles_positifs.join(', '))}</div>`);
+      if ((coachSuggestions.mots_cles_negatifs || []).length) parts.push(`<div><strong>Exclusions :</strong> ${esc(coachSuggestions.mots_cles_negatifs.join(', '))}</div>`);
+      if ((coachSuggestions.types_contrat || []).length) parts.push(`<div><strong>Contrats :</strong> ${esc(coachSuggestions.types_contrat.join(', '))}</div>`);
+      if (coachSuggestions.zone_geo) parts.push(`<div><strong>Zone :</strong> ${esc(coachSuggestions.zone_geo)}</div>`);
+      box.innerHTML = parts.join('');
+      box.style.display = parts.length ? 'grid' : 'none';
+      applyBtn.disabled = !parts.length;
+    }
+
+    async function interrogerCoachRecherche() {
+      const sendBtn = document.getElementById('coach-send-btn');
+      sendBtn.disabled = true;
+      coachLoading = true;
+      renderCoachChat();
+      try {
+        const response = await fetch('/api/settings/search-coach', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({messages: coachMessages})
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Assistant indisponible');
+        coachMessages.push({role: 'assistant', content: data.reply || 'Je t’écoute.'});
+        coachSuggestions = data.suggestions || null;
+        renderCoachSuggestions();
+      } catch (error) {
+        showToast('Assistant IA indisponible', error.message, 'error');
+      } finally {
+        coachLoading = false;
+        renderCoachChat();
+        sendBtn.disabled = false;
+      }
+    }
+
+    async function ouvrirCoachRecherche() {
+      coachMessages = [];
+      coachSuggestions = null;
+      renderCoachChat();
+      renderCoachSuggestions();
+      document.getElementById('coach-input').value = '';
+      if (!modalSearchCoach) modalSearchCoach = new bootstrap.Modal(document.getElementById('modalSearchCoach'));
+      modalSearchCoach.show();
+      await interrogerCoachRecherche();
+      document.getElementById('coach-input').focus();
+    }
+
+    async function envoyerMessageCoach() {
+      const input = document.getElementById('coach-input');
+      const value = input.value.trim();
+      if (!value) return;
+      coachMessages.push({role: 'user', content: value});
+      input.value = '';
+      renderCoachChat();
+      await interrogerCoachRecherche();
+      input.focus();
+    }
+
+    function appliquerSuggestionsCoach() {
+      if (!coachSuggestions) return;
+      document.getElementById('editor-postes-cibles').setTags(coachSuggestions.postes_cibles || []);
+      document.getElementById('editor-mots-cles-positifs').setTags(coachSuggestions.mots_cles_positifs || []);
+      document.getElementById('editor-mots-cles-negatifs').setTags(coachSuggestions.mots_cles_negatifs || []);
+      const contracts = new Set((coachSuggestions.types_contrat || []).map(value => String(value).toLowerCase()));
+      document.getElementById('contract-alternance').checked = contracts.has('alternance');
+      document.getElementById('contract-stage').checked = contracts.has('stage');
+      document.getElementById('contract-cdd').checked = contracts.has('cdd');
+      document.getElementById('contract-cdi').checked = contracts.has('cdi');
+      if (coachSuggestions.zone_mode) document.getElementById('settings-zone-mode').value = coachSuggestions.zone_mode;
+      if (coachSuggestions.zone_geo) document.getElementById('settings-zone-geo').value = coachSuggestions.zone_geo;
+      showToast('Suggestions appliquées', 'Les propositions de l’assistant ont été copiées dans les paramètres.', 'success');
+      if (modalSearchCoach) modalSearchCoach.hide();
+    }
+
+    function toggleSecretVisibility(inputId, button) {
+      const input = document.getElementById(inputId);
+      if (!input) return;
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      button.innerHTML = `<i class="bi bi-eye${isPassword ? '-slash' : ''}"></i>`;
+    }
+
+    function applyZoneModeDefaults(mode) {
+      const zoneInput = document.getElementById('settings-zone-geo');
+      if (!zoneInput) return;
+      const defaults = {
+        idf: 'Ile-de-France',
+        lyon: 'Lyon',
+        bordeaux: 'Bordeaux',
+        remote: 'Remote',
+        france: 'France entiere'
+      };
+      if (mode !== 'custom' && (!zoneInput.value || Object.values(defaults).includes(zoneInput.value))) {
+        zoneInput.value = defaults[mode] || zoneInput.value;
+      }
+    }
+
+    function populateSettings(settings) {
+      settingsData = settings || {};
+      const profile = settingsData.profile || {};
+      const search = settingsData.search || {};
+      const apiKeys = settingsData.api_keys || {};
+      const agent = settingsData.agent || {};
+
+      document.getElementById('settings-prenom').value = profile.prenom || '';
+      document.getElementById('settings-nom').value = profile.nom || '';
+      document.getElementById('settings-email').value = profile.email || '';
+      document.getElementById('settings-tel').value = profile.tel || '';
+      document.getElementById('settings-portfolio').value = profile.portfolio || '';
+      document.getElementById('settings-linkedin').value = profile.linkedin || '';
+      document.getElementById('settings-github').value = profile.github || '';
+      document.getElementById('settings-cv-path').value = profile.cv_path || '';
+      document.getElementById('settings-cv-meta').textContent = profile.cv_path
+        ? `CV actuel : ${profile.cv_path}`
+        : "Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l'application.";
+      document.getElementById('settings-presentation').value = profile.presentation || '';
+
+      document.getElementById('editor-postes-cibles').setTags(search.postes_cibles || []);
+      document.getElementById('editor-mots-cles-positifs').setTags(search.mots_cles_positifs || []);
+      document.getElementById('editor-mots-cles-negatifs').setTags(search.mots_cles_negatifs || []);
+
+      const contracts = new Set(search.types_contrat || []);
+      document.getElementById('contract-alternance').checked = contracts.has('alternance');
+      document.getElementById('contract-stage').checked = contracts.has('stage');
+      document.getElementById('contract-cdd').checked = contracts.has('cdd');
+      document.getElementById('contract-cdi').checked = contracts.has('cdi');
+
+      document.getElementById('settings-zone-mode').value = search.zone_mode || 'idf';
+      document.getElementById('settings-zone-geo').value = search.zone_geo || '';
+      document.getElementById('settings-inclure-remote').checked = !!search.inclure_remote;
+      document.getElementById('settings-rayon-km').value = search.rayon_km ?? 30;
+      document.getElementById('settings-score-min').value = search.score_min ?? 0;
+
+      document.getElementById('settings-adzuna-app-id').value = apiKeys.adzuna_app_id || '';
+      document.getElementById('settings-adzuna-app-key').value = apiKeys.adzuna_app_key || '';
+      document.getElementById('settings-ft-client-id').value = apiKeys.ft_client_id || '';
+      document.getElementById('settings-ft-client-secret').value = apiKeys.ft_client_secret || '';
+      document.getElementById('settings-lba-api-key').value = apiKeys.lba_api_key || '';
+      document.getElementById('settings-groq-api-key').value = apiKeys.groq_api_key || '';
+      document.getElementById('settings-gemini-api-key').value = apiKeys.gemini_api_key || '';
+
+      document.getElementById('settings-confirmation-required').checked = agent.confirmation_required !== false;
+      document.getElementById('settings-delay-seconds').value = agent.delay_seconds ?? 5;
+      document.getElementById('settings-max-candidatures-session').value = agent.max_candidatures_session ?? 20;
+
+      updateRangeLabel('settings-rayon-km', 'settings-rayon-km-value', ' km');
+      updateRangeLabel('settings-score-min', 'settings-score-min-value', ' / 100');
+      updateRangeLabel('settings-delay-seconds', 'settings-delay-seconds-value', ' s');
+      updateRangeLabel('settings-max-candidatures-session', 'settings-max-candidatures-session-value', '');
+
+      [
+        'settings-adzuna-app-id',
+        'settings-adzuna-app-key',
+        'settings-ft-client-id',
+        'settings-ft-client-secret',
+        'settings-lba-api-key',
+        'settings-groq-api-key',
+        'settings-gemini-api-key'
+      ].forEach(id => setApiKeyStatus(id, !!document.getElementById(id).value.trim()));
+    }
+
+    function collectSettingsPayload() {
+      const typesContrat = [];
+      if (document.getElementById('contract-alternance').checked) typesContrat.push('alternance');
+      if (document.getElementById('contract-stage').checked) typesContrat.push('stage');
+      if (document.getElementById('contract-cdd').checked) typesContrat.push('cdd');
+      if (document.getElementById('contract-cdi').checked) typesContrat.push('cdi');
+      return {
+        profile: {
+          prenom: document.getElementById('settings-prenom').value.trim(),
+          nom: document.getElementById('settings-nom').value.trim(),
+          email: document.getElementById('settings-email').value.trim(),
+          tel: document.getElementById('settings-tel').value.trim(),
+          portfolio: document.getElementById('settings-portfolio').value.trim(),
+          linkedin: document.getElementById('settings-linkedin').value.trim(),
+          github: document.getElementById('settings-github').value.trim(),
+          cv_path: document.getElementById('settings-cv-path').value.trim(),
+          presentation: document.getElementById('settings-presentation').value.trim()
+        },
+        search: {
+          postes_cibles: document.getElementById('editor-postes-cibles').getTags(),
+          mots_cles_positifs: document.getElementById('editor-mots-cles-positifs').getTags(),
+          mots_cles_negatifs: document.getElementById('editor-mots-cles-negatifs').getTags(),
+          types_contrat: typesContrat,
+          zone_mode: document.getElementById('settings-zone-mode').value,
+          zone_geo: document.getElementById('settings-zone-geo').value.trim(),
+          rayon_km: Number(document.getElementById('settings-rayon-km').value),
+          score_min: Number(document.getElementById('settings-score-min').value),
+          inclure_remote: document.getElementById('settings-inclure-remote').checked
+        },
+        api_keys: {
+          adzuna_app_id: document.getElementById('settings-adzuna-app-id').value.trim(),
+          adzuna_app_key: document.getElementById('settings-adzuna-app-key').value.trim(),
+          ft_client_id: document.getElementById('settings-ft-client-id').value.trim(),
+          ft_client_secret: document.getElementById('settings-ft-client-secret').value.trim(),
+          lba_api_key: document.getElementById('settings-lba-api-key').value.trim(),
+          groq_api_key: document.getElementById('settings-groq-api-key').value.trim(),
+          gemini_api_key: document.getElementById('settings-gemini-api-key').value.trim()
+        },
+        agent: {
+          confirmation_required: document.getElementById('settings-confirmation-required').checked,
+          delay_seconds: Number(document.getElementById('settings-delay-seconds').value),
+          max_candidatures_session: Number(document.getElementById('settings-max-candidatures-session').value)
+        }
+      };
+    }
+
+    async function chargerSettings(silent = false) {
+      try {
+        const response = await fetch('/api/settings');
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Chargement impossible');
+        populateSettings(data.settings);
+        if (!silent) appendLog('Parametres recharges', 'log-ok');
+      } catch (error) {
+        if (!silent) appendLog(`Erreur parametres: ${error.message}`, 'log-warn');
+      }
+    }
+
+    async function saveSettings() {
+      const button = document.getElementById('settings-save-btn');
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/settings', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify(collectSettingsPayload())
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Sauvegarde impossible');
+        populateSettings(data.settings);
+        appendLog('Parametres sauvegardes', 'log-ok');
+        showToast('Parametres enregistres', 'Les nouveaux reglages ont bien ete sauvegardes.', 'success');
+        await chargerTout();
+      } catch (error) {
+        appendLog(`Erreur sauvegarde parametres: ${error.message}`, 'log-err');
+        showToast('Sauvegarde impossible', error.message, 'error');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function browseCvPath() {
+      const button = document.getElementById('settings-cv-browse-btn');
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/settings/cv-path', {method: 'POST'});
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Selection impossible');
+        if (data.path) {
+          document.getElementById('settings-cv-path').value = data.path;
+        }
+      } catch (error) {
+        appendLog(`Erreur selection CV: ${error.message}`, 'log-warn');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function uploadCvFile(input) {
+      const file = input.files && input.files[0];
+      if (!file) return;
+      const button = document.getElementById('settings-cv-upload-btn');
+      button.disabled = true;
+      const formData = new FormData();
+      formData.append('cv', file);
+      try {
+        const response = await fetch('/api/settings/cv-upload', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Import impossible');
+        if (data.settings) populateSettings(data.settings);
+        document.getElementById('settings-cv-meta').textContent = `CV importé : ${data.filename}`;
+        showToast('CV importé', 'Le CV a bien été ajouté à l’application.', 'success');
+      } catch (error) {
+        showToast('Import du CV impossible', error.message, 'error');
+      } finally {
+        input.value = '';
+        button.disabled = false;
+      }
+    }
+
+    function currentOffersFilters(prefix) {
+      return {
+        q: document.getElementById(`${prefix}-q`)?.value?.trim().toLowerCase() || '',
+        source: document.getElementById(`${prefix}-source`)?.value || '',
+        status: document.getElementById(`${prefix}-status`)?.value || document.getElementById(`${prefix}-status-filter`)?.value || '',
+        pertinence: document.getElementById(`${prefix}-pertinence`)?.value || ''
+      };
+    }
+
+    async function fetchJsonSafe(url, fallbackValue) {
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || `${url} a renvoyé ${response.status}`);
+        }
+        return data;
+      } catch (error) {
+        appendLog(`Chargement temporairement indisponible pour ${url}: ${error.message}`, 'log-warn');
+        return fallbackValue;
+      }
+    }
+
+    function getOfferTitle(offer) {
+      const key = Object.keys(offer || {}).find(name => { const lower = String(name || '').toLowerCase(); return lower.includes('intitul') && lower.includes('poste'); }); return key ? (offer[key] || '') : '';
+    }
+
+    function getOfferSortValue(offer, key) {
+      if (key === 'poste') return String(getOfferTitle(offer)).toLowerCase();
+      if (key === 'entreprise') return String(offer['Entreprise'] || '').toLowerCase();
+      if (key === 'source') return String(offer['Source'] || '').toLowerCase();
+      if (key === 'statut') return String(offer.pipeline_status || '').toLowerCase();
+      if (key === 'score') return Number(offer.score_value ?? -1);
+      if (key === 'lettre') return offer.letter_generated ? 1 : 0;
+      if (key === 'date') return String(offer['Date de publication'] || '');
+      return '';
+    }
+
+    function sortOffersData(data) {
+      if (!offersSort?.key) return data;
+      const direction = offersSort.direction === 'asc' ? 1 : -1;
+      return [...data].sort((a, b) => {
+        const valueA = getOfferSortValue(a, offersSort.key);
+        const valueB = getOfferSortValue(b, offersSort.key);
+        if (typeof valueA === 'number' && typeof valueB === 'number') {
+          return (valueA - valueB) * direction;
+        }
+        return String(valueA).localeCompare(String(valueB), 'fr', {
+          numeric: true,
+          sensitivity: 'base'
+        }) * direction;
+      });
+    }
+
+    function updateOffersSortHeaders() {
+      document.querySelectorAll('.sortable-header').forEach(header => {
+        const key = header.id.replace('sort-', '');
+        const baseLabel = header.dataset.label || header.textContent.replace(/ [↑↓]$/, '');
+        header.dataset.label = baseLabel;
+        const active = offersSort.key === key;
+        header.classList.toggle('active', active);
+        header.textContent = active
+          ? `${baseLabel} ${offersSort.direction === 'asc' ? '↑' : '↓'}`
+          : baseLabel;
+      });
+    }
+
+    function toggleOffersSort(key) {
+      if (offersSort.key === key) {
+        offersSort.direction = offersSort.direction === 'asc' ? 'desc' : 'asc';
+      } else {
+        offersSort = { key, direction: key === 'date' || key === 'score' ? 'desc' : 'asc' };
+      }
+      renderOffers();
+    }
+
+    function filteredOffers(prefix) {
+      const filters = currentOffersFilters(prefix);
+      return offresData.filter(offer => {
+        const haystack = [
+          getOfferTitle(offer),
+          offer['Entreprise'],
+          offer['Ville ou zone'],
+          offer['Description (texte complet)']
+        ].join(' ').toLowerCase();
+        const score = offer.score_value;
+        if (filters.q && !haystack.includes(filters.q)) return false;
+        if (filters.source && offer['Source'] !== filters.source) return false;
+        if (filters.status && offer.pipeline_status !== filters.status) return false;
+        if (filters.pertinence === 'forte' && (score == null || score < 75)) return false;
+        if (filters.pertinence === 'moyenne' && (score == null || score < 50 || score >= 75)) return false;
+        if (filters.pertinence === 'faible' && (score == null || score >= 50)) return false;
+        return true;
+      });
+    }
+
+    function populateSourcesSelects() {
+      const sources = [...new Set(offresData.map(offer => offer['Source']).filter(Boolean))];
+      ['pipeline-source', 'offres-source'].forEach(id => {
+        const select = document.getElementById(id);
+        const current = select.value;
+        select.innerHTML = '<option value="">Toutes les sources</option>' + sources.map(source => `<option value="${esc(source)}">${esc(source)}</option>`).join('');
+        select.value = sources.includes(current) ? current : '';
+      });
+    }
+
+    function renderStats() {
+      const scan = statsData.scan_state || {};
+      document.getElementById('stat-offres').textContent = statsData.nb_offres || 0;
+      document.getElementById('stat-offres-note').textContent = `${statsData.pipeline?.a_analyser || 0} a analyser`;
+      document.getElementById('stat-nouvelles').textContent = scan.new_offers || 0;
+      document.getElementById('stat-last-scan').textContent = scan.finished_at ? `Dernier scan: ${formatDate(scan.finished_at)}` : 'Aucun scan';
+      document.getElementById('stat-interessantes').textContent = statsData.pipeline?.interessante || 0;
+      document.getElementById('stat-interessantes-note').textContent = `${statsData.pipeline?.a_analyser || 0} encore a analyser`;
+      document.getElementById('stat-postulations').textContent = statsData.nb_postulations || 0;
+      document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance a faire`;
+      document.getElementById('process-status').innerHTML = statsData.process_actif ? '<span class="pulse"></span>Processus en cours' : '';
+      document.getElementById('badge-pipeline').textContent = offresData.length;
+      document.getElementById('badge-offres').textContent = offresData.length;
+      document.getElementById('badge-histo').textContent = histoData.length;
+      document.getElementById('badge-relances').textContent = relancesData().length;
+      document.getElementById('scan-summary').textContent =
+        scan.finished_at
+          ? `${scan.exported_offers || 0} offres exportees, ${scan.duplicates_ignored || 0} doublons ignores`
+          : 'Aucun scan enregistre';
+
+      const sourcesBox = document.getElementById('scan-sources');
+      const sources = scan.sources_scanned || {};
+      const entries = Object.entries(sources);
+      if (!entries.length) {
+        sourcesBox.innerHTML = '<div class="summary-line">Aucune source scannee pour le moment.</div>';
+      } else {
+        sourcesBox.innerHTML = entries.map(([name, meta]) => `
+          <div class="summary-line">
+            <div class="fw-semibold">${esc(name)}</div>
+            <div class="small text-secondary">
+              ${meta.offers_found || meta.count || 0} offre(s), ${meta.new_offers || 0} nouvelle(s), ${meta.duplicates || 0} doublon(s)
+              ${meta.error_message ? ` - erreur: ${esc(meta.error_message)}` : ` - ${esc(meta.status || 'ok')}`}
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    function renderPipeline() {
+      const data = filteredOffers('pipeline');
+      const grid = document.getElementById('kanban-grid');
+      const countLabel = document.getElementById('pipeline-toolbar-count');
+      if (countLabel) countLabel.textContent = `${data.length} offre${data.length > 1 ? 's' : ''}`;
+      const statusNotes = {
+        nouvelle: 'A trier rapidement',
+        a_analyser: 'A qualifier',
+        interessante: 'A prioriser',
+        lettre_generee: 'Pret a envoyer',
+        postule: 'Suivi en cours',
+        refusee: 'Archive'
+      };
+      grid.innerHTML = KANBAN_ORDER.map(status => {
+        const offers = data.filter(offer => offer.pipeline_status === status);
+        return `
+          <section class="kanban-col status-shell-${status}">
+            <div class="kanban-head">
+              <div class="kanban-head-main">
+                <div class="kanban-head-title">${STATUS_LABELS[status]}</div>
+                <div class="kanban-head-note">${statusNotes[status] || ''}</div>
+              </div>
+              <span class="badge text-bg-light">${offers.length}</span>
+            </div>
+            <div class="kanban-stack">
+              ${offers.length ? offers.map(renderOfferCard).join('') : '<div class="empty-state py-4"><i class="bi bi-inbox"></i>Aucune offre</div>'}
+            </div>
+          </section>
+        `;
+      }).join('');
+    }
+
+    function renderOfferCard(offer) {
+      const description = String(offer['Description (texte complet)'] || '').replace(/\s+/g, ' ').trim();
+      const shortDescription = description || 'Description non disponible pour cette offre.';
+      const location = offer['Ville ou zone'] || 'Localisation non renseignee';
+      const source = offer['Source'] || 'Source inconnue';
+      const date = String(offer['Date de publication'] || '').slice(0, 10) || '-';
+      return `
+        <article class="offer-card">
+          <div class="offer-card-header">
+            <div class="min-w-0">
+              <div class="offer-title">${esc(getOfferTitle(offer))}</div>
+              <div class="offer-meta mt-2"><strong>${esc(offer['Entreprise'] || '-')}</strong> · ${esc(source)}</div>
+            </div>
+            <div class="offer-card-status">${getStatusBadge(offer.pipeline_status)}</div>
+          </div>
+          <div class="offer-submeta">
+            <span class="offer-submeta-pill"><i class="bi bi-geo-alt"></i>${esc(location)}</span>
+            <span class="offer-submeta-pill"><i class="bi bi-calendar3"></i>${esc(date)}</span>
+          </div>
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            <span class="score-pill score-pill-primary"><i class="bi bi-stars"></i>${esc(scoreLabel(offer))}</span>
+          </div>
+          <div class="offer-card-summary">${esc(shortDescription)}</div>
+          <div class="offer-card-actions">
+            <button class="btn btn-sm btn-primary" onclick="ouvrirAnalyse('${esc(offer.pipeline_id)}')">Analyser</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="ouvrirLettre('${esc(offer.pipeline_id)}')">Lettre</button>
+            <a class="btn btn-sm btn-outline-dark" href="${esc(offer["Lien vers l'annonce"] || '#')}" target="_blank" rel="noopener noreferrer">Annonce</a>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderOffers() {
+      const data = sortOffersData(
+        filteredOffers('offres').filter(offer => offer.pipeline_status !== 'postule')
+      );
+      const tbody = document.getElementById('tbody-offres');
+      document.getElementById('badge-offres').textContent = data.length;
+      updateOffersSortHeaders();
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><i class="bi bi-search"></i>Aucune offre pour ces filtres.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(offer => `
+        <tr class="${offer.pipeline_id === selectedOfferId ? 'selected-offer-row' : ''}">
+          <td>
+            <div class="fw-semibold">${esc(getOfferTitle(offer))}</div>
+            <div class="text-secondary small">${esc(offer['Ville ou zone'] || '-')}</div>
+          </td>
+          <td>${esc(offer['Entreprise'] || '-')}</td>
+          <td>${esc(offer['Source'] || '-')}</td>
+          <td class="table-status-col">${getStatusBadge(offer.pipeline_status)}</td>
+          <td>${esc(scoreLabel(offer))}</td>
+          <td>${offer.letter_generated ? '<i class="bi bi-check-circle-fill text-success"></i>' : '<i class="bi bi-circle text-secondary"></i>'}</td>
+          <td>${esc(String(offer['Date de publication'] || '').slice(0, 10))}</td>
+          <td>
+            <div class="d-flex gap-2">
+              <button class="btn btn-sm btn-primary" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); ouvrirAnalyse('${esc(offer.pipeline_id)}')" title="Voir l'analyse de l'offre" aria-label="Voir l'analyse de l'offre"><i class="bi bi-clipboard-data"></i></button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); ouvrirLettre('${esc(offer.pipeline_id)}')" title="Ouvrir la lettre de motivation" aria-label="Ouvrir la lettre de motivation"><i class="bi bi-envelope"></i></button>
+              <button class="btn btn-sm btn-outline-success" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); marquerCommePostuleDepuisOffres('${esc(offer.pipeline_id)}')" title="Marquer comme postule" aria-label="Marquer comme postule"><i class="bi bi-send-check"></i></button>
+              <button class="btn btn-sm btn-outline-dark" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); scorerOffre('${esc(offer.pipeline_id)}', this)" title="Calculer le score de compatibilite" aria-label="Calculer le score de compatibilite"><i class="bi bi-stars"></i></button>
+              <a class="btn btn-sm btn-outline-dark" href="${esc(offer["Lien vers l'annonce"] || '#')}" target="_blank" rel="noopener noreferrer" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true)" title="Ouvrir l'annonce" aria-label="Ouvrir l'annonce"><i class="bi bi-box-arrow-up-right"></i></a>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderHistorique() {
+      const tbody = document.getElementById('tbody-historique');
+      if (!histoData.length) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-clock-history"></i>Aucune postulation enregistree.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = [...histoData].reverse().map(row => `
+        <tr>
+          <td>${esc(row.titre || '-')}</td>
+          <td>${esc(row.entreprise || '-')}</td>
+          <td>${esc(row.statut || '-')}</td>
+          <td>${esc(row.date_postulation || '-')}</td>
+          <td>${esc(row.date_relance_prevue || '-')}</td>
+          <td>${esc(row.notes || '')}</td>
+          <td>${row.url ? `<a class="btn btn-sm btn-outline-dark" href="${esc(row.url)}" target="_blank">Annonce</a>` : ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    function relancesData() {
+      const today = new Date().toISOString().slice(0, 10);
+      return histoData.filter(row => row.statut === 'postule' && row.date_relance_prevue && row.date_relance_prevue <= today);
+    }
+
+    function renderRelances() {
+      const data = relancesData();
+      const tbody = document.getElementById('tbody-relances');
+      document.getElementById('badge-relances').textContent = data.length;
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="bi bi-check2-circle"></i>Aucune relance a faire.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map(row => `
+        <tr>
+          <td>${esc(row.titre || '-')}</td>
+          <td>${esc(row.entreprise || '-')}</td>
+          <td>${esc(row.date_postulation || '-')}</td>
+          <td>${esc(row.date_relance_prevue || '-')}</td>
+          <td>${esc(row.notes || '')}</td>
+          <td>${row.url ? `<a class="btn btn-sm btn-outline-dark" href="${esc(row.url)}" target="_blank">Ouvrir</a>` : ''}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function chargerTout() {
+      try {
+        const [stats, offres, histo, lettres, settings] = await Promise.all([
+          fetchJsonSafe('/api/stats', statsData || {}),
+          fetchJsonSafe('/api/offres', offresData || []),
+          fetchJsonSafe('/api/historique', histoData || []),
+          fetchJsonSafe('/api/lettres', lettresData || {}),
+          fetchJsonSafe('/api/settings', {ok: false, settings: settingsData || null})
+        ]);
+        statsData = (stats && typeof stats === 'object' && !Array.isArray(stats)) ? stats : (statsData || {});
+        offresData = Array.isArray(offres) ? offres : (Array.isArray(offresData) ? offresData : []);
+        histoData = Array.isArray(histo) ? histo : (Array.isArray(histoData) ? histoData : []);
+        lettresData = (lettres && typeof lettres === 'object' && !Array.isArray(lettres)) ? lettres : (lettresData || {});
+        if (settings.ok) populateSettings(settings.settings);
+        populateSourcesSelects();
+        renderStats();
+        renderPipeline();
+        renderOffers();
+        renderHistorique();
+        renderRelances();
+      } catch (error) {
+        document.getElementById('log-panel').textContent = `Erreur de chargement: ${error.message}`;
+      }
+    }
+
+    async function ouvrirAnalyse(id) {
+      const response = await fetch(`/api/offres/${encodeURIComponent(id)}/analyse`);
+      const data = await response.json();
+      if (!data.ok) {
+        alert(data.error || 'Analyse introuvable');
+        return;
+      }
+      analyseCourante = data;
+      document.getElementById('analyse-title').textContent = data.title || 'Analyse offre';
+      document.getElementById('analyse-company').textContent = data.company || '';
+      document.getElementById('analyse-status-badge').className = `badge-soft status-${data.status || 'a_analyser'}`;
+      document.getElementById('analyse-status-badge').textContent = STATUS_LABELS[data.status] || data.status || 'A analyser';
+      document.getElementById('analyse-score').textContent = data.score == null ? 'Pas de score' : `${data.score}/10`;
+      document.getElementById('analyse-source').textContent = data.source || '-';
+      document.getElementById('analyse-date').textContent = String(data.date || '-').slice(0, 10);
+      const annonceLink = document.getElementById('analyse-annonce-link');
+      annonceLink.href = data.url || '#';
+      annonceLink.classList.toggle('disabled', !data.url);
+      annonceLink.setAttribute('aria-disabled', !data.url ? 'true' : 'false');
+      document.getElementById('analyse-summary').innerHTML = (data.summary || []).map(line => `<div class="summary-line">${esc(line)}</div>`).join('');
+      document.getElementById('analyse-description').textContent = data.description || 'Description indisponible.';
+      document.getElementById('analyse-status-select').value = data.status || 'a_analyser';
+      document.getElementById('analyse-first-seen').textContent = `Premiere detection : ${formatDate(data.first_seen_at)}`;
+      document.getElementById('analyse-last-seen').textContent = `Derniere detection : ${formatDate(data.last_seen_at)}`;
+      document.getElementById('analyse-id').textContent = `ID pipeline : ${data.id}`;
+      if (!modalAnalyse) modalAnalyse = new bootstrap.Modal(document.getElementById('modalAnalyse'));
+      modalAnalyse.show();
+    }
+
+    async function sauvegarderStatutAnalyse() {
+      if (!analyseCourante) return;
+      const statut = document.getElementById('analyse-status-select').value;
+      await fetch(`/api/offres/${encodeURIComponent(analyseCourante.id)}/statut`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({statut, titre: analyseCourante.title, entreprise: analyseCourante.company})
+      });
+      await chargerTout();
+      await ouvrirAnalyse(analyseCourante.id);
+    }
+
+    async function scorerAnalyse() {
+      if (!analyseCourante) return;
+      await scorerOffre(analyseCourante.id);
+      await ouvrirAnalyse(analyseCourante.id);
+    }
+
+    async function scorerOffre(id, button = null) {
+      const offer = offresData.find(item => item.pipeline_id === id);
+      if (!offer) return;
+      if (button) button.disabled = true;
+      try {
+        const response = await fetch('/api/offres/scorer', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            id,
+            titre: getOfferTitle(offer),
+            entreprise: offer['Entreprise'],
+            description: offer['Description (texte complet)']
+          })
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          alert(data.error || 'Erreur de score');
+          return;
+        }
+        await chargerTout();
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    async function scorerOffresSansScore(button = null) {
+      const pendingOffers = filteredOffers('offres')
+        .filter(offer => offer.score_value == null)
+        .map(offer => ({
+          id: offer.pipeline_id,
+          titre: getOfferTitle(offer),
+          entreprise: offer['Entreprise'] || '',
+          description: offer['Description (texte complet)'] || '',
+          source: offer['Source'] || '',
+          url: offer["Lien vers l'annonce"] || '',
+          lieu: offer['Ville ou zone'] || '',
+          contrat: offer['Type de contrat'] || ''
+        }));
+
+      if (!pendingOffers.length) {
+        alert('Toutes les offres visibles ont deja un score.');
+        return;
+      }
+
+      if (button) button.disabled = true;
+      try {
+        const response = await fetch('/api/offres/scorer-batch', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({offers: pendingOffers})
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          alert(data.error || 'Erreur scoring en lot');
+          return;
+        }
+        await chargerTout();
+        appendLog(`${data.updated || 0} offre(s) scoree(s) en lot`, 'log-ok');
+      } finally {
+        if (button) button.disabled = false;
+      }
+    }
+
+    function offerById(id) {
+      return offresData.find(item => item.pipeline_id === id);
+    }
+
+    async function ouvrirLettre(id) {
+      const offer = offerById(id);
+      if (!offer) return;
+      const letter = lettresData[id] || {};
+      document.getElementById('lettre-title').textContent = getOfferTitle(offer) || 'Lettre';
+      document.getElementById('lettre-company').textContent = offer['Entreprise'] || '';
+      document.getElementById('lettre-texte').value = letter.lettre || '';
+      document.getElementById('lettre-meta').textContent =
+        letter.date_modif ? `Modifiee le ${letter.date_modif}` :
+        letter.date_gen ? `Generee le ${letter.date_gen}` :
+        'Aucune lettre enregistree';
+      document.getElementById('lettre-texte').dataset.id = id;
+      if (!modalLettre) modalLettre = new bootstrap.Modal(document.getElementById('modalLettre'));
+      modalLettre.show();
+    }
+
+    function ouvrirLettreDepuisAnalyse() {
+      if (analyseCourante) ouvrirLettre(analyseCourante.id);
+    }
+
+    async function sauvegarderLettre() {
+      const textarea = document.getElementById('lettre-texte');
+      const id = textarea.dataset.id;
+      await fetch(`/api/lettre/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({lettre: textarea.value})
+      });
+      await chargerTout();
+      document.getElementById('lettre-meta').textContent = 'Sauvegardee a l instant';
+    }
+
+    async function regenererLettre() {
+      const textarea = document.getElementById('lettre-texte');
+      const id = textarea.dataset.id;
+      const offer = offerById(id);
+      if (!offer) return;
+      const response = await fetch('/api/lettre/regen', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          id,
+          titre: getOfferTitle(offer),
+          entreprise: offer['Entreprise'],
+          description: offer['Description (texte complet)']
+        })
+      });
+      const data = await response.json();
+      if (!data.ok) {
+        alert(data.error || 'Erreur generation lettre');
+        return;
+      }
+      textarea.value = data.lettre;
+      await chargerTout();
+      document.getElementById('lettre-meta').textContent = 'Regeneree a l instant';
+    }
+
+async function copierLettre() {
+      await navigator.clipboard.writeText(document.getElementById('lettre-texte').value || '');
+    }
+
+    async function marquerOffreCommePostule(id) {
+      const offer = offerById(id);
+      if (!offer) return {ok: false, error: 'Offre introuvable'};
+      const response = await fetch('/api/historique/ajouter', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          offer_signature: id,
+          id_adzuna: id,
+          url: offer?.["Lien vers l'annonce"] || '',
+          titre: getOfferTitle(offer),
+          entreprise: offer['Entreprise'] || '',
+          source: offer['Source'] || '',
+          lieu: offer['Ville ou zone'] || ''
+        })
+      });
+      return response.json();
+    }
+
+    async function marquerCommePostuleDepuisOffres(id) {
+      const data = await marquerOffreCommePostule(id);
+      if (!data.ok && !String(data.error || '').includes('Déjà')) {
+        alert(data.error || 'Erreur historique');
+        return;
+      }
+      offresData = offresData.map(offer => offer.pipeline_id === id
+        ? {...offer, pipeline_status: 'postule', is_applied: true}
+        : offer
+      );
+      renderOffers();
+      renderPipeline();
+      renderStats();
+      await chargerTout();
+    }
+
+    async function marquerCommePostule() {
+      if (!analyseCourante) return;
+      const data = await marquerOffreCommePostule(analyseCourante.id);
+      if (!data.ok && !String(data.error || '').includes('Déjà')) {
+        alert(data.error || 'Erreur historique');
+        return;
+      }
+      await chargerTout();
+      await ouvrirAnalyse(analyseCourante.id);
+    }
+
+    async function basculerRefusDepuisAnalyse() {
+      if (!analyseCourante) return;
+      const offer = offerById(analyseCourante.id);
+      const isRefused = offer?.is_refused;
+      await fetch('/api/offres/refuser', {
+        method: isRefused ? 'DELETE' : 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({id: analyseCourante.id})
+      });
+      await chargerTout();
+      await ouvrirAnalyse(analyseCourante.id);
+    }
+
+    function setButtonsDisabled(disabled) {
+      ['btn-recuperer', 'btn-lettres', 'btn-postuler'].forEach(className => {
+        const button = document.querySelector(`.${className}`);
+        if (button) button.disabled = disabled;
+      });
+    }
+
+    function appendLog(line, type = '') {
+      const panel = document.getElementById('log-panel');
+      const cls = type ? ` class="${type}"` : '';
+      panel.innerHTML += `\n<span${cls}>${esc(line)}</span>`;
+      panel.scrollTop = panel.scrollHeight;
+    }
+
+    function lancerStream(type) {
+      if (evtSource) {
+        evtSource.close();
+        evtSource = null;
+      }
+      document.getElementById('log-panel').textContent = `Lancement ${type}...`;
+      setButtonsDisabled(true);
+      evtSource = new EventSource(`/api/stream/${type}`);
+      evtSource.onmessage = async event => {
+        const data = JSON.parse(event.data);
+        if (data.error) {
+          appendLog(data.error, 'log-err');
+          setButtonsDisabled(false);
+          evtSource.close();
+          evtSource = null;
+          return;
+        }
+        if (data.line !== undefined) {
+          const line = data.line;
+          const typeClass = /ok|export|genere|soumise|scan state/i.test(line) ? 'log-ok'
+            : /erreur|warning|impossible|ignore/i.test(line) ? 'log-warn'
+            : '';
+          appendLog(line, typeClass);
+        }
+        if (data.done) {
+          appendLog(`Termine (code ${data.code})`, data.code === 0 ? 'log-ok' : 'log-warn');
+          setButtonsDisabled(false);
+          evtSource.close();
+          evtSource = null;
+          await chargerTout();
+        }
+      };
+      evtSource.onerror = async () => {
+        appendLog('Connexion interrompue', 'log-warn');
+        if (evtSource) evtSource.close();
+        evtSource = null;
+        setButtonsDisabled(false);
+        await chargerTout();
+      };
+    }
+
+    async function arreter() {
+      await fetch('/api/arreter', {method: 'POST'});
+      if (evtSource) {
+        evtSource.close();
+        evtSource = null;
+      }
+      appendLog('Processus arrete', 'log-warn');
+      setButtonsDisabled(false);
+      await chargerTout();
+    }
+
+    async function fermerServeur() {
+      pendingServerStopOnClose = false;
+      if (!confirm("Fermer le serveur local ? L'interface ne repondra plus tant que tu ne l'auras pas relance.")) return;
+      try {
+        await fetch('/api/serveur/fermer', {method: 'POST'});
+      } catch (_) {}
+      if (evtSource) {
+        evtSource.close();
+        evtSource = null;
+      }
+      document.getElementById('process-status').textContent = '';
+      document.getElementById('log-panel').textContent = 'Serveur en cours d arret...';
+      setTimeout(() => {
+        document.getElementById('log-panel').textContent = 'Serveur arrete. Tu peux fermer la fenetre.';
+      }, 500);
+    }
+
+    async function copierLog() {
+      const text = document.getElementById('log-panel').innerText || '';
+      if (!text.trim()) return;
+      try {
+        await navigator.clipboard.writeText(text);
+        appendLog('Journal copie dans le presse-papiers', 'log-ok');
+      } catch (error) {
+        appendLog(`Copie impossible: ${error.message}`, 'log-warn');
+      }
+    }
+
+    function viderLog() {
+      document.getElementById('log-panel').textContent = 'Journal vide.';
+    }
+
+    document.getElementById('mainTabs').addEventListener('shown.bs.tab', event => {
+      const target = event.target.getAttribute('href');
+      if (target === '#tab-pipeline') renderPipeline();
+      if (target === '#tab-offres') renderOffers();
+      if (target === '#tab-historique') renderHistorique();
+      if (target === '#tab-relances') renderRelances();
+      if (target === '#tab-settings' && !settingsData) chargerSettings(true);
+    });
+
+    registerCurrentTab();
+    window.addEventListener('beforeunload', event => {
+      if (!isLastKnownTab()) return;
+      pendingServerStopOnClose = true;
+      event.preventDefault();
+      event.returnValue = '';
+    });
+    window.addEventListener('pagehide', () => {
+      const shouldStop = pendingServerStopOnClose && isLastKnownTab();
+      unregisterCurrentTab();
+      if (!shouldStop) return;
+      try {
+        const payload = new Blob(['{}'], {type: 'application/json'});
+        navigator.sendBeacon('/api/serveur/fermer', payload);
+      } catch (_) {
+        try {
+          fetch('/api/serveur/fermer', {method: 'POST', keepalive: true});
+        } catch (_) {}
+      }
+    });
+
+    setupTagEditors();
+    document.getElementById('settings-zone-mode').addEventListener('change', event => applyZoneModeDefaults(event.target.value));
+    document.querySelectorAll('.api-key-input').forEach(input => {
+      input.addEventListener('input', () => setApiKeyStatus(input.id, !!input.value.trim()));
+    });
+    loadSelectedOfferId();
+    chargerTout();
+    setInterval(async () => {
+      const data = await fetchJsonSafe('/api/stats', statsData || {});
+      if (data && typeof data === 'object' && !Array.isArray(data)) {
+        statsData = data;
+        renderStats();
+      }
+    }, 5000);
+  </script>
+</body>
+</html>
+
+
+

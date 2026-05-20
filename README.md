@@ -1,0 +1,60 @@
+# Alternance Auto
+
+Alternance Auto est un outil local en Python/Flask pour rechercher, scorer et suivre des offres d'alternance, avec generation de lettres, pipeline de suivi et agent de candidature assiste.
+
+## Fonctions principales
+
+- scan multi-sources d'offres
+- filtrage metier et geographique
+- scoring de compatibilite
+- dashboard Flask avec pipeline, historique et parametres
+- generation de lettres via IA
+- coach IA pour aider a definir la recherche
+- agent de candidature Playwright pour les envois assistes
+
+## Stack
+
+- Python 3.12
+- Flask
+- Playwright
+- Groq API
+- Gemini API
+- Bootstrap 5
+
+## Installation locale
+
+1. Cloner le depot
+2. Creer un environnement virtuel Python
+3. Installer les dependances :
+
+```bash
+pip install -r requirements.txt
+playwright install
+```
+
+4. Copier `.env.example` en `.env`
+5. Renseigner les cles API et le profil candidat
+6. Lancer l'application :
+
+```bash
+python app.py
+```
+
+Puis ouvrir `http://127.0.0.1:5001`.
+
+## Donnees locales
+
+Les fichiers personnels et de runtime ne sont pas versionnes :
+
+- `.env`
+- exports JSON / CSV
+- historique des candidatures
+- logs
+- profil navigateur Playwright
+
+Un exemple de profil de recherche est fourni dans `export/profil_recherche.example.json`.
+
+## Notes
+
+- Le serveur est concu pour tourner en local sur `127.0.0.1`.
+- L'agent de candidature automatique reste plus fiable en local qu'en hebergement serverless.
