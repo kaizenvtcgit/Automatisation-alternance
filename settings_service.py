@@ -177,6 +177,48 @@ def get_settings() -> dict:
     }
 
 
+def get_setup_status() -> dict:
+    settings = get_settings()
+    profile = settings["profile"]
+    api_keys = settings["api_keys"]
+
+    missing_profile: list[str] = []
+    if not profile.get("prenom"):
+        missing_profile.append("Prenom")
+    if not profile.get("nom"):
+        missing_profile.append("Nom")
+    if not profile.get("email"):
+        missing_profile.append("Email")
+    if not profile.get("cv_path"):
+        missing_profile.append("CV")
+    if not any(profile.get(key) for key in ("portfolio", "linkedin", "github")):
+        missing_profile.append("Lien pro")
+
+    missing_sources: list[str] = []
+    if not any(api_keys.get(key) for key in ("ft_client_id", "adzuna_app_id", "lba_api_key")):
+        missing_sources.append("Au moins une source d'offres")
+
+    missing_ai: list[str] = []
+    if not api_keys.get("groq_api_key"):
+        missing_ai.append("Groq")
+    if not api_keys.get("gemini_api_key"):
+        missing_ai.append("Gemini")
+
+    ready_for_scan = not missing_sources
+    ready_for_letters = not missing_ai[:1]
+    ready_for_apply = not missing_profile and not missing_ai
+
+    return {
+        "profile_complete": not missing_profile,
+        "scan_ready": ready_for_scan,
+        "letters_ready": ready_for_letters,
+        "apply_ready": ready_for_apply,
+        "missing_profile": missing_profile,
+        "missing_sources": missing_sources,
+        "missing_ai": missing_ai,
+    }
+
+
 def _refresh_runtime_modules() -> None:
     modules_to_reload = [
         "main",

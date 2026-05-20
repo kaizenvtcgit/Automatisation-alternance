@@ -62,12 +62,12 @@ from main import (
 
 # ── Infos candidat ───────────────────────────────────────────────────────────
 CANDIDAT = {
-    "prenom":    os.environ.get("CANDIDAT_PRENOM",    "Julien"),
-    "nom":       os.environ.get("CANDIDAT_NOM",       "Ledouble"),
-    "email":     os.environ.get("CANDIDAT_EMAIL",     "julienledouble@gmail.com"),
-    "tel":       os.environ.get("CANDIDAT_TEL",       "06 26 48 18 01"),
-    "portfolio": os.environ.get("CANDIDAT_PORTFOLIO", "https://julienledouble-lab.github.io/"),
-    "cv_path":   os.environ.get("CV_PATH",            "C:/Users/Ju/Desktop/cv final.pdf"),
+    "prenom":    os.environ.get("CANDIDAT_PRENOM",    ""),
+    "nom":       os.environ.get("CANDIDAT_NOM",       ""),
+    "email":     os.environ.get("CANDIDAT_EMAIL",     ""),
+    "tel":       os.environ.get("CANDIDAT_TEL",       ""),
+    "portfolio": os.environ.get("CANDIDAT_PORTFOLIO", ""),
+    "cv_path":   os.environ.get("CV_PATH",            ""),
 }
 
 # ── Gestion des comptes créés par l'agent ────────────────────────────────────
@@ -218,8 +218,15 @@ def _sauvegarder_compte(domaine: str, email: str, mdp: str) -> None:
 
 def _generer_mdp(domaine: str) -> str:
     """Génère un mot de passe fort et reproductible par domaine."""
-    base = hashlib.sha256(f"JulienLedouble{domaine}alternance2026".encode()).hexdigest()[:10]
-    return f"Jl{base.capitalize()}!9"
+    seed = "|".join([
+        CANDIDAT.get("prenom") or "candidat",
+        CANDIDAT.get("nom") or "alternance",
+        CANDIDAT.get("email") or "contact@example.com",
+        domaine,
+        "alternance-auto",
+    ])
+    base = hashlib.sha256(seed.encode()).hexdigest()[:10]
+    return f"Aa{base.capitalize()}!9"
 
 
 def _captcha_visible(page: Page) -> bool:
@@ -485,11 +492,11 @@ def generer_lettre(titre: str, entreprise: str, description: str, offre_id: str 
 
     prompt = (
         "Écris une lettre de motivation courte (3 paragraphes, ~150 mots) pour cette alternance.\n"
-        "Candidat : Julien Ledouble — étudiant en motion design / design graphique.\n"
-        "Portfolio : https://julienledouble-lab.github.io/\n\n"
+        f"Candidat : {(CANDIDAT.get('prenom') or '').strip()} {(CANDIDAT.get('nom') or '').strip()}.\n"
+        f"Portfolio : {CANDIDAT.get('portfolio') or 'A compléter dans les paramètres'}\n\n"
         f"Offre : {titre}\nEntreprise : {entreprise}\n"
         f"Description : {description[:600]}\n\n"
-        "Ton sobre et professionnel. Mets en avant la passion pour la vidéo et l'animation.\n"
+        "Ton sobre et professionnel. Mets en avant les points de compatibilité les plus concrets.\n"
         "Commence directement par « Madame, Monsieur, »."
     )
     try:
@@ -502,11 +509,11 @@ def generer_lettre(titre: str, entreprise: str, description: str, offre_id: str 
         return (
             f"Madame, Monsieur,\n\n"
             f"Je me permets de vous adresser ma candidature pour le poste de {titre} au sein de {entreprise}.\n\n"
-            f"Actuellement en formation en motion design et design graphique, je suis passionné par la création "
-            f"visuelle, l'animation et la vidéo. Mon portfolio illustre mes compétences : "
-            f"https://julienledouble-lab.github.io/\n\n"
+            f"Mon profil et mes projets me donnent envie de contribuer rapidement sur ce type de missions. "
+            f"Mon portfolio illustre mes compétences : {CANDIDAT.get('portfolio') or '[portfolio à compléter]'}\n\n"
             f"Je serais ravi d'échanger avec vous sur cette opportunité.\n\n"
-            f"Cordialement,\nJulien Ledouble\njulienledouble@gmail.com — 06 26 48 18 01"
+            f"Cordialement,\n{(CANDIDAT.get('prenom') or '').strip()} {(CANDIDAT.get('nom') or '').strip()}\n"
+            f"{CANDIDAT.get('email') or '[email à compléter]'} — {CANDIDAT.get('tel') or '[téléphone à compléter]'}"
         )
 
 
@@ -1069,7 +1076,7 @@ def _traiter_offre(offre: dict, ctx, confirmation: bool) -> str:
                     _sauvegarder(id_adzuna, url, titre, "ignoré", "Non envoyé")
                     return "ignoré"
             import webbrowser
-            sujet = f"Candidature alternance — {titre} — Julien Ledouble"
+            sujet = f"Candidature alternance — {titre} — {(CANDIDAT.get('prenom') or '').strip()} {(CANDIDAT.get('nom') or '').strip()}".strip()
             corps = lettre.replace("\n", "%0A").replace(" ", "%20")
             webbrowser.open(f"mailto:{email_contact}?subject={sujet}&body={corps}")
             _sauvegarder(id_adzuna, url, titre, "envoyé", f"mailto:{email_contact}")

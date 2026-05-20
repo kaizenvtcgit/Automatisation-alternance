@@ -822,6 +822,17 @@
           </div>
         </div>
 
+        <div class="card p-3 mb-4" id="setup-status-card">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+            <div>
+              <div class="fw-bold">Configuration initiale</div>
+              <div class="text-secondary small" id="setup-status-summary">Verification de la configuration en cours.</div>
+            </div>
+            <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Ouvrir Parametres</a>
+          </div>
+          <div class="summary-list mt-3" id="setup-status-list"></div>
+        </div>
+
         <div class="row g-3 mb-4">
           <div class="col-md-6 col-xl-3">
             <div class="card action-card p-3 d-flex flex-column">
@@ -2051,6 +2062,7 @@
     function renderStats() {
       const scan = statsData.scan_state || {};
       const sync = statsData.supabase_sync || {};
+      const setup = statsData.setup || {};
       document.getElementById('stat-offres').textContent = statsData.nb_offres || 0;
       document.getElementById('stat-offres-note').textContent = `${statsData.pipeline?.a_analyser || 0} a analyser`;
       document.getElementById('stat-nouvelles').textContent = scan.new_offers || 0;
@@ -2076,6 +2088,26 @@
         scan.finished_at
           ? `${scan.exported_offers || 0} offres exportees, ${scan.duplicates_ignored || 0} doublons ignores`
           : 'Aucun scan enregistre';
+
+      const setupSummary = document.getElementById('setup-status-summary');
+      const setupList = document.getElementById('setup-status-list');
+      const setupItems = [];
+      if (Array.isArray(setup.missing_profile) && setup.missing_profile.length) {
+        setupItems.push(`Profil a completer : ${setup.missing_profile.join(', ')}`);
+      }
+      if (Array.isArray(setup.missing_sources) && setup.missing_sources.length) {
+        setupItems.push(`Sources a configurer : ${setup.missing_sources.join(', ')}`);
+      }
+      if (Array.isArray(setup.missing_ai) && setup.missing_ai.length) {
+        setupItems.push(`IA a configurer : ${setup.missing_ai.join(', ')}`);
+      }
+      if (!setupItems.length) {
+        setupSummary.textContent = 'Configuration principale completee. Le projet est plus facile a partager avec un nouvel utilisateur.';
+        setupList.innerHTML = '<div class="summary-line">Profil, sources et IA sont renseignes.</div>';
+      } else {
+        setupSummary.textContent = 'Quelques elements restent a configurer avant un partage plus confortable.';
+        setupList.innerHTML = setupItems.map(item => `<div class="summary-line">${esc(item)}</div>`).join('');
+      }
 
       const sourcesBox = document.getElementById('scan-sources');
       const sources = scan.sources_scanned || {};

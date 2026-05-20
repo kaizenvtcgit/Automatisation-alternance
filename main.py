@@ -88,22 +88,16 @@ CANDIDAT_NOM    = os.environ.get("CANDIDAT_NOM", "[Nom]")
 CANDIDAT_EMAIL  = os.environ.get("CANDIDAT_EMAIL", "[email@exemple.com]")
 CANDIDAT_TEL    = os.environ.get("CANDIDAT_TEL", "[téléphone]")
 CANDIDAT_LIEN   = os.environ.get("CANDIDAT_PORTFOLIO", os.environ.get("CANDIDAT_LIEN", "[URL]"))
+CANDIDAT_PRESENTATION = os.environ.get("CANDIDAT_PRESENTATION", "").strip()
+CANDIDAT_NOM_COMPLET = f"{CANDIDAT_PRENOM} {CANDIDAT_NOM}".strip()
 
-_PROFIL_CANDIDAT = """
-Candidat : Julien Ledouble
-Domaine visé : UX/UI Design, Product Design, Web Design, Design numérique
-Portfolio : https://julienledouble-lab.github.io/
-
-Projets notables :
-- Impulsion : plateforme de collaboration musicale entre artistes (conception UX complète,
-  parcours utilisateur, wireframes, prototypage Figma)
-
-Compétences : UX/UI, prototypage, parcours utilisateur, wireframes, Figma, Webflow, HTML/CSS,
-conception d'interfaces, tests utilisateurs, architecture de l'information
-
-Parcours : reconversion vers le design numérique ; expérience antérieure en relation client
-(utile pour comprendre les besoins utilisateurs et travailler avec des parties prenantes)
-"""
+_PROFIL_CANDIDAT = (
+    f"Candidat : {CANDIDAT_NOM_COMPLET}\n"
+    f"Contact : {CANDIDAT_EMAIL} — {CANDIDAT_TEL}\n"
+    f"Portfolio / lien professionnel : {CANDIDAT_LIEN}\n\n"
+    f"Présentation du candidat :\n"
+    f"{CANDIDAT_PRESENTATION or 'Profil à compléter dans les paramètres avant un usage partagé.'}"
+)
 
 # ─── Groq ─────────────────────────────────────────────────────────────────────
 
@@ -203,8 +197,8 @@ Pourquoi CETTE offre et CETTE entreprise précisément. Référence au poste ou 
 Ne pas commencer par "Je".
 
 Paragraphe 2 — Lien profil / besoins de l'entreprise :
-1 ou 2 expériences/projets concrets du candidat (Impulsion si pertinent).
-Ce que Julien sait faire : concevoir des parcours, créer des interfaces, prototyper, structurer une UX.
+1 ou 2 expériences/projets concrets du candidat si elles existent.
+Ce que le candidat sait faire : concevoir des parcours, créer des interfaces, prototyper, structurer une UX.
 
 Paragraphe 3 — Apport en alternance :
 Sérieux, progression rapide, regard utilisateur, expérience relation client, envie de contribuer
@@ -222,7 +216,7 @@ Madame, Monsieur,
 [lettre]
 
 Cordialement,
-Julien Ledouble
+{CANDIDAT_NOM_COMPLET}
 ---
 
 Retourne UNIQUEMENT le texte formaté ci-dessus, sans commentaire ni explication."""

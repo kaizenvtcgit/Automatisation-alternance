@@ -21,7 +21,7 @@ from urllib.request import urlopen
 
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request
-from settings_service import get_settings, save_settings
+from settings_service import get_settings, get_setup_status, save_settings
 from storage_service import (
     BASE_DIR,
     CSV_PATH,
@@ -748,6 +748,7 @@ def api_stats():
             "pipeline": pipeline_counts,
             "scan_state": last_scan,
             "supabase_sync": _lire_sync_supabase_state(),
+            "setup": get_setup_status(),
         }
     )
 

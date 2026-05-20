@@ -42,6 +42,19 @@ python app.py
 
 Puis ouvrir `http://127.0.0.1:5001`.
 
+## Premier lancement
+
+Pour un nouvel utilisateur, le plus important est de completer d'abord :
+
+- le profil candidat
+- un lien pro (`portfolio`, `LinkedIn` ou `GitHub`)
+- le chemin du CV
+- au moins une source d'offres
+- Groq pour les lettres
+- Gemini pour l'agent de candidature
+
+L'interface affiche maintenant un bloc `Configuration initiale` pour aider a voir rapidement ce qu'il manque.
+
 ## Preparation hebergement
 
 Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :
