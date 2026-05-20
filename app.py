@@ -22,7 +22,7 @@ from urllib.request import urlopen
 
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request
-from settings_service import get_settings, get_setup_status, save_settings
+from settings_service import build_shareable_settings_example, get_settings, get_setup_status, save_settings
 from storage_service import (
     BASE_DIR,
     CSV_PATH,
@@ -247,6 +247,61 @@ def build_health_status() -> dict:
         "summary": summary,
         "counts": counts,
         "checks": checks,
+    }
+
+
+def build_shareable_diagnostic() -> dict:
+    settings = get_settings()
+    profile = settings.get("profile", {})
+    search = settings.get("search", {})
+    api_keys = settings.get("api_keys", {})
+    health = build_health_status()
+    setup = get_setup_status()
+    offers = _filtered_offers()
+    histo = _lire_historique()
+    sync = _lire_sync_supabase_state()
+    return {
+        "generated_at": datetime.now().isoformat(timespec="seconds"),
+        "app": {
+            "name": "Alternance Auto",
+            "mode": "local",
+            "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
+            "storage_backend": os.environ.get("STORAGE_BACKEND", "local"),
+        },
+        "profile_snapshot": {
+            "has_name": bool(profile.get("prenom") and profile.get("nom")),
+            "has_email": bool(profile.get("email")),
+            "has_cv": bool(profile.get("cv_path") and Path(profile.get("cv_path")).exists()),
+            "has_professional_link": any(profile.get(key) for key in ("portfolio", "linkedin", "github")),
+        },
+        "search_snapshot": {
+            "postes_cibles_count": len(search.get("postes_cibles") or []),
+            "types_contrat": list(search.get("types_contrat") or []),
+            "zone_mode": search.get("zone_mode") or "",
+            "zone_geo": search.get("zone_geo") or "",
+            "score_min": search.get("score_min") or 0,
+        },
+        "api_snapshot": {
+            "sources_configured": {
+                "france_travail": bool(api_keys.get("ft_client_id")),
+                "adzuna": bool(api_keys.get("adzuna_app_id")),
+                "la_bonne_alternance": bool(api_keys.get("lba_api_key")),
+            },
+            "ai_configured": {
+                "groq": bool(api_keys.get("groq_api_key")),
+                "gemini": bool(api_keys.get("gemini_api_key")),
+            },
+            "supabase": bool(os.environ.get("SUPABASE_URL", "").strip() and os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()),
+        },
+        "data_snapshot": {
+            "offers_count": len(offers),
+            "applications_count": len(histo),
+            "letters_count": sum(1 for offer in offers if offer.get("letter_generated")),
+            "sync_status": sync.get("status"),
+            "last_sync_success_at": sync.get("last_success_at"),
+        },
+        "setup": setup,
+        "health": health,
     }
 
 
@@ -672,6 +727,18 @@ def api_settings_save():
     return jsonify({"ok": True, "settings": settings})
 
 
+@app.route("/api/settings/export-example")
+def api_settings_export_example():
+    payload = build_shareable_settings_example()
+    filename = f"alternance_auto_settings_example_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    content = json.dumps(payload, ensure_ascii=False, indent=2)
+    return Response(
+        content,
+        mimetype="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
+
+
 @app.route("/api/settings/cv-path", methods=["POST"])
 def api_settings_cv_path():
     try:
@@ -938,6 +1005,18 @@ def api_dashboard():
 @app.route("/api/health")
 def api_health():
     return jsonify({"ok": True, "health": build_health_status()})
+
+
+@app.route("/api/health/export")
+def api_health_export():
+    payload = build_shareable_diagnostic()
+    filename = f"alternance_auto_diagnostic_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    content = json.dumps(payload, ensure_ascii=False, indent=2)
+    return Response(
+        content,
+        mimetype="application/json; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.route("/api/offres")

@@ -53,6 +53,21 @@ Pour un ami qui recupere le projet en local, le plus simple est :
 
 Le lanceur `Alternance Auto` peut aussi ouvrir automatiquement l'installateur si l'environnement local n'est pas encore pret.
 
+Si tu veux preparer un dossier propre a envoyer :
+
+1. double-clique sur `preparer_pack_ami.bat`
+2. recupere le dossier `partage_local/alternance-auto`
+3. compresse ce dossier en `.zip`
+4. envoie ce zip a ton ami
+
+Le pack genere exclut les donnees perso et runtime :
+
+- `.env`
+- historique local
+- exports JSON / CSV
+- logs
+- `.venv`
+
 ## Premier lancement
 
 Pour un nouvel utilisateur, le plus important est de completer d'abord :

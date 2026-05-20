@@ -988,6 +988,8 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
               <button class="btn btn-sm btn-outline-secondary" type="button" onclick="chargerTout()">Rafraichir</button>
+              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="telechargerDiagnosticComplet()">Diagnostic complet</button>
+              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="telechargerConfigExemple()">Config exemple</button>
               <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Verifier les parametres</a>
             </div>
           </div>
@@ -2119,6 +2121,14 @@
 
     function openInstallerPack() {
       showToast('Installer local', 'Double-clique sur installer_partage_local.bat si une dependance manque sur cette machine.', 'warn');
+    }
+
+    function telechargerDiagnosticComplet() {
+      window.location.href = '/api/health/export';
+    }
+
+    function telechargerConfigExemple() {
+      window.location.href = '/api/settings/export-example';
     }
 
     function handleHealthAction(action) {

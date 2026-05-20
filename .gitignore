@@ -26,6 +26,7 @@ export/*.csv
 export/*.tmp
 export/messages/
 !export/.gitkeep
+!export/messages/
 !export/messages/.gitkeep
 !export/profil_recherche.example.json
 

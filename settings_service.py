@@ -2,6 +2,7 @@ import importlib
 import json
 import os
 import sys
+from datetime import datetime
 from pathlib import Path
 from storage_service import BASE_DIR, PROFILE_PATH, read_json, write_json_atomic
 
@@ -275,3 +276,51 @@ def save_settings(payload: dict) -> dict:
 
     _refresh_runtime_modules()
     return get_settings()
+
+
+def build_shareable_settings_example() -> dict:
+    current = get_settings()
+    search = current.get("search", {})
+    agent = current.get("agent", {})
+    return {
+        "meta": {
+            "generated_at": datetime.now().isoformat(timespec="seconds"),
+            "description": "Exemple de configuration partageable sans donnees personnelles ni cles secretes.",
+        },
+        "profile": {
+            "prenom": "",
+            "nom": "",
+            "email": "",
+            "tel": "",
+            "portfolio": "",
+            "linkedin": "",
+            "github": "",
+            "cv_path": "",
+            "presentation": "",
+        },
+        "search": {
+            "postes_cibles": list(search.get("postes_cibles") or []),
+            "mots_cles_positifs": list(search.get("mots_cles_positifs") or []),
+            "mots_cles_negatifs": list(search.get("mots_cles_negatifs") or []),
+            "types_contrat": list(search.get("types_contrat") or ["alternance"]),
+            "zone_geo": str(search.get("zone_geo") or "Ile-de-France"),
+            "zone_mode": str(search.get("zone_mode") or "idf"),
+            "rayon_km": int(search.get("rayon_km") or 30),
+            "score_min": int(search.get("score_min") or 0),
+            "inclure_remote": bool(search.get("inclure_remote", True)),
+        },
+        "api_keys": {
+            "adzuna_app_id": "",
+            "adzuna_app_key": "",
+            "ft_client_id": "",
+            "ft_client_secret": "",
+            "lba_api_key": "",
+            "groq_api_key": "",
+            "gemini_api_key": "",
+        },
+        "agent": {
+            "confirmation_required": bool(agent.get("confirmation_required", True)),
+            "delay_seconds": int(agent.get("delay_seconds") or 5),
+            "max_candidatures_session": int(agent.get("max_candidatures_session") or 20),
+        },
+    }
