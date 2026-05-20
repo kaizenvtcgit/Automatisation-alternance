@@ -42,6 +42,17 @@ python app.py
 
 Puis ouvrir `http://127.0.0.1:5001`.
 
+## Partage local simple
+
+Pour un ami qui recupere le projet en local, le plus simple est :
+
+1. double-cliquer sur `installer_partage_local.bat`
+2. attendre la fin de l'installation
+3. ouvrir l'application
+4. completer l'onglet `Parametres`
+
+Le lanceur `Alternance Auto` peut aussi ouvrir automatiquement l'installateur si l'environnement local n'est pas encore pret.
+
 ## Premier lancement
 
 Pour un nouvel utilisateur, le plus important est de completer d'abord :
