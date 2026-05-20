@@ -4,6 +4,7 @@ Lancement : python app.py puis http://localhost:5001
 """
 
 import csv
+import importlib.util
 import json
 import os
 import atexit
@@ -73,6 +74,180 @@ def _repair_payload_strings(value):
 def _safe_filename(name: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", str(name or "").strip())
     return cleaned.strip("._") or "cv"
+
+
+def _module_available(module_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except (ImportError, ValueError):
+        return False
+
+
+def _path_writable(path: Path) -> bool:
+    try:
+        path.mkdir(parents=True, exist_ok=True)
+        probe = path / f".healthcheck_{int(time.time() * 1000)}.tmp"
+        probe.write_text("ok", encoding="utf-8")
+        probe.unlink(missing_ok=True)
+        return True
+    except OSError:
+        return False
+
+
+def _health_check_item(label: str, status: str, detail: str, action: str | None = None) -> dict:
+    return {
+        "label": label,
+        "status": status,
+        "detail": detail,
+        "action": action or "",
+    }
+
+
+def build_health_status() -> dict:
+    settings = get_settings()
+    profile = settings.get("profile", {})
+    api_keys = settings.get("api_keys", {})
+    sync_state = _lire_sync_supabase_state()
+
+    checks: list[dict] = []
+    env_path = BASE_DIR / ".env"
+    venv_python = BASE_DIR / ".venv" / "Scripts" / "python.exe"
+    cv_path_raw = str(profile.get("cv_path") or "").strip()
+    cv_path = Path(cv_path_raw) if cv_path_raw else None
+
+    checks.append(
+        _health_check_item(
+            "Configuration .env",
+            "ok" if env_path.exists() else "error",
+            "Fichier .env present." if env_path.exists() else "Le fichier .env est manquant.",
+            "settings",
+        )
+    )
+    checks.append(
+        _health_check_item(
+            "Runtime Python",
+            "ok",
+            f"Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro} via {Path(sys.executable).name}",
+        )
+    )
+    checks.append(
+        _health_check_item(
+            "Environnement virtuel",
+            "ok" if ".venv" in sys.executable.lower() or venv_python.exists() else "warn",
+            "Environnement virtuel detecte." if ".venv" in sys.executable.lower() or venv_python.exists() else "Aucun .venv detecte sur ce projet.",
+            "installer",
+        )
+    )
+
+    for label, path_obj in (
+        ("Dossier export", BASE_DIR / "export"),
+        ("Dossier uploads", UPLOADS_DIR),
+        ("Dossier messages", BASE_DIR / "export" / "messages"),
+    ):
+        writable = _path_writable(path_obj)
+        checks.append(
+            _health_check_item(
+                label,
+                "ok" if writable else "error",
+                f"{path_obj} est accessible en écriture." if writable else f"{path_obj} n'est pas accessible en écriture.",
+            )
+        )
+
+    checks.append(
+        _health_check_item(
+            "CV candidat",
+            "ok" if cv_path and cv_path.exists() else ("warn" if cv_path_raw else "warn"),
+            f"CV trouvé : {cv_path}" if cv_path and cv_path.exists() else ("Le chemin du CV ne pointe vers aucun fichier existant." if cv_path_raw else "Aucun CV renseigné pour le moment."),
+            "profile",
+        )
+    )
+
+    source_ready = any(api_keys.get(key) for key in ("ft_client_id", "adzuna_app_id", "lba_api_key"))
+    checks.append(
+        _health_check_item(
+            "Sources d'offres",
+            "ok" if source_ready else "warn",
+            "Au moins une source d'offres est configuree." if source_ready else "Aucune source d'offres n'est encore configuree.",
+            "api",
+        )
+    )
+
+    checks.append(
+        _health_check_item(
+            "Groq",
+            "ok" if api_keys.get("groq_api_key") else "warn",
+            "Cle Groq configuree pour les lettres et le coach." if api_keys.get("groq_api_key") else "GROQ_API_KEY manque encore.",
+            "api",
+        )
+    )
+    checks.append(
+        _health_check_item(
+            "Gemini",
+            "ok" if api_keys.get("gemini_api_key") else "warn",
+            "Cle Gemini configuree pour l'agent." if api_keys.get("gemini_api_key") else "GEMINI_API_KEY manque encore.",
+            "api",
+        )
+    )
+
+    module_checks = [
+        ("Flask", "flask"),
+        ("Playwright", "playwright"),
+        ("Groq package", "groq"),
+        ("Dotenv", "dotenv"),
+    ]
+    for label, module_name in module_checks:
+        available = _module_available(module_name)
+        checks.append(
+            _health_check_item(
+                label,
+                "ok" if available else "error",
+                f"Module {module_name} disponible." if available else f"Module {module_name} introuvable dans l'environnement courant.",
+                "installer" if not available else "",
+            )
+        )
+
+    supabase_url = os.environ.get("SUPABASE_URL", "").strip()
+    supabase_key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip()
+    if supabase_url and supabase_key:
+        sync_status = str(sync_state.get("status") or "idle").lower()
+        status = "ok" if sync_status == "completed" else "warn" if sync_status in {"idle", "running"} else "error"
+        detail = (
+            f"Derniere sync reussie : {sync_state.get('last_success_at') or 'jamais'}."
+            if sync_status == "completed"
+            else f"Etat actuel : {sync_status}."
+        )
+        if sync_status == "failed" and sync_state.get("error"):
+            detail = f"Erreur de sync Supabase : {sync_state.get('error')}"
+        checks.append(_health_check_item("Supabase", status, detail, "sync"))
+    else:
+        checks.append(
+            _health_check_item(
+                "Supabase",
+                "warn",
+                "Supabase n'est pas configure. Le mode local reste utilisable.",
+                "api",
+            )
+        )
+
+    counts = {
+        "ok": sum(1 for item in checks if item["status"] == "ok"),
+        "warn": sum(1 for item in checks if item["status"] == "warn"),
+        "error": sum(1 for item in checks if item["status"] == "error"),
+    }
+    overall = "error" if counts["error"] else "warn" if counts["warn"] else "ok"
+    summary = (
+        "Le projet est pret a etre utilise."
+        if overall == "ok"
+        else "Le projet est utilisable, mais quelques points meritent une verification."
+        if overall == "warn"
+        else "Le projet a des points bloquants a corriger avant un usage serein."
+    )
+    return {
+        "status": overall,
+        "summary": summary,
+        "counts": counts,
+        "checks": checks,
+    }
 
 
 def _extract_cv_text(cv_path: str, limit: int = 4000) -> str:
@@ -727,6 +902,7 @@ def api_stats():
     offers = _filtered_offers()
     histo = _lire_historique()
     last_scan = (_scan_state().get("last_scan") or {})
+    health = build_health_status()
     today = datetime.now().strftime("%Y-%m-%d")
     relances = [
         row
@@ -749,6 +925,7 @@ def api_stats():
             "scan_state": last_scan,
             "supabase_sync": _lire_sync_supabase_state(),
             "setup": get_setup_status(),
+            "health": health,
         }
     )
 
@@ -756,6 +933,11 @@ def api_stats():
 @app.route("/api/dashboard")
 def api_dashboard():
     return api_stats()
+
+
+@app.route("/api/health")
+def api_health():
+    return jsonify({"ok": True, "health": build_health_status()})
 
 
 @app.route("/api/offres")

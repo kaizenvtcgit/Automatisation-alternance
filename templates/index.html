@@ -279,6 +279,74 @@
       padding: 18px 18px 16px;
     }
 
+    .health-overview {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 10px;
+    }
+
+    .health-pill {
+      border-radius: 16px;
+      padding: 12px 14px;
+      background: rgba(255,255,255,0.72);
+      border: 1px solid rgba(217,208,191,0.9);
+    }
+
+    .health-pill-value {
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--ink);
+      line-height: 1;
+    }
+
+    .health-pill-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    .health-check-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .health-check-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.68);
+      border: 1px solid rgba(217,208,191,0.7);
+    }
+
+    .health-check-main {
+      min-width: 0;
+    }
+
+    .health-check-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .health-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+      margin-top: 1px;
+    }
+
+    .health-dot-ok { background: var(--green); }
+    .health-dot-warn { background: var(--amber); }
+    .health-dot-error { background: var(--red); }
+
     .selected-offer-row td {
       background: rgba(31, 94, 255, 0.08) !important;
       box-shadow: inset 0 1px 0 rgba(31, 94, 255, 0.1), inset 0 -1px 0 rgba(31, 94, 255, 0.1);
@@ -910,6 +978,21 @@
           </div>
           <div class="summary-list mt-3" id="setup-status-list"></div>
           <div class="setup-guide-steps mt-3" id="setup-guide-preview"></div>
+        </div>
+
+        <div class="card p-3 mb-4" id="health-status-card">
+          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
+            <div>
+              <div class="fw-bold">Sante du projet</div>
+              <div class="text-secondary small" id="health-status-summary">Verification de l'environnement en cours.</div>
+            </div>
+            <div class="d-flex gap-2 flex-wrap">
+              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="chargerTout()">Rafraichir</button>
+              <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Verifier les parametres</a>
+            </div>
+          </div>
+          <div class="health-overview mb-3" id="health-overview"></div>
+          <div class="health-check-list" id="health-check-list"></div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -2034,6 +2117,68 @@
       setTimeout(() => ouvrirGuideConfiguration(0), 350);
     }
 
+    function openInstallerPack() {
+      showToast('Installer local', 'Double-clique sur installer_partage_local.bat si une dependance manque sur cette machine.', 'warn');
+    }
+
+    function handleHealthAction(action) {
+      if (action === 'settings' || action === 'profile' || action === 'api') {
+        switchToTab('#tab-settings');
+        setTimeout(() => {
+          clearSetupHighlights();
+          const targetId = action === 'profile' ? 'settings-section-profile' : action === 'api' ? 'settings-section-api' : 'settings-section-profile';
+          const target = document.getElementById(targetId);
+          if (!target) return;
+          target.classList.add('setup-guide-highlight');
+          target.scrollIntoView({behavior: 'smooth', block: 'center'});
+        }, 180);
+        return;
+      }
+      if (action === 'installer') {
+        openInstallerPack();
+        return;
+      }
+      if (action === 'sync') {
+        triggerSupabaseSync(false, 'health_panel');
+      }
+    }
+
+    function renderHealthStatus() {
+      const health = statsData.health || {};
+      const counts = health.counts || {};
+      const summary = document.getElementById('health-status-summary');
+      const overview = document.getElementById('health-overview');
+      const list = document.getElementById('health-check-list');
+      summary.textContent = health.summary || 'Aucun diagnostic disponible pour le moment.';
+      overview.innerHTML = [
+        {label: 'OK', value: counts.ok ?? 0},
+        {label: 'A verifier', value: counts.warn ?? 0},
+        {label: 'Bloquants', value: counts.error ?? 0},
+      ].map(item => `
+        <div class="health-pill">
+          <div class="health-pill-value">${item.value}</div>
+          <div class="health-pill-label">${item.label}</div>
+        </div>
+      `).join('');
+      const checks = Array.isArray(health.checks) ? health.checks : [];
+      if (!checks.length) {
+        list.innerHTML = '<div class="summary-line">Aucun controle de sante disponible.</div>';
+        return;
+      }
+      list.innerHTML = checks.map(item => `
+        <div class="health-check-item">
+          <div class="health-check-main">
+            <div class="health-check-title">
+              <span class="health-dot health-dot-${esc(item.status || 'warn')}"></span>
+              <span>${esc(item.label || 'Controle')}</span>
+            </div>
+            <div class="small text-secondary mt-1">${esc(item.detail || '')}</div>
+          </div>
+          ${item.action ? `<button class="btn btn-sm btn-outline-secondary" type="button" onclick="handleHealthAction('${esc(item.action)}')">Voir</button>` : ''}
+        </div>
+      `).join('');
+    }
+
     function populateSettings(settings) {
       settingsData = settings || {};
       const profile = settingsData.profile || {};
@@ -2423,6 +2568,7 @@
           </div>
         `).join('');
       }
+      renderHealthStatus();
       renderSetupGuideModal();
       maybeAutoOpenSetupGuide();
     }
