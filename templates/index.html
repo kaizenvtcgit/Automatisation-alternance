@@ -823,7 +823,7 @@
         </div>
 
         <div class="row g-3 mb-4">
-          <div class="col-lg-4">
+          <div class="col-md-6 col-xl-3">
             <div class="card action-card p-3 d-flex flex-column">
               <div class="d-flex gap-3 mb-3">
                 <div class="action-icon" style="background:rgba(31,94,255,0.12);color:var(--blue)">
@@ -837,7 +837,7 @@
               <button class="btn btn-primary mt-auto btn-recuperer" onclick="lancerStream('recuperer')">Scanner les sources</button>
             </div>
           </div>
-          <div class="col-lg-4">
+          <div class="col-md-6 col-xl-3">
             <div class="card action-card p-3 d-flex flex-column">
               <div class="d-flex gap-3 mb-3">
                 <div class="action-icon" style="background:rgba(34,122,73,0.12);color:var(--green)">
@@ -851,7 +851,7 @@
               <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Generer</button>
             </div>
           </div>
-          <div class="col-lg-4">
+          <div class="col-md-6 col-xl-3">
             <div class="card action-card p-3 d-flex flex-column">
               <div class="d-flex gap-3 mb-3">
                 <div class="action-icon" style="background:rgba(39,48,70,0.12);color:var(--ink)">
@@ -863,6 +863,20 @@
                 </div>
               </div>
               <button class="btn btn-dark mt-auto btn-postuler" onclick="lancerStream('postuler')">Postuler</button>
+            </div>
+          </div>
+          <div class="col-md-6 col-xl-3">
+            <div class="card action-card p-3 d-flex flex-column">
+              <div class="d-flex gap-3 mb-3">
+                <div class="action-icon" style="background:rgba(178,122,23,0.14);color:var(--amber)">
+                  <i class="bi bi-database-up"></i>
+                </div>
+                <div>
+                  <div class="fw-bold">Synchroniser Supabase</div>
+                  <div class="text-secondary small" id="supabase-sync-summary">Envoie le miroir distant sans changer la source locale principale.</div>
+                </div>
+              </div>
+              <button class="btn btn-outline-warning mt-auto btn-sync-supabase" onclick="lancerStream('sync-supabase')">Synchroniser</button>
             </div>
           </div>
         </div>
@@ -891,6 +905,20 @@
                 </div>
               </div>
               <div class="log-panel" id="log-panel">Pret.</div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="card p-3">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <div class="fw-bold">Historique sync Supabase</div>
+                  <div class="text-secondary small">Dernieres synchronisations du miroir distant.</div>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" onclick="triggerSupabaseSync(false)">Lancer maintenant</button>
+              </div>
+              <div id="supabase-sync-history" class="summary-list">
+                <div class="summary-line">Aucune synchronisation distante enregistree.</div>
+              </div>
             </div>
           </div>
         </div>
@@ -2022,6 +2050,7 @@
 
     function renderStats() {
       const scan = statsData.scan_state || {};
+      const sync = statsData.supabase_sync || {};
       document.getElementById('stat-offres').textContent = statsData.nb_offres || 0;
       document.getElementById('stat-offres-note').textContent = `${statsData.pipeline?.a_analyser || 0} a analyser`;
       document.getElementById('stat-nouvelles').textContent = scan.new_offers || 0;
@@ -2030,6 +2059,14 @@
       document.getElementById('stat-interessantes-note').textContent = `${statsData.pipeline?.a_analyser || 0} encore a analyser`;
       document.getElementById('stat-postulations').textContent = statsData.nb_postulations || 0;
       document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance a faire`;
+      document.getElementById('supabase-sync-summary').textContent =
+        sync.status === 'completed'
+          ? `Derniere sync: ${formatDate(sync.last_success_at)}`
+          : sync.status === 'failed'
+            ? `Derniere sync en erreur: ${formatDate(sync.last_attempt_at)}`
+            : sync.status === 'running'
+              ? 'Synchronisation en cours...'
+              : 'Aucune synchronisation distante enregistree';
       document.getElementById('process-status').innerHTML = statsData.process_actif ? '<span class="pulse"></span>Processus en cours' : '';
       document.getElementById('badge-pipeline').textContent = offresData.length;
       document.getElementById('badge-offres').textContent = offresData.length;
@@ -2052,6 +2089,23 @@
             <div class="small text-secondary">
               ${meta.offers_found || meta.count || 0} offre(s), ${meta.new_offers || 0} nouvelle(s), ${meta.duplicates || 0} doublon(s)
               ${meta.error_message ? ` - erreur: ${esc(meta.error_message)}` : ` - ${esc(meta.status || 'ok')}`}
+            </div>
+          </div>
+        `).join('');
+      }
+
+      const syncHistoryBox = document.getElementById('supabase-sync-history');
+      const syncHistory = Array.isArray(sync.history) ? sync.history.slice().reverse() : [];
+      if (!syncHistory.length) {
+        syncHistoryBox.innerHTML = '<div class="summary-line">Aucune synchronisation distante enregistree.</div>';
+      } else {
+        syncHistoryBox.innerHTML = syncHistory.slice(0, 6).map(item => `
+          <div class="summary-line">
+            <div class="fw-semibold">${item.status === 'completed' ? 'Synchronisation reussie' : 'Synchronisation en erreur'}</div>
+            <div class="small text-secondary">
+              ${item.at ? formatDate(item.at) : 'Date inconnue'}
+              ${item.table_counts?.offers ? ` - ${item.table_counts.offers} offres` : ''}
+              ${item.error ? ` - ${esc(item.error)}` : ''}
             </div>
           </div>
         `).join('');
@@ -2463,7 +2517,7 @@ async function copierLettre() {
     }
 
     function setButtonsDisabled(disabled) {
-      ['btn-recuperer', 'btn-lettres', 'btn-postuler'].forEach(className => {
+      ['btn-recuperer', 'btn-lettres', 'btn-postuler', 'btn-sync-supabase'].forEach(className => {
         const button = document.querySelector(`.${className}`);
         if (button) button.disabled = disabled;
       });
@@ -2474,6 +2528,30 @@ async function copierLettre() {
       const cls = type ? ` class="${type}"` : '';
       panel.innerHTML += `\n<span${cls}>${esc(line)}</span>`;
       panel.scrollTop = panel.scrollHeight;
+    }
+
+    async function triggerSupabaseSync(silent = true, reason = 'manual') {
+      const response = await fetch('/api/supabase/sync', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({reason})
+      });
+      const data = await response.json();
+      if (!silent) {
+        if (data.ok) {
+          appendLog('Synchronisation Supabase lancee en arriere-plan.', 'log-ok');
+        } else if (data.status === 'already_running') {
+          appendLog('Une synchronisation Supabase est deja en cours.', 'log-warn');
+        } else if (data.status === 'process_busy') {
+          appendLog('Synchronisation Supabase reportee : un autre processus est en cours.', 'log-warn');
+        } else if (data.status === 'not_configured') {
+          appendLog('Synchronisation Supabase impossible : configuration manquante.', 'log-warn');
+        } else {
+          appendLog('Synchronisation Supabase non lancee.', 'log-warn');
+        }
+      }
+      await chargerTout();
+      return data;
     }
 
     function lancerStream(type) {
@@ -2505,6 +2583,9 @@ async function copierLettre() {
           setButtonsDisabled(false);
           evtSource.close();
           evtSource = null;
+          if (data.code === 0 && (type === 'recuperer' || type === 'generer-lettres')) {
+            await triggerSupabaseSync(false, type === 'recuperer' ? 'scan_complete' : 'lettres_complete');
+          }
           await chargerTout();
         }
       };

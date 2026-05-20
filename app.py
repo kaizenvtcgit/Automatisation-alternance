@@ -11,7 +11,6 @@ import re
 import shutil
 import subprocess
 import sys
-import tempfile
 import time
 import webbrowser
 from datetime import datetime, timedelta
@@ -23,20 +22,25 @@ from urllib.request import urlopen
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request
 from settings_service import get_settings, save_settings
+from storage_service import (
+    BASE_DIR,
+    CSV_PATH,
+    HISTORIQUE_PATH as HISTO_PATH,
+    LETTRES_PATH,
+    PID_PATH,
+    REFUS_PATH,
+    SCORES_PATH,
+    SUPABASE_SYNC_STATE_PATH,
+    UPLOADS_DIR,
+    read_json as storage_read_json,
+    write_json_atomic,
+)
 from werkzeug.exceptions import HTTPException
 
-BASE_DIR = Path(__file__).parent
 load_dotenv(BASE_DIR / ".env")
 
 app = Flask(__name__)
 
-CSV_PATH = BASE_DIR / "export" / "offres_filtrees.csv"
-HISTO_PATH = BASE_DIR / "historique_postulations.json"
-LETTRES_PATH = BASE_DIR / "export" / "lettres.json"
-REFUS_PATH = BASE_DIR / "export" / "offres_refusees.json"
-SCORES_PATH = BASE_DIR / "export" / "scores.json"
-PID_PATH = BASE_DIR / "app_server.pid"
-UPLOADS_DIR = BASE_DIR / "export" / "uploads"
 CSV_SEP = ";"
 
 _proc_actif: subprocess.Popen | None = None
@@ -169,35 +173,12 @@ def _cleanup_pid_file() -> None:
 
 
 def _read_json(path: Path, default):
-    if not path.exists():
-        return default
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return default
+    data = storage_read_json(path, default)
     return _repair_payload_strings(data)
 
 
 def _write_json(path: Path, payload) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=path.parent, suffix=".tmp") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-        temp_path = Path(handle.name)
-    last_error = None
-    for _ in range(8):
-        try:
-            temp_path.replace(path)
-            return
-        except PermissionError as exc:
-            last_error = exc
-            time.sleep(0.12)
-    if temp_path.exists():
-        try:
-            temp_path.unlink()
-        except OSError:
-            pass
-    if last_error:
-        raise last_error
+    write_json_atomic(path, payload)
 
 
 def _lire_csv() -> list[dict]:
@@ -250,8 +231,44 @@ def _lire_refus() -> list[str]:
     return data if isinstance(data, list) else []
 
 
+def _lire_sync_supabase_state() -> dict:
+    data = _read_json(SUPABASE_SYNC_STATE_PATH, {})
+    return data if isinstance(data, dict) else {}
+
+
 def _ecrire_lettres(lettres: dict) -> None:
     _write_json(LETTRES_PATH, lettres)
+
+
+def _supabase_sync_configured() -> bool:
+    return bool((os.environ.get("SUPABASE_URL") or "").strip() and (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip())
+
+
+def _launch_supabase_sync_background(reason: str = "") -> tuple[bool, str]:
+    sync_state = _lire_sync_supabase_state()
+    if not _supabase_sync_configured():
+        return False, "not_configured"
+    if sync_state.get("status") == "running":
+        return False, "already_running"
+    if _proc_actif is not None and _proc_actif.poll() is None:
+        return False, "process_busy"
+
+    env = {
+        **os.environ,
+        "PYTHONUNBUFFERED": "1",
+        "PYTHONIOENCODING": "utf-8",
+    }
+    if reason:
+        env["SUPABASE_SYNC_REASON"] = reason
+    subprocess.Popen(
+        [sys.executable, "scripts/sync_to_supabase.py", "--execute"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        stdin=subprocess.DEVNULL,
+        cwd=str(BASE_DIR),
+        env=env,
+    )
+    return True, "started"
 
 
 def _scan_state() -> dict:
@@ -730,6 +747,7 @@ def api_stats():
             "process_actif": _proc_actif is not None and _proc_actif.poll() is None,
             "pipeline": pipeline_counts,
             "scan_state": last_scan,
+            "supabase_sync": _lire_sync_supabase_state(),
         }
     )
 
@@ -967,6 +985,18 @@ def stream_generer_lettres():
     return _stream([sys.executable, "main.py", "lettres"])
 
 
+@app.route("/api/stream/sync-supabase")
+def stream_sync_supabase():
+    return _stream([sys.executable, "scripts/sync_to_supabase.py", "--execute"])
+
+
+@app.route("/api/supabase/sync", methods=["POST"])
+def api_supabase_sync():
+    data = request.get_json(silent=True) or {}
+    ok, status = _launch_supabase_sync_background(str(data.get("reason", "") or "").strip())
+    return jsonify({"ok": ok, "status": status, "sync_state": _lire_sync_supabase_state()})
+
+
 @app.route("/api/historique/statut", methods=["PUT"])
 def api_historique_statut():
     from main import normalize_status
@@ -997,6 +1027,7 @@ def api_historique_statut():
             row.get("lieu", ""),
         )
         _write_json(HISTO_PATH, histo)
+        _launch_supabase_sync_background("historique_statut")
         return jsonify({"ok": True, "statut": nouveau_normalise})
     for index, row in enumerate(histo):
         match = (id_adzuna and row.get("id_adzuna") == id_adzuna) or (url_cible and row.get("url") == url_cible)
@@ -1016,6 +1047,7 @@ def api_historique_statut():
         )
         break
     _write_json(HISTO_PATH, histo)
+    _launch_supabase_sync_background("historique_statut")
     return jsonify({"ok": True})
 
 
@@ -1031,6 +1063,7 @@ def api_historique_notes():
             histo[index]["notes"] = data.get("notes", "")
             break
     _write_json(HISTO_PATH, histo)
+    _launch_supabase_sync_background("historique_notes")
     return jsonify({"ok": True})
 
 
@@ -1136,6 +1169,7 @@ def api_offres_refuser():
         refus.append(offre_id)
     _write_json(REFUS_PATH, refus)
     _sync_pipeline_status(offre_id, "refusee")
+    _launch_supabase_sync_background("offre_refusee")
     return jsonify({"ok": True})
 
 
@@ -1146,6 +1180,7 @@ def api_offres_refuser_annuler():
     refus = [row for row in _lire_refus() if row != offre_id]
     _write_json(REFUS_PATH, refus)
     _sync_pipeline_status(offre_id, "")
+    _launch_supabase_sync_background("offre_refus_annule")
     return jsonify({"ok": True})
 
 
@@ -1198,6 +1233,7 @@ def api_historique_ajouter():
             data.get("source", ""),
             data.get("lieu", ""),
         )
+        _launch_supabase_sync_background("historique_ajout")
         return jsonify({"ok": True, "already_present": True})
     for row in histo:
         if _history_row_matches(row, offre_id, url_cible):
@@ -1231,6 +1267,7 @@ def api_historique_ajouter():
         data.get("source", ""),
         data.get("lieu", ""),
     )
+    _launch_supabase_sync_background("historique_ajout")
     return jsonify({"ok": True})
 
 
@@ -1248,6 +1285,7 @@ def api_historique_supprimer():
     ]
     _write_json(HISTO_PATH, histo)
     _sync_pipeline_status(id_adzuna, "", url_cible)
+    _launch_supabase_sync_background("historique_suppression")
     return jsonify({"ok": True, "supprime": before - len(histo)})
 
 
@@ -1279,11 +1317,17 @@ if __name__ == "__main__":
     _ensure_stdio()
     _write_pid_file()
     atexit.register(_cleanup_pid_file)
-    host = "127.0.0.1"
-    port = 5001
+    cloud_mode = os.environ.get("ALTERNANCE_CLOUD_MODE") == "1"
+    host = os.environ.get("APP_HOST", "0.0.0.0" if cloud_mode else "127.0.0.1")
+    try:
+        port = int(os.environ.get("PORT") or os.environ.get("APP_PORT") or "5001")
+    except Exception:
+        port = 5001
     base_url = f"http://{host}:{port}"
 
     def _ouvrir_navigateur():
+        if cloud_mode:
+            return
         # Wait until Flask is actually accepting connections before opening the page.
         for _ in range(30):
             try:

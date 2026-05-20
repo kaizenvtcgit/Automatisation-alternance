@@ -16,7 +16,6 @@ import json
 import os
 import re
 import sys
-import tempfile
 import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -45,17 +44,22 @@ from sources._common import (
     motion_en_priorite,
     nettoyer_html,
 )
+from storage_service import (
+    BASE_DIR as STORAGE_BASE_DIR,
+    CSV_PATH,
+    EXPORT_ROOT,
+    HISTORIQUE_PATH,
+    LETTRES_PATH,
+    MESSAGES_DIR,
+    SCAN_STATE_PATH,
+    SCORES_PATH,
+    read_json as storage_read_json,
+    write_json_atomic,
+)
 
 # ─── Chemins ─────────────────────────────────────────────────────────────────
 
-_BASE            = Path(__file__).resolve().parent
-EXPORT_ROOT      = _BASE / "export"
-MESSAGES_DIR     = EXPORT_ROOT / "messages"
-CSV_PATH         = EXPORT_ROOT / "offres_filtrees.csv"
-LETTRES_PATH     = EXPORT_ROOT / "lettres.json"
-SCORES_PATH      = EXPORT_ROOT / "scores.json"
-HISTORIQUE_PATH  = _BASE / "historique_postulations.json"
-SCAN_STATE_PATH  = EXPORT_ROOT / "scan_state.json"
+_BASE            = STORAGE_BASE_DIR
 
 # Alias de compatibilite pour les modules plus anciens.
 HISTORIQUE_POSTULATIONS = HISTORIQUE_PATH
@@ -260,21 +264,13 @@ def _generer_lettre_groq(titre: str, entreprise: str, description: str) -> str:
 # ─── Lettres ─────────────────────────────────────────────────────────────────
 
 def _charger_lettres() -> dict:
-    if not LETTRES_PATH.exists():
-        return {}
-    try:
-        return json.loads(LETTRES_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    loaded = storage_read_json(LETTRES_PATH, {})
+    return loaded if isinstance(loaded, dict) else {}
 
 
 def _charger_scores() -> dict:
-    if not SCORES_PATH.exists():
-        return {}
-    try:
-        return json.loads(SCORES_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+    loaded = storage_read_json(SCORES_PATH, {})
+    return loaded if isinstance(loaded, dict) else {}
 
 
 def _sauvegarder_lettre(offre_id: str, lettre: str, titre: str, entreprise: str) -> None:
@@ -287,7 +283,7 @@ def _sauvegarder_lettre(offre_id: str, lettre: str, titre: str, entreprise: str)
         "entreprise": entreprise,
         "date_gen":   datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
-    _write_json_atomic(LETTRES_PATH, lettres)
+    write_json_atomic(LETTRES_PATH, lettres)
     if offre_id:
         mark_offer_letter_generated(offre_id, titre=titre, entreprise=entreprise)
 
@@ -435,7 +431,6 @@ def load_scan_state() -> dict:
 
 def save_scan_state(state: dict) -> None:
     with _scan_state_lock:
-        SCAN_STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
         compact = _scan_state_with_defaults(state)
         compact["history"] = compact["history"][-50:]
         compact["seen_offer_keys"] = compact["seen_offer_keys"][-5000:]
@@ -448,10 +443,7 @@ def save_scan_state(state: dict) -> None:
                 reverse=True,
             )[:5000]
             compact["offers"] = {key: compact["offers"][key] for key in recent_keys}
-        with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=SCAN_STATE_PATH.parent, suffix=".tmp") as handle:
-            json.dump(compact, handle, ensure_ascii=False, indent=2)
-            temp_path = Path(handle.name)
-        temp_path.replace(SCAN_STATE_PATH)
+        write_json_atomic(SCAN_STATE_PATH, compact)
 
 
 def build_offer_signature(offer: dict) -> str:
@@ -533,28 +525,6 @@ def offer_key_from_export_row(row: dict) -> str:
 def _append_unique(items: list[str], value: str) -> None:
     if value and value not in items:
         items.append(value)
-
-
-def _write_json_atomic(path: Path, payload) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=path.parent, suffix=".tmp") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-        temp_path = Path(handle.name)
-    last_error = None
-    for _ in range(8):
-        try:
-            temp_path.replace(path)
-            return
-        except PermissionError as exc:
-            last_error = exc
-            time.sleep(0.12)
-    if temp_path.exists():
-        try:
-            temp_path.unlink()
-        except OSError:
-            pass
-    if last_error:
-        raise last_error
 
 
 def backup_json_file(path: Path) -> Path | None:
@@ -944,7 +914,7 @@ def migrate_data_files() -> dict:
         backup = backup_json_file(HISTORIQUE_PATH)
         if backup:
             migration_report["backups"].append(str(backup))
-        _write_json_atomic(HISTORIQUE_PATH, normalized_historique)
+        write_json_atomic(HISTORIQUE_PATH, normalized_historique)
         migration_report["historique_updated"] = True
         historique = normalized_historique
 
@@ -975,7 +945,7 @@ def migrate_data_files() -> dict:
         backup = backup_json_file(LETTRES_PATH)
         if backup:
             migration_report["backups"].append(str(backup))
-        _write_json_atomic(LETTRES_PATH, normalized_lettres)
+        write_json_atomic(LETTRES_PATH, normalized_lettres)
         migration_report["lettres_updated"] = True
 
     scores = _charger_scores()
@@ -1028,7 +998,7 @@ def migrate_data_files() -> dict:
         backup = backup_json_file(SCORES_PATH)
         if backup:
             migration_report["backups"].append(str(backup))
-        _write_json_atomic(SCORES_PATH, normalized_scores)
+        write_json_atomic(SCORES_PATH, normalized_scores)
         migration_report["scores_updated"] = True
 
     scan_state = load_scan_state()
@@ -1162,7 +1132,7 @@ def _ensure_export_scores(csv_rows: list[dict]) -> dict:
         changed = True
 
     if changed:
-        _write_json_atomic(SCORES_PATH, scores)
+        write_json_atomic(SCORES_PATH, scores)
 
     return scores
 
@@ -1240,13 +1210,8 @@ def normaliser_url(url: str) -> str:
 
 
 def charger_historique_postulations() -> list[dict]:
-    if not HISTORIQUE_PATH.exists():
-        return []
-    try:
-        brut = json.loads(HISTORIQUE_PATH.read_text(encoding="utf-8"))
-        return brut if isinstance(brut, list) else []
-    except (json.JSONDecodeError, OSError):
-        return []
+    brut = storage_read_json(HISTORIQUE_PATH, [])
+    return brut if isinstance(brut, list) else []
 
 
 def _index_historique(records: list[dict]) -> tuple[set[str], set[str], set[str]]:
@@ -1317,9 +1282,7 @@ def ajouter_postulation(id_offre: str, url: str, titre: str) -> None:
         "statut":          "postule",
         "date_postulation": datetime.now().strftime("%Y-%m-%d %H:%M"),
     })
-    HISTORIQUE_PATH.write_text(
-        json.dumps(rec, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    write_json_atomic(HISTORIQUE_PATH, rec)
     sync_pipeline_status(signature, "postule")
     print(f"Postulation enregistrée dans : {HISTORIQUE_PATH}")
 

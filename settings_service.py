@@ -2,21 +2,11 @@ import importlib
 import json
 import os
 import sys
-import tempfile
 from pathlib import Path
+from storage_service import BASE_DIR, PROFILE_PATH, read_json, write_json_atomic
 
 
-BASE_DIR = Path(__file__).resolve().parent
 ENV_PATH = BASE_DIR / ".env"
-PROFILE_PATH = BASE_DIR / "export" / "profil_recherche.json"
-
-
-def _write_json_atomic(path: Path, payload) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile("w", encoding="utf-8", delete=False, dir=path.parent, suffix=".tmp") as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-        temp_path = Path(handle.name)
-    temp_path.replace(path)
 
 
 def _parse_bool(value, default: bool = False) -> bool:
@@ -122,12 +112,7 @@ def _default_profile_settings() -> dict:
 
 def _read_profile_settings() -> dict:
     defaults = _default_profile_settings()
-    if not PROFILE_PATH.exists():
-        return defaults
-    try:
-        loaded = json.loads(PROFILE_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return defaults
+    loaded = read_json(PROFILE_PATH, defaults)
     if not isinstance(loaded, dict):
         return defaults
     merged = {**defaults, **loaded}
@@ -241,7 +226,7 @@ def save_settings(payload: dict) -> dict:
     env_updates["INCLURE_OFFRES_REMOTE"] = "1" if profile_payload["inclure_remote"] else "0"
 
     _write_env_updates(env_updates)
-    _write_json_atomic(PROFILE_PATH, profile_payload)
+    write_json_atomic(PROFILE_PATH, profile_payload)
 
     for key, value in env_updates.items():
         os.environ[key] = value

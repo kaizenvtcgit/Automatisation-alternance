@@ -42,6 +42,21 @@ python app.py
 
 Puis ouvrir `http://127.0.0.1:5001`.
 
+## Preparation hebergement
+
+Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :
+
+- `wsgi.py` expose l'application Flask pour `gunicorn`
+- `APP_HOST`, `APP_PORT`, `PORT` et `ALTERNANCE_CLOUD_MODE` permettent d'adapter le demarrage
+- `STORAGE_BACKEND=local` conserve le stockage actuel sur fichiers
+- en local, le comportement par defaut reste `127.0.0.1:5001`
+
+Exemple de commande compatible cloud :
+
+```bash
+gunicorn wsgi:app
+```
+
 ## Donnees locales
 
 Les fichiers personnels et de runtime ne sont pas versionnes :
