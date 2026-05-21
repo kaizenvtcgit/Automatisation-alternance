@@ -577,6 +577,29 @@ def _coach_list(value) -> list:
     return []
 
 
+def _coach_fallback_payload(current_search: dict | None = None, has_context: bool = False, error_message: str = "") -> dict:
+    current_search = current_search if isinstance(current_search, dict) else {}
+    return {
+        "ok": True,
+        "reply": (
+            "Je n'ai pas pu contacter le modèle IA cette fois. "
+            "Tu peux quand même me répondre en précisant les postes visés, les mots-clés importants et ce que tu veux exclure."
+        ),
+        "ready": False,
+        "suggestions": {
+            "postes_cibles": _coach_list(current_search.get("postes_cibles")),
+            "mots_cles_positifs": _coach_list(current_search.get("mots_cles_positifs")),
+            "mots_cles_negatifs": _coach_list(current_search.get("mots_cles_negatifs")),
+            "types_contrat": _coach_list(current_search.get("types_contrat")),
+            "zone_mode": str(current_search.get("zone_mode", "idf") or "idf"),
+            "zone_geo": str(current_search.get("zone_geo", "") or ""),
+        },
+        "fallback": True,
+        "context_used": bool(has_context),
+        "error": error_message or "Assistant indisponible",
+    }
+
+
 def _ensure_stdio() -> None:
     """Provide usable streams when launched with pythonw.exe on Windows."""
     stdout_log = BASE_DIR / "server_stdout.log"
@@ -1781,52 +1804,53 @@ def api_settings_cv_upload():
 
 @app.route("/api/settings/search-coach", methods=["POST"])
 def api_settings_search_coach():
-    data = request.get_json(silent=True) or {}
-    messages = data.get("messages", [])
-    if not isinstance(messages, list):
-        return jsonify({"ok": False, "error": "messages doit etre une liste"}), HTTPStatus.BAD_REQUEST
-    coach_context = _build_search_coach_context()
-    current_search = coach_context.get("current_search", {})
-    current_profile = coach_context.get("profile", {})
-    if not isinstance(current_search, dict):
-        current_search = {}
-    if not isinstance(current_profile, dict):
-        current_profile = {}
+    try:
+        data = request.get_json(silent=True) or {}
+        messages = data.get("messages", [])
+        if not isinstance(messages, list):
+            return jsonify({"ok": False, "error": "messages doit etre une liste"}), HTTPStatus.BAD_REQUEST
+        coach_context = _build_search_coach_context()
+        current_search = coach_context.get("current_search", {})
+        current_profile = coach_context.get("profile", {})
+        if not isinstance(current_search, dict):
+            current_search = {}
+        if not isinstance(current_profile, dict):
+            current_profile = {}
 
-    has_context = bool(
-        _coach_list(coach_context.get("recent_history"))
-        or _coach_list(coach_context.get("top_scored_offers"))
-        or str((coach_context.get("profile") or {}).get("cv_excerpt") or "").strip()
-    )
-
-    from groq import Groq
-    from main import _MODELES_GROQ
-
-    api_key = os.environ.get("GROQ_API_KEY", "")
-    if not api_key:
-        return jsonify(
-            {
-                "ok": True,
-                "reply": (
-                    "Je n'ai pas accès au modèle IA pour l'instant. "
-                    "Décris-moi le poste idéal, les outils clés, la zone et ce que tu veux éviter, "
-                    "puis je pourrai te proposer une base de paramètres dès que l'API sera configurée."
-                ),
-                "ready": False,
-                "suggestions": {
-                    "postes_cibles": current_search.get("postes_cibles", []),
-                    "mots_cles_positifs": current_search.get("mots_cles_positifs", []),
-                    "mots_cles_negatifs": current_search.get("mots_cles_negatifs", []),
-                    "types_contrat": current_search.get("types_contrat", []),
-                    "zone_mode": current_search.get("zone_mode", "idf"),
-                    "zone_geo": current_search.get("zone_geo", ""),
-                },
-                "fallback": True,
-                "context_used": has_context,
-            }
+        has_context = bool(
+            _coach_list(coach_context.get("recent_history"))
+            or _coach_list(coach_context.get("top_scored_offers"))
+            or str((coach_context.get("profile") or {}).get("cv_excerpt") or "").strip()
         )
 
-    system_prompt = f"""
+        from groq import Groq
+        from main import _MODELES_GROQ
+
+        api_key = os.environ.get("GROQ_API_KEY", "")
+        if not api_key:
+            return jsonify(
+                {
+                    "ok": True,
+                    "reply": (
+                        "Je n'ai pas accès au modèle IA pour l'instant. "
+                        "Décris-moi le poste idéal, les outils clés, la zone et ce que tu veux éviter, "
+                        "puis je pourrai te proposer une base de paramètres dès que l'API sera configurée."
+                    ),
+                    "ready": False,
+                    "suggestions": {
+                        "postes_cibles": _coach_list(current_search.get("postes_cibles")),
+                        "mots_cles_positifs": _coach_list(current_search.get("mots_cles_positifs")),
+                        "mots_cles_negatifs": _coach_list(current_search.get("mots_cles_negatifs")),
+                        "types_contrat": _coach_list(current_search.get("types_contrat")),
+                        "zone_mode": str(current_search.get("zone_mode", "idf") or "idf"),
+                        "zone_geo": str(current_search.get("zone_geo", "") or ""),
+                    },
+                    "fallback": True,
+                    "context_used": has_context,
+                }
+            )
+
+        system_prompt = f"""
 Tu es un coach de recherche d'emploi pour une application locale d'alternance.
 Tu aides la personne a clarifier sa recherche ciblee, surtout pour les postes, mots-cles, exclusions, zone geographique et type de contrat.
 
@@ -1863,88 +1887,70 @@ Regles:
 - les listes doivent etre courtes, propres et sans doublons
 """.strip()
 
-    chat_messages = [{"role": "system", "content": system_prompt}]
-    if not messages:
-        chat_messages.append(
-            {
-                "role": "user",
-                "content": (
-                    "Commence l'accompagnement. Analyse d'abord ce qui existe déjà dans l'application "
-                    "pour proposer des pistes de postes adaptés. "
-                    "S'il manque des informations, pose-moi des questions."
-                ),
-            }
-        )
-    else:
-        for item in messages[-12:]:
-            if not isinstance(item, dict):
-                continue
-            role = str(item.get("role", "user"))
-            if role not in {"user", "assistant"}:
-                continue
-            content = str(item.get("content", "")).strip()
-            if not content:
-                continue
-            chat_messages.append({"role": role, "content": content})
-
-    client = Groq(api_key=api_key)
-    last_error = None
-    for modele in _MODELES_GROQ:
-        try:
-            resp = client.chat.completions.create(
-                model=modele,
-                messages=chat_messages,
-                temperature=0.3,
-                max_tokens=900,
-                response_format={"type": "json_object"},
-            )
-            raw = (resp.choices[0].message.content or "").strip()
-            payload = json.loads(raw)
-            suggestions = payload.get("suggestions", {}) if isinstance(payload.get("suggestions"), dict) else {}
-            cleaned = {
-                "postes_cibles": [str(x).strip() for x in _coach_list(suggestions.get("postes_cibles")) if str(x).strip()][:10],
-                "mots_cles_positifs": [str(x).strip() for x in _coach_list(suggestions.get("mots_cles_positifs")) if str(x).strip()][:12],
-                "mots_cles_negatifs": [str(x).strip() for x in _coach_list(suggestions.get("mots_cles_negatifs")) if str(x).strip()][:12],
-                "types_contrat": [str(x).strip().lower() for x in _coach_list(suggestions.get("types_contrat")) if str(x).strip()][:4],
-                "zone_mode": str(suggestions.get("zone_mode", current_search.get("zone_mode", "idf")) or "idf").strip().lower(),
-                "zone_geo": str(suggestions.get("zone_geo", current_search.get("zone_geo", "")) or "").strip(),
-            }
-            return jsonify(
+        chat_messages = [{"role": "system", "content": system_prompt}]
+        if not messages:
+            chat_messages.append(
                 {
-                    "ok": True,
-                    "reply": _repair_text(str(payload.get("reply", "")).strip()),
-                    "ready": bool(payload.get("ready", False)),
-                    "suggestions": cleaned,
-                    "modele": modele,
-                    "context_used": has_context,
+                    "role": "user",
+                    "content": (
+                        "Commence l'accompagnement. Analyse d'abord ce qui existe déjà dans l'application "
+                        "pour proposer des pistes de postes adaptés. "
+                        "S'il manque des informations, pose-moi des questions."
+                    ),
                 }
             )
-        except Exception as exc:
-            last_error = str(exc)
-            if "429" in last_error or "rate_limit" in last_error.lower():
-                continue
-            break
-    return jsonify(
-        {
-            "ok": True,
-            "reply": (
-                "Je n'ai pas pu contacter le modèle IA cette fois. "
-                "Tu peux quand même me répondre en précisant les postes visés, les mots-clés importants et ce que tu veux exclure."
-            ),
-            "ready": False,
-            "suggestions": {
-                "postes_cibles": current_search.get("postes_cibles", []),
-                "mots_cles_positifs": current_search.get("mots_cles_positifs", []),
-                "mots_cles_negatifs": current_search.get("mots_cles_negatifs", []),
-                "types_contrat": current_search.get("types_contrat", []),
-                "zone_mode": current_search.get("zone_mode", "idf"),
-                "zone_geo": current_search.get("zone_geo", ""),
-            },
-            "fallback": True,
-            "context_used": has_context,
-            "error": last_error or "Assistant indisponible",
-        }
-    )
+        else:
+            for item in messages[-12:]:
+                if not isinstance(item, dict):
+                    continue
+                role = str(item.get("role", "user"))
+                if role not in {"user", "assistant"}:
+                    continue
+                content = str(item.get("content", "")).strip()
+                if not content:
+                    continue
+                chat_messages.append({"role": role, "content": content})
+
+        client = Groq(api_key=api_key)
+        last_error = None
+        for modele in _MODELES_GROQ:
+            try:
+                resp = client.chat.completions.create(
+                    model=modele,
+                    messages=chat_messages,
+                    temperature=0.3,
+                    max_tokens=900,
+                    response_format={"type": "json_object"},
+                )
+                raw = (resp.choices[0].message.content or "").strip()
+                payload = json.loads(raw)
+                suggestions = payload.get("suggestions", {}) if isinstance(payload.get("suggestions"), dict) else {}
+                cleaned = {
+                    "postes_cibles": [str(x).strip() for x in _coach_list(suggestions.get("postes_cibles")) if str(x).strip()][:10],
+                    "mots_cles_positifs": [str(x).strip() for x in _coach_list(suggestions.get("mots_cles_positifs")) if str(x).strip()][:12],
+                    "mots_cles_negatifs": [str(x).strip() for x in _coach_list(suggestions.get("mots_cles_negatifs")) if str(x).strip()][:12],
+                    "types_contrat": [str(x).strip().lower() for x in _coach_list(suggestions.get("types_contrat")) if str(x).strip()][:4],
+                    "zone_mode": str(suggestions.get("zone_mode", current_search.get("zone_mode", "idf")) or "idf").strip().lower(),
+                    "zone_geo": str(suggestions.get("zone_geo", current_search.get("zone_geo", "")) or "").strip(),
+                }
+                return jsonify(
+                    {
+                        "ok": True,
+                        "reply": _repair_text(str(payload.get("reply", "")).strip()),
+                        "ready": bool(payload.get("ready", False)),
+                        "suggestions": cleaned,
+                        "modele": modele,
+                        "context_used": has_context,
+                    }
+                )
+            except Exception as exc:
+                last_error = str(exc)
+                if "429" in last_error or "rate_limit" in last_error.lower():
+                    continue
+                break
+        return jsonify(_coach_fallback_payload(current_search, has_context, last_error or "Assistant indisponible"))
+    except Exception as exc:
+        return jsonify(_coach_fallback_payload({}, False, str(exc)))
 
 
 @app.route("/api/stats")
