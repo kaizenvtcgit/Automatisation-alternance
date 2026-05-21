@@ -913,6 +913,7 @@
       </div>
       <div class="navbar-actions">
         <div id="access-status" class="small text-secondary"></div>
+        <div id="workspace-status" class="small text-secondary"></div>
         <div id="process-status" class="small text-secondary"></div>
         <button class="btn btn-sm btn-outline-secondary d-none" id="access-logout-btn" onclick="logoutAccessToken()">
           <i class="bi bi-shield-lock me-1"></i>Verrouiller
@@ -1651,6 +1652,9 @@
           </div>
         </div>
         <div class="modal-body pt-0">
+          <label class="form-label" for="access-workspace-input">Espace personnel</label>
+          <input class="form-control mb-3" id="access-workspace-input" type="text" placeholder="ex: julie, paul, test-ux">
+          <div class="small text-secondary mb-3">Chaque espace garde ses propres parametres sur le meme lien.</div>
           <label class="form-label" for="access-token-input">Token APP_SECRET</label>
           <input class="form-control" id="access-token-input" type="password" placeholder="Saisir le token">
           <div class="small text-danger mt-2 d-none" id="access-token-error"></div>
@@ -1698,7 +1702,7 @@
     let pendingServerStopOnClose = false;
     let setupGuideIndex = 0;
     let setupGuideAutoshown = false;
-    let accessState = {enabled: false, unlocked: true};
+    let accessState = {enabled: false, unlocked: true, workspace: 'principal'};
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -1770,21 +1774,43 @@
 
     function renderAccessState() {
       const statusNode = document.getElementById('access-status');
+      const workspaceNode = document.getElementById('workspace-status');
       const logoutBtn = document.getElementById('access-logout-btn');
       const stopBtn = document.querySelector('.btn-outline-danger[onclick="fermerServeur()"]');
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
       if (!accessState.enabled) {
         statusNode.textContent = '';
+        workspaceNode.textContent = '';
         logoutBtn.classList.add('d-none');
         return;
       }
       if (accessState.unlocked) {
         statusNode.innerHTML = '<span class="pulse"></span>Acces protege actif';
+        workspaceNode.textContent = `Espace: ${accessState.workspace || 'principal'}`;
         logoutBtn.classList.remove('d-none');
       } else {
         statusNode.textContent = 'Interface verrouillee';
+        workspaceNode.textContent = `Espace: ${accessState.workspace || 'principal'}`;
         logoutBtn.classList.add('d-none');
       }
+    }
+
+    function getStoredWorkspace() {
+      try {
+        const queryWorkspace = new URLSearchParams(window.location.search).get('workspace');
+        if (queryWorkspace) return queryWorkspace;
+        return localStorage.getItem('alternance_auto_workspace') || 'principal';
+      } catch (_) {
+        return 'principal';
+      }
+    }
+
+    function setStoredWorkspace(value) {
+      const workspace = String(value || 'principal').trim() || 'principal';
+      try {
+        localStorage.setItem('alternance_auto_workspace', workspace);
+      } catch (_) {}
+      return workspace;
     }
 
     function showAccessModal(errorMessage = '') {
@@ -1792,8 +1818,10 @@
       const errorNode = document.getElementById('access-token-error');
       errorNode.textContent = errorMessage || '';
       errorNode.classList.toggle('d-none', !errorMessage);
+      const workspaceInput = document.getElementById('access-workspace-input');
+      if (workspaceInput && !workspaceInput.value.trim()) workspaceInput.value = getStoredWorkspace();
       modalAccessLock.show();
-      setTimeout(() => document.getElementById('access-token-input')?.focus(), 120);
+      setTimeout(() => (document.getElementById('access-workspace-input')?.value ? document.getElementById('access-token-input') : document.getElementById('access-workspace-input'))?.focus(), 120);
     }
 
     function hideAccessModal() {
@@ -1811,9 +1839,10 @@
         accessState = {
           enabled: !!data.enabled,
           unlocked: !!data.unlocked,
+          workspace: data.workspace || getStoredWorkspace(),
         };
       } catch (_) {
-        accessState = {enabled: false, unlocked: true};
+        accessState = {enabled: false, unlocked: true, workspace: getStoredWorkspace()};
       }
       renderAccessState();
       return accessState;
@@ -1831,8 +1860,11 @@
 
     async function submitAccessToken() {
       const input = document.getElementById('access-token-input');
+      const workspaceInput = document.getElementById('access-workspace-input');
       const button = document.getElementById('access-unlock-btn');
       const token = input.value.trim();
+      const workspace = (workspaceInput?.value || '').trim() || 'principal';
+      setStoredWorkspace(workspace);
       if (!token) {
         showAccessModal('Le token est requis.');
         return;
@@ -1842,14 +1874,14 @@
         const response = await fetch('/api/auth/unlock', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({token})
+          body: JSON.stringify({token, workspace})
         });
         const data = await response.json();
         if (!data.ok) {
           showAccessModal(data.error || 'Token invalide');
           return;
         }
-        accessState = {enabled: !!data.enabled, unlocked: !!data.unlocked};
+        accessState = {enabled: !!data.enabled, unlocked: !!data.unlocked, workspace: data.workspace || workspace};
         renderAccessState();
         hideAccessModal();
         await chargerTout();
@@ -1862,7 +1894,7 @@
 
     async function logoutAccessToken() {
       await fetch('/api/auth/logout', {method: 'POST'});
-      accessState = {enabled: true, unlocked: false};
+      accessState = {enabled: true, unlocked: false, workspace: getStoredWorkspace()};
       renderAccessState();
       showAccessModal();
     }

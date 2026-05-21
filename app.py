@@ -23,7 +23,14 @@ from urllib.request import urlopen
 import requests
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, session
-from settings_service import build_shareable_settings_example, get_settings, get_setup_status, save_settings
+from settings_service import (
+    build_shareable_settings_example,
+    get_settings,
+    get_setup_status,
+    get_workspace_slug,
+    save_settings,
+    set_workspace_slug,
+)
 from storage_service import (
     BASE_DIR,
     CSV_PATH,
@@ -63,6 +70,10 @@ def _access_protection_enabled() -> bool:
 
 def _access_unlocked() -> bool:
     return not _access_protection_enabled() or session.get("app_unlocked") is True
+
+
+def _current_workspace() -> str:
+    return get_workspace_slug()
 
 
 def _supabase_auto_sync_enabled() -> bool:
@@ -1024,6 +1035,7 @@ def api_auth_status():
             "enabled": _access_protection_enabled(),
             "unlocked": _access_unlocked(),
             "cloud_mode": _cloud_mode_enabled(),
+            "workspace": _current_workspace(),
         }
     )
 
@@ -1032,19 +1044,20 @@ def api_auth_status():
 def api_auth_unlock():
     data = request.get_json(silent=True) or {}
     provided = str(data.get("token") or "").strip()
+    workspace = set_workspace_slug(data.get("workspace") or request.args.get("workspace") or "principal")
     if not _access_protection_enabled():
-        return jsonify({"ok": True, "enabled": False, "unlocked": True})
+        return jsonify({"ok": True, "enabled": False, "unlocked": True, "workspace": workspace})
     if not provided or provided != _access_secret():
         return jsonify({"ok": False, "error": "Token invalide", "enabled": True, "unlocked": False}), HTTPStatus.UNAUTHORIZED
     session.permanent = True
     session["app_unlocked"] = True
-    return jsonify({"ok": True, "enabled": True, "unlocked": True})
+    return jsonify({"ok": True, "enabled": True, "unlocked": True, "workspace": workspace})
 
 
 @app.route("/api/auth/logout", methods=["POST"])
 def api_auth_logout():
     session.pop("app_unlocked", None)
-    return jsonify({"ok": True, "enabled": _access_protection_enabled(), "unlocked": False})
+    return jsonify({"ok": True, "enabled": _access_protection_enabled(), "unlocked": False, "workspace": _current_workspace()})
 
 
 @app.route("/api/settings")
@@ -1330,6 +1343,7 @@ def api_stats():
             "setup": get_setup_status(),
             "health": health,
             "cloud_mode": _cloud_mode_enabled(),
+            "workspace": _current_workspace(),
         }
     )
 

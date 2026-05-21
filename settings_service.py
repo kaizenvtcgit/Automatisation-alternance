@@ -8,6 +8,7 @@ from pathlib import Path
 
 import requests
 from storage_service import BASE_DIR, PROFILE_PATH, read_json, write_json_atomic
+from flask import has_request_context, request, session
 
 
 ENV_PATH = BASE_DIR / ".env"
@@ -88,12 +89,53 @@ def _supabase_headers() -> dict[str, str]:
     }
 
 
+def _sanitize_workspace_slug(value, default: str = "principal") -> str:
+    raw = str(value or "").strip().lower()
+    cleaned = "".join(ch if ch.isalnum() else "-" for ch in raw)
+    while "--" in cleaned:
+        cleaned = cleaned.replace("--", "-")
+    cleaned = cleaned.strip("-")
+    return cleaned or default
+
+
+def get_workspace_slug(default: str = "principal") -> str:
+    if has_request_context():
+        from_query = request.args.get("workspace")
+        if from_query:
+            return _sanitize_workspace_slug(from_query, default)
+        in_session = session.get("workspace_slug")
+        if in_session:
+            return _sanitize_workspace_slug(in_session, default)
+    return _sanitize_workspace_slug(os.environ.get("DEFAULT_WORKSPACE", default), default)
+
+
+def set_workspace_slug(value) -> str:
+    slug = _sanitize_workspace_slug(value, "principal")
+    if has_request_context():
+        session["workspace_slug"] = slug
+    return slug
+
+
+def _workspace_profile_slug(workspace_slug: str) -> str:
+    return f"profil-{workspace_slug}"
+
+
+def _workspace_app_setting_key(base_key: str, workspace_slug: str) -> str:
+    return f"{base_key}::{workspace_slug}"
+
+
 def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
     if not _supabase_settings_enabled():
         return {}
+    workspace_slug = get_workspace_slug()
     cached = _SUPABASE_SETTINGS_CACHE.get("payload")
     ts = float(_SUPABASE_SETTINGS_CACHE.get("ts") or 0.0)
-    if cached and (time.time() - ts) < ttl_seconds:
+    if (
+        cached
+        and isinstance(cached, dict)
+        and cached.get("workspace") == workspace_slug
+        and (time.time() - ts) < ttl_seconds
+    ):
         return cached if isinstance(cached, dict) else {}
 
     try:
@@ -110,14 +152,24 @@ def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
 
         profile_resp = requests.get(
             f"{base}/rest/v1/search_profiles",
-            params={"select": "slug,name,is_active,profile_data", "is_active": "eq.true", "limit": "1"},
+            params={"select": "slug,name,is_active,profile_data", "slug": f"eq.{_workspace_profile_slug(workspace_slug)}", "limit": "1"},
             headers=headers,
             timeout=10,
         )
         profile_resp.raise_for_status()
         profile_rows = profile_resp.json()
+        if not profile_rows:
+            profile_resp = requests.get(
+                f"{base}/rest/v1/search_profiles",
+                params={"select": "slug,name,is_active,profile_data", "is_active": "eq.true", "limit": "1"},
+                headers=headers,
+                timeout=10,
+            )
+            profile_resp.raise_for_status()
+            profile_rows = profile_resp.json()
 
         payload = {
+            "workspace": workspace_slug,
             "app_settings": {row.get("key"): row.get("value") for row in app_settings_rows if isinstance(row, dict)},
             "search_profile": (profile_rows[0].get("profile_data") if profile_rows and isinstance(profile_rows[0], dict) else {}) or {},
         }
@@ -207,7 +259,9 @@ def _profile_payload_from_input(data: dict) -> dict:
 def get_settings() -> dict:
     env = _read_env_map()
     profile = _read_profile_settings()
+    workspace_slug = get_workspace_slug()
     settings = {
+        "workspace": workspace_slug,
         "profile": {
             "prenom": env.get("CANDIDAT_PRENOM", ""),
             "nom": env.get("CANDIDAT_NOM", ""),
@@ -238,12 +292,21 @@ def get_settings() -> dict:
     snapshot = _supabase_settings_snapshot()
     if snapshot:
         remote_settings = snapshot.get("app_settings", {}) if isinstance(snapshot.get("app_settings"), dict) else {}
-        remote_profile = remote_settings.get("candidate_profile", {}) if isinstance(remote_settings.get("candidate_profile"), dict) else {}
-        remote_agent = remote_settings.get("agent_behavior", {}) if isinstance(remote_settings.get("agent_behavior"), dict) else {}
+        profile_key = _workspace_app_setting_key("candidate_profile", workspace_slug)
+        agent_key = _workspace_app_setting_key("agent_behavior", workspace_slug)
+        has_workspace_profile = isinstance(remote_settings.get(profile_key), dict)
+        remote_profile = remote_settings.get(profile_key)
+        if not isinstance(remote_profile, dict):
+            remote_profile = remote_settings.get("candidate_profile", {}) if isinstance(remote_settings.get("candidate_profile"), dict) else {}
+        remote_agent = remote_settings.get(agent_key)
+        if not isinstance(remote_agent, dict):
+            remote_agent = remote_settings.get("agent_behavior", {}) if isinstance(remote_settings.get("agent_behavior"), dict) else {}
         remote_search = snapshot.get("search_profile", {}) if isinstance(snapshot.get("search_profile"), dict) else {}
 
         for key in ("prenom", "nom", "email", "tel", "portfolio", "linkedin", "github", "cv_path", "presentation"):
-            if not settings["profile"].get(key) and remote_profile.get(key):
+            if (has_workspace_profile or workspace_slug != "principal") and key in remote_profile:
+                settings["profile"][key] = str(remote_profile.get(key) or "").strip()
+            elif not settings["profile"].get(key) and remote_profile.get(key):
                 settings["profile"][key] = str(remote_profile.get(key) or "").strip()
 
         if remote_search:
@@ -318,6 +381,7 @@ def _refresh_runtime_modules() -> None:
 
 def save_settings(payload: dict) -> dict:
     current = get_settings()
+    workspace_slug = current.get("workspace") or get_workspace_slug()
     profile_input = payload.get("profile", {}) if isinstance(payload.get("profile"), dict) else {}
     search_input = payload.get("search", {}) if isinstance(payload.get("search"), dict) else {}
     api_input = payload.get("api_keys", {}) if isinstance(payload.get("api_keys"), dict) else {}
@@ -348,8 +412,73 @@ def save_settings(payload: dict) -> dict:
     profile_payload = _profile_payload_from_input({**current["search"], **search_input})
     env_updates["INCLURE_OFFRES_REMOTE"] = "1" if profile_payload["inclure_remote"] else "0"
 
-    _write_env_updates(env_updates)
-    write_json_atomic(PROFILE_PATH, profile_payload)
+    if _supabase_settings_enabled():
+        base = str(os.environ.get("SUPABASE_URL") or "").rstrip("/")
+        headers = {
+            **_supabase_headers(),
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        }
+        profile_payload_remote = {
+            "prenom": env_updates["CANDIDAT_PRENOM"],
+            "nom": env_updates["CANDIDAT_NOM"],
+            "email": env_updates["CANDIDAT_EMAIL"],
+            "tel": env_updates["CANDIDAT_TEL"],
+            "portfolio": env_updates["CANDIDAT_PORTFOLIO"],
+            "linkedin": env_updates["CANDIDAT_LINKEDIN"],
+            "github": env_updates["CANDIDAT_GITHUB"],
+            "cv_path": env_updates["CV_PATH"],
+            "presentation": env_updates["CANDIDAT_PRESENTATION"],
+        }
+        agent_payload_remote = {
+            "confirmation_required": _parse_bool(agent_input.get("confirmation_required", current["agent"]["confirmation_required"]), True),
+            "delay_seconds": _parse_int(agent_input.get("delay_seconds"), current["agent"]["delay_seconds"], 1, 30),
+            "max_candidatures_session": _parse_int(agent_input.get("max_candidatures_session"), current["agent"]["max_candidatures_session"], 1, 500),
+        }
+        app_settings_payload = [
+            {
+                "key": _workspace_app_setting_key("candidate_profile", workspace_slug),
+                "value": profile_payload_remote,
+            },
+            {
+                "key": _workspace_app_setting_key("agent_behavior", workspace_slug),
+                "value": agent_payload_remote,
+            },
+        ]
+        search_profiles_payload = [
+            {
+                "slug": _workspace_profile_slug(workspace_slug),
+                "name": f"Espace {workspace_slug}",
+                "is_active": workspace_slug == "principal",
+                "profile_data": profile_payload,
+            }
+        ]
+        if workspace_slug == "principal":
+            app_settings_payload.extend(
+                [
+                    {"key": "candidate_profile", "value": profile_payload_remote},
+                    {"key": "agent_behavior", "value": agent_payload_remote},
+                ]
+            )
+            search_profiles_payload[0]["name"] = "Profil principal"
+
+        requests.post(
+            f"{base}/rest/v1/app_settings?on_conflict=key",
+            headers=headers,
+            data=json.dumps(app_settings_payload, ensure_ascii=False),
+            timeout=15,
+        ).raise_for_status()
+        requests.post(
+            f"{base}/rest/v1/search_profiles?on_conflict=slug",
+            headers=headers,
+            data=json.dumps(search_profiles_payload, ensure_ascii=False),
+            timeout=15,
+        ).raise_for_status()
+        _SUPABASE_SETTINGS_CACHE["ts"] = 0.0
+        _SUPABASE_SETTINGS_CACHE["payload"] = None
+    else:
+        _write_env_updates(env_updates)
+        write_json_atomic(PROFILE_PATH, profile_payload)
 
     for key, value in env_updates.items():
         os.environ[key] = value
