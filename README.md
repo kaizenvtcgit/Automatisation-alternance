@@ -91,6 +91,24 @@ Si tu veux partager l'application sur un reseau local ou une machine de test, tu
 
 Tu peux aussi definir `APP_SESSION_SECRET` si tu veux separer la cle de session Flask du token lui-meme.
 
+## Sync Supabase
+
+Le miroir Supabase peut maintenant se declencher automatiquement apres les actions importantes :
+
+- sauvegarde des parametres
+- import du CV
+- changement de statut
+- sauvegarde / regeneration de lettre
+- mises a jour d'historique et de refus
+
+Tu peux regler ce comportement dans `.env` avec :
+
+```env
+SUPABASE_SYNC_AUTO=1
+```
+
+Mets `0` si tu preferes garder une synchronisation uniquement manuelle.
+
 ## Preparation hebergement
 
 Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :

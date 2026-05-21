@@ -63,6 +63,10 @@ def _access_unlocked() -> bool:
     return not _access_protection_enabled() or session.get("app_unlocked") is True
 
 
+def _supabase_auto_sync_enabled() -> bool:
+    return (os.environ.get("SUPABASE_SYNC_AUTO") or "1").strip().lower() in {"1", "true", "yes", "on", "oui"}
+
+
 def _repair_text(value: str) -> str:
     text = str(value or "")
     if any(marker in text for marker in ("Ã", "Â", "â€", "â€™", "â€œ", "â€\x9d", "â€¦")):
@@ -135,6 +139,14 @@ def build_health_status() -> dict:
             "ok" if _access_protection_enabled() else "warn",
             "Un token d'accès APP_SECRET protège l'interface." if _access_protection_enabled() else "Aucune protection d'accès n'est active pour l'interface.",
             "api",
+        )
+    )
+    checks.append(
+        _health_check_item(
+            "Auto-sync Supabase",
+            "ok" if _supabase_auto_sync_enabled() else "warn",
+            "La synchronisation distante se déclenche automatiquement après les actions clés." if _supabase_auto_sync_enabled() else "L'auto-sync Supabase est désactivé ; il faudra lancer la sync manuellement.",
+            "sync",
         )
     )
 
@@ -525,6 +537,12 @@ def _launch_supabase_sync_background(reason: str = "") -> tuple[bool, str]:
     return True, "started"
 
 
+def _maybe_launch_supabase_sync(reason: str = "") -> tuple[bool, str]:
+    if not _supabase_auto_sync_enabled():
+        return False, "disabled"
+    return _launch_supabase_sync_background(reason)
+
+
 def _scan_state() -> dict:
     from main import refresh_scan_state_from_exports
 
@@ -792,6 +810,7 @@ def api_settings_save():
     if not isinstance(data, dict):
         return jsonify({"ok": False, "error": "Payload JSON invalide"}), HTTPStatus.BAD_REQUEST
     settings = save_settings(data)
+    _maybe_launch_supabase_sync("settings_save")
     return jsonify({"ok": True, "settings": settings})
 
 
@@ -855,6 +874,7 @@ def api_settings_cv_upload():
             }
         }
     )
+    _maybe_launch_supabase_sync("cv_upload")
     return jsonify(
         {
             "ok": True,
@@ -1151,6 +1171,7 @@ def api_offre_statut(offre_id: str):
         data.get("source", ""),
         data.get("lieu", ""),
     )
+    _maybe_launch_supabase_sync("offre_statut")
     return jsonify({"ok": True, "id": offre_id, "statut": statut})
 
 
@@ -1206,6 +1227,7 @@ def api_lettre_put(offre_id: str):
         titre=lettres[offre_id].get("titre", ""),
         entreprise=lettres[offre_id].get("entreprise", ""),
     )
+    _maybe_launch_supabase_sync("lettre_save")
     return jsonify({"ok": True})
 
 
@@ -1237,6 +1259,7 @@ def api_lettre_regen():
             )
             lettre = resp.choices[0].message.content.strip()
             _sauvegarder_lettre(offre_id, lettre, titre, entreprise)
+            _maybe_launch_supabase_sync("lettre_regen")
             return jsonify({"ok": True, "lettre": lettre, "modele": modele})
         except Exception as exc:
             message = str(exc)
@@ -1357,7 +1380,7 @@ def api_historique_statut():
             row.get("lieu", ""),
         )
         _write_json(HISTO_PATH, histo)
-        _launch_supabase_sync_background("historique_statut")
+        _maybe_launch_supabase_sync("historique_statut")
         return jsonify({"ok": True, "statut": nouveau_normalise})
     for index, row in enumerate(histo):
         match = (id_adzuna and row.get("id_adzuna") == id_adzuna) or (url_cible and row.get("url") == url_cible)
@@ -1377,7 +1400,7 @@ def api_historique_statut():
         )
         break
     _write_json(HISTO_PATH, histo)
-    _launch_supabase_sync_background("historique_statut")
+    _maybe_launch_supabase_sync("historique_statut")
     return jsonify({"ok": True})
 
 
@@ -1393,7 +1416,7 @@ def api_historique_notes():
             histo[index]["notes"] = data.get("notes", "")
             break
     _write_json(HISTO_PATH, histo)
-    _launch_supabase_sync_background("historique_notes")
+    _maybe_launch_supabase_sync("historique_notes")
     return jsonify({"ok": True})
 
 
@@ -1499,7 +1522,7 @@ def api_offres_refuser():
         refus.append(offre_id)
     _write_json(REFUS_PATH, refus)
     _sync_pipeline_status(offre_id, "refusee")
-    _launch_supabase_sync_background("offre_refusee")
+    _maybe_launch_supabase_sync("offre_refusee")
     return jsonify({"ok": True})
 
 
@@ -1510,7 +1533,7 @@ def api_offres_refuser_annuler():
     refus = [row for row in _lire_refus() if row != offre_id]
     _write_json(REFUS_PATH, refus)
     _sync_pipeline_status(offre_id, "")
-    _launch_supabase_sync_background("offre_refus_annule")
+    _maybe_launch_supabase_sync("offre_refus_annule")
     return jsonify({"ok": True})
 
 
@@ -1563,7 +1586,7 @@ def api_historique_ajouter():
             data.get("source", ""),
             data.get("lieu", ""),
         )
-        _launch_supabase_sync_background("historique_ajout")
+        _maybe_launch_supabase_sync("historique_ajout")
         return jsonify({"ok": True, "already_present": True})
     for row in histo:
         if _history_row_matches(row, offre_id, url_cible):
@@ -1597,7 +1620,7 @@ def api_historique_ajouter():
         data.get("source", ""),
         data.get("lieu", ""),
     )
-    _launch_supabase_sync_background("historique_ajout")
+    _maybe_launch_supabase_sync("historique_ajout")
     return jsonify({"ok": True})
 
 
@@ -1615,7 +1638,7 @@ def api_historique_supprimer():
     ]
     _write_json(HISTO_PATH, histo)
     _sync_pipeline_status(id_adzuna, "", url_cible)
-    _launch_supabase_sync_background("historique_suppression")
+    _maybe_launch_supabase_sync("historique_suppression")
     return jsonify({"ok": True, "supprime": before - len(histo)})
 
 
