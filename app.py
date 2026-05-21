@@ -62,6 +62,11 @@ _scan_state_lock = Lock()
 _supabase_runtime_cache: dict[str, object] = {"ts": 0.0, "payload": None}
 
 
+def _invalidate_supabase_runtime_cache() -> None:
+    _supabase_runtime_cache["ts"] = 0.0
+    _supabase_runtime_cache["payload"] = None
+
+
 def _supabase_publishable_key() -> str:
     return (os.environ.get("SUPABASE_PUBLISHABLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or "").strip()
 
@@ -654,6 +659,7 @@ def _upsert_supabase_rows(table: str, rows: list[dict], on_conflict: str) -> Non
         timeout=20,
     )
     response.raise_for_status()
+    _invalidate_supabase_runtime_cache()
 
 
 def _sync_user_scoped_scores_table(scores: dict) -> None:
@@ -956,8 +962,7 @@ def _workspace_blob_write(name: str, payload) -> None:
         timeout=15,
     )
     response.raise_for_status()
-    _supabase_runtime_cache["ts"] = 0.0
-    _supabase_runtime_cache["payload"] = None
+    _invalidate_supabase_runtime_cache()
 
 
 def _workspace_pipeline_data() -> dict:
@@ -1009,6 +1014,12 @@ def _lire_csv() -> list[dict]:
 
 
 def _lire_historique() -> list[dict]:
+    if _user_scoped_table_mode():
+        snapshot = _supabase_runtime_snapshot()
+        if snapshot:
+            rows = snapshot.get("history_rows", [])
+            return rows if isinstance(rows, list) else []
+        return []
     if _supabase_runtime_enabled():
         payload = _workspace_blob_read("workspace_history", None)
         if isinstance(payload, list):
@@ -1026,6 +1037,12 @@ def _lire_historique() -> list[dict]:
 
 
 def _lire_lettres() -> dict:
+    if _user_scoped_table_mode():
+        snapshot = _supabase_runtime_snapshot()
+        if snapshot:
+            payload = snapshot.get("letters", {})
+            return payload if isinstance(payload, dict) else {}
+        return {}
     if _supabase_runtime_enabled():
         payload = _workspace_blob_read("workspace_letters", None)
         if isinstance(payload, dict):
@@ -1043,6 +1060,12 @@ def _lire_lettres() -> dict:
 
 
 def _lire_scores() -> dict:
+    if _user_scoped_table_mode():
+        snapshot = _supabase_runtime_snapshot()
+        if snapshot:
+            payload = snapshot.get("scores", {})
+            return payload if isinstance(payload, dict) else {}
+        return {}
     if _supabase_runtime_enabled():
         payload = _workspace_blob_read("workspace_scores", None)
         if isinstance(payload, dict):
@@ -1060,6 +1083,11 @@ def _lire_scores() -> dict:
 
 
 def _save_scores_merged(updates: dict[str, dict]) -> dict:
+    if _user_scoped_table_mode():
+        scores = _lire_scores()
+        scores.update(updates)
+        _sync_user_scoped_scores_table(scores)
+        return scores
     if _supabase_runtime_enabled():
         scores = _lire_scores()
         scores.update(updates)
@@ -1074,6 +1102,12 @@ def _save_scores_merged(updates: dict[str, dict]) -> dict:
 
 
 def _lire_refus() -> list[str]:
+    if _user_scoped_table_mode():
+        snapshot = _supabase_runtime_snapshot()
+        if snapshot:
+            payload = snapshot.get("refused_ids", [])
+            return payload if isinstance(payload, list) else []
+        return []
     if _supabase_runtime_enabled():
         payload = _workspace_blob_read("workspace_refused", None)
         if isinstance(payload, list):
@@ -1096,6 +1130,9 @@ def _lire_sync_supabase_state() -> dict:
 
 
 def _ecrire_lettres(lettres: dict) -> None:
+    if _user_scoped_table_mode():
+        _sync_user_scoped_letters_table(lettres)
+        return
     if _supabase_runtime_enabled():
         _workspace_blob_write("workspace_letters", lettres)
         _sync_user_scoped_letters_table(lettres)
@@ -1104,6 +1141,9 @@ def _ecrire_lettres(lettres: dict) -> None:
 
 
 def _ecrire_historique(histo: list[dict]) -> None:
+    if _user_scoped_table_mode():
+        _sync_user_scoped_history_table(histo)
+        return
     if _supabase_runtime_enabled():
         _workspace_blob_write("workspace_history", histo)
         _sync_user_scoped_history_table(histo)
@@ -1112,6 +1152,9 @@ def _ecrire_historique(histo: list[dict]) -> None:
 
 
 def _ecrire_refus(refus: list[str]) -> None:
+    if _user_scoped_table_mode():
+        _sync_user_scoped_refused_table(refus)
+        return
     if _supabase_runtime_enabled():
         _workspace_blob_write("workspace_refused", refus)
         _sync_user_scoped_refused_table(refus)

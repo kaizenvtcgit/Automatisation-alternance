@@ -98,8 +98,23 @@ def _sanitize_workspace_slug(value, default: str = "principal") -> str:
     return cleaned or default
 
 
+def _auth_workspace_slug(user_id: str = "", email: str = "") -> str:
+    raw = str(user_id or "").strip()
+    if raw:
+        return _sanitize_workspace_slug(f"user-{raw.split('-')[0][:12]}", "principal")
+    email_prefix = str(email or "").split("@", 1)[0].strip()
+    if email_prefix:
+        return _sanitize_workspace_slug(f"user-{email_prefix}", "principal")
+    return "principal"
+
+
 def get_workspace_slug(default: str = "principal") -> str:
     if has_request_context():
+        auth_user_id = str(session.get("auth_user_id") or "").strip()
+        auth_user_email = str(session.get("auth_user_email") or "").strip()
+        if auth_user_id or auth_user_email:
+            auth_workspace = session.get("workspace_slug") or _auth_workspace_slug(auth_user_id, auth_user_email)
+            return _sanitize_workspace_slug(auth_workspace, "principal")
         from_query = request.args.get("workspace")
         if from_query:
             return _sanitize_workspace_slug(from_query, default)
