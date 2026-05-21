@@ -132,6 +132,16 @@
 
     .nav-tabs {
       border-bottom: 1px solid var(--line);
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      overflow-y: hidden;
+      gap: 0.15rem;
+      padding-bottom: 0.35rem;
+      scrollbar-width: thin;
+    }
+
+    .nav-tabs .nav-item {
+      flex: 0 0 auto;
     }
 
     .nav-tabs .nav-link {
@@ -140,6 +150,7 @@
       font-weight: 600;
       border-radius: 999px;
       margin-right: 0.35rem;
+      white-space: nowrap;
     }
 
     .nav-tabs .nav-link.active {
@@ -161,6 +172,22 @@
       --bs-table-bg: transparent;
       --bs-table-color: var(--text);
       margin-bottom: 0;
+    }
+
+    .table-responsive {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    #tab-offres .table {
+      min-width: 960px;
+    }
+
+    .historique-table {
+      min-width: 840px;
+    }
+
+    #tab-relances .table {
+      min-width: 820px;
     }
 
     .table th {
@@ -707,7 +734,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 0.75rem;
-       flex-wrap: wrap;
+      flex-wrap: wrap;
     }
 
     .tag-editor {
@@ -868,6 +895,10 @@
     .app-toast-error { border-left: 4px solid var(--red); }
     .app-toast-warn { border-left: 4px solid var(--amber); }
 
+    .modal-dialog {
+      margin: 1rem;
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -884,8 +915,41 @@
     }
 
     @media (max-width: 991px) {
+      .navbar .page-shell {
+        align-items: flex-start;
+      }
+
+      .navbar-brand {
+        width: 100%;
+      }
+
+      .navbar-actions {
+        width: 100%;
+        justify-content: flex-start;
+        gap: 0.5rem;
+      }
+
+      .health-check-item,
+      .offer-card-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .kanban-col {
+        min-height: 380px;
+        padding: 1rem;
+      }
+
       .kanban-grid {
         grid-template-columns: repeat(6, minmax(300px, 1fr));
+      }
+
+      .offer-card-actions {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .sticky-actions {
+        top: 66px;
       }
     }
 
@@ -901,6 +965,131 @@
 
       .metric-value {
         font-size: 1.8rem;
+      }
+
+      .metric-card {
+        min-height: 118px;
+      }
+
+      .metric-label {
+        font-size: 0.72rem;
+      }
+
+      .navbar {
+        padding-top: 0.85rem !important;
+        padding-bottom: 0.85rem !important;
+      }
+
+      .navbar-actions > * {
+        width: 100%;
+      }
+
+      .nav-tabs {
+        margin-left: -0.1rem;
+        margin-right: -0.1rem;
+      }
+
+      .nav-tabs .nav-link {
+        padding: 0.55rem 0.9rem;
+        font-size: 0.94rem;
+      }
+
+      .pipeline-toolbar,
+      .settings-card,
+      .card.p-3 {
+        padding: 1rem !important;
+      }
+
+      .kanban-grid {
+        grid-template-columns: repeat(6, minmax(264px, 1fr));
+        gap: 1rem;
+      }
+
+      .kanban-col {
+        border-radius: 18px;
+        padding: 0.9rem;
+      }
+
+      .kanban-head {
+        margin-bottom: 0.85rem;
+        padding-bottom: 0.75rem;
+      }
+
+      .offer-card {
+        padding: 0.85rem;
+      }
+
+      .offer-title {
+        font-size: 0.96rem;
+      }
+
+      .offer-card-summary {
+        font-size: 0.83rem;
+        min-height: 0;
+      }
+
+      .offer-card-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .settings-actions,
+      .settings-actions > div:last-child {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .setup-guide-steps,
+      .health-overview {
+        grid-template-columns: 1fr;
+      }
+
+      .app-toast {
+        min-width: 0;
+        width: min(100vw - 1.5rem, 420px);
+      }
+
+      .toast-shell {
+        left: 0.75rem;
+        right: 0.75rem;
+        top: 4.8rem;
+      }
+
+      .modal-dialog {
+        margin: 0.55rem;
+      }
+    }
+
+    @media (max-width: 575px) {
+      .metric-value {
+        font-size: 1.65rem;
+      }
+
+      .metric-note {
+        font-size: 0.8rem;
+      }
+
+      .summary-line,
+      .description-box,
+      .health-check-item,
+      .setup-step {
+        padding: 0.8rem 0.85rem;
+      }
+
+      .btn,
+      .form-control,
+      .form-select {
+        font-size: 0.95rem;
+      }
+
+      .modal-content {
+        border-radius: 16px;
+      }
+
+      .modal-header,
+      .modal-body,
+      .modal-footer {
+        padding-left: 0.9rem;
+        padding-right: 0.9rem;
       }
     }
   </style>
@@ -940,28 +1129,28 @@
     <div class="tab-content">
       <div class="tab-pane fade show active" id="tab-dashboard">
         <div class="row g-3 mb-4">
-          <div class="col-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
               <div class="metric-label">Offres exportees</div>
               <div class="metric-value text-primary" id="stat-offres">0</div>
               <div class="metric-note" id="stat-offres-note">Dernier export charge</div>
             </div>
           </div>
-          <div class="col-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
               <div class="metric-label">Nouvelles offres</div>
               <div class="metric-value" style="color:var(--blue)" id="stat-nouvelles">0</div>
               <div class="metric-note" id="stat-last-scan">Aucun scan</div>
             </div>
           </div>
-          <div class="col-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
               <div class="metric-label">Offres interessantes</div>
               <div class="metric-value" style="color:var(--green)" id="stat-interessantes">0</div>
               <div class="metric-note" id="stat-interessantes-note">Priorites du pipeline</div>
             </div>
           </div>
-          <div class="col-6 col-xl-3">
+          <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
               <div class="metric-label">Postulations / relances</div>
               <div class="metric-value" style="color:var(--ink)" id="stat-postulations">0</div>
@@ -1078,7 +1267,7 @@
             <div class="card p-3 h-100">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div class="fw-bold">Journal du pipeline</div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                   <button class="btn btn-sm btn-outline-secondary" onclick="copierLog()" title="Copier tout le journal du pipeline"><i class="bi bi-clipboard me-1"></i>Copier</button>
                   <button class="btn btn-sm btn-outline-danger" onclick="arreter()" title="Arreter le processus en cours"><i class="bi bi-stop-circle me-1"></i>Arreter</button>
                   <button class="btn btn-sm btn-outline-secondary" onclick="viderLog()" title="Vider le journal affiche">Vider</button>
@@ -1244,7 +1433,7 @@
             <div class="fw-bold">Configuration du profil</div>
             <div class="settings-subtitle">Les reglages sont sauvegardes dans `.env` et `export/profil_recherche.json`.</div>
           </div>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-outline-secondary" onclick="chargerSettings(true)">Recharger</button>
             <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Sauvegarder les parametres</button>
           </div>
