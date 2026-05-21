@@ -116,6 +116,12 @@ def set_workspace_slug(value) -> str:
     return slug
 
 
+def get_auth_user_id() -> str:
+    if has_request_context():
+        return str(session.get("auth_user_id") or "").strip()
+    return ""
+
+
 def _workspace_profile_slug(workspace_slug: str) -> str:
     return f"profil-{workspace_slug}"
 
@@ -128,12 +134,14 @@ def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
     if not _supabase_settings_enabled():
         return {}
     workspace_slug = get_workspace_slug()
+    auth_user_id = get_auth_user_id()
     cached = _SUPABASE_SETTINGS_CACHE.get("payload")
     ts = float(_SUPABASE_SETTINGS_CACHE.get("ts") or 0.0)
     if (
         cached
         and isinstance(cached, dict)
         and cached.get("workspace") == workspace_slug
+        and cached.get("auth_user_id") == auth_user_id
         and (time.time() - ts) < ttl_seconds
     ):
         return cached if isinstance(cached, dict) else {}
@@ -141,27 +149,41 @@ def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
     try:
         base = str(os.environ.get("SUPABASE_URL") or "").rstrip("/")
         headers = _supabase_headers()
+        app_settings_params = {"select": "key,value,owner_user_id"}
+        if auth_user_id:
+            app_settings_params["owner_user_id"] = f"eq.{auth_user_id}"
+        else:
+            app_settings_params["owner_user_id"] = "is.null"
         app_settings_resp = requests.get(
             f"{base}/rest/v1/app_settings",
-            params={"select": "key,value"},
+            params=app_settings_params,
             headers=headers,
             timeout=10,
         )
         app_settings_resp.raise_for_status()
         app_settings_rows = app_settings_resp.json()
 
+        profile_params = {
+            "select": "slug,name,is_active,profile_data,owner_user_id",
+            "slug": f"eq.{_workspace_profile_slug(workspace_slug)}",
+            "limit": "1",
+        }
+        if auth_user_id:
+            profile_params["owner_user_id"] = f"eq.{auth_user_id}"
+        else:
+            profile_params["owner_user_id"] = "is.null"
         profile_resp = requests.get(
             f"{base}/rest/v1/search_profiles",
-            params={"select": "slug,name,is_active,profile_data", "slug": f"eq.{_workspace_profile_slug(workspace_slug)}", "limit": "1"},
+            params=profile_params,
             headers=headers,
             timeout=10,
         )
         profile_resp.raise_for_status()
         profile_rows = profile_resp.json()
-        if not profile_rows and workspace_slug == "principal":
+        if not profile_rows and workspace_slug == "principal" and not auth_user_id:
             profile_resp = requests.get(
                 f"{base}/rest/v1/search_profiles",
-                params={"select": "slug,name,is_active,profile_data", "is_active": "eq.true", "limit": "1"},
+                params={"select": "slug,name,is_active,profile_data,owner_user_id", "is_active": "eq.true", "owner_user_id": "is.null", "limit": "1"},
                 headers=headers,
                 timeout=10,
             )
@@ -170,6 +192,7 @@ def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
 
         payload = {
             "workspace": workspace_slug,
+            "auth_user_id": auth_user_id,
             "app_settings": {row.get("key"): row.get("value") for row in app_settings_rows if isinstance(row, dict)},
             "search_profile": (profile_rows[0].get("profile_data") if profile_rows and isinstance(profile_rows[0], dict) else {}) or {},
         }
@@ -414,6 +437,7 @@ def _refresh_runtime_modules() -> None:
 def save_settings(payload: dict) -> dict:
     current = get_settings()
     workspace_slug = current.get("workspace") or get_workspace_slug()
+    auth_user_id = get_auth_user_id()
     profile_input = payload.get("profile", {}) if isinstance(payload.get("profile"), dict) else {}
     search_input = payload.get("search", {}) if isinstance(payload.get("search"), dict) else {}
     api_input = payload.get("api_keys", {}) if isinstance(payload.get("api_keys"), dict) else {}
@@ -471,10 +495,12 @@ def save_settings(payload: dict) -> dict:
             {
                 "key": _workspace_app_setting_key("candidate_profile", workspace_slug),
                 "value": profile_payload_remote,
+                "owner_user_id": auth_user_id or None,
             },
             {
                 "key": _workspace_app_setting_key("agent_behavior", workspace_slug),
                 "value": agent_payload_remote,
+                "owner_user_id": auth_user_id or None,
             },
         ]
         search_profiles_payload = [
@@ -483,13 +509,14 @@ def save_settings(payload: dict) -> dict:
                 "name": f"Espace {workspace_slug}",
                 "is_active": workspace_slug == "principal",
                 "profile_data": profile_payload,
+                "owner_user_id": auth_user_id or None,
             }
         ]
-        if workspace_slug == "principal":
+        if workspace_slug == "principal" and not auth_user_id:
             app_settings_payload.extend(
                 [
-                    {"key": "candidate_profile", "value": profile_payload_remote},
-                    {"key": "agent_behavior", "value": agent_payload_remote},
+                    {"key": "candidate_profile", "value": profile_payload_remote, "owner_user_id": None},
+                    {"key": "agent_behavior", "value": agent_payload_remote, "owner_user_id": None},
                 ]
             )
             search_profiles_payload[0]["name"] = "Profil principal"

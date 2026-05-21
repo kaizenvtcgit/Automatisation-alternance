@@ -26,6 +26,7 @@ from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, session
 from settings_service import (
     build_shareable_settings_example,
+    get_auth_user_id,
     get_settings,
     get_setup_status,
     get_workspace_slug,
@@ -165,6 +166,10 @@ def _cloud_workspace_isolated() -> bool:
 
 def _workspace_blob_key(name: str) -> str:
     return f"{name}::{_current_workspace()}"
+
+
+def _current_owner_user_id() -> str:
+    return get_auth_user_id()
 
 
 def _supabase_auto_sync_enabled() -> bool:
@@ -612,9 +617,10 @@ def _format_dt(value: str | None, with_time: bool = True) -> str:
 def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
     if not _supabase_runtime_enabled():
         return None
+    owner_user_id = _current_owner_user_id()
     cached = _supabase_runtime_cache.get("payload")
     ts = float(_supabase_runtime_cache.get("ts") or 0.0)
-    if cached and (time.time() - ts) < ttl_seconds:
+    if cached and isinstance(cached, dict) and cached.get("owner_user_id") == owner_user_id and (time.time() - ts) < ttl_seconds:
         return cached if isinstance(cached, dict) else None
     try:
         offers = _supabase_fetch("offers", order="updated_at.desc")
@@ -623,7 +629,11 @@ def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
         history = _supabase_fetch("applications_history", order="created_at.desc")
         refused = _supabase_fetch("refused_offers")
         scan_runs = _supabase_fetch("scan_runs", order="started_at.desc", limit=6)
-        app_settings_rows = _supabase_fetch("app_settings", select="key,value")
+        app_settings_rows = _supabase_fetch(
+            "app_settings",
+            select="key,value,owner_user_id",
+            filters={"owner_user_id": f"eq.{owner_user_id}"} if owner_user_id else {"owner_user_id": "is.null"},
+        )
         latest_scan_id = scan_runs[0]["id"] if scan_runs and isinstance(scan_runs[0], dict) else None
         scan_sources = _supabase_fetch("scan_run_sources", order="created_at.desc", filters={"scan_run_id": f"eq.{latest_scan_id}"}) if latest_scan_id else []
 
@@ -753,6 +763,7 @@ def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
             }
 
         payload = {
+            "owner_user_id": owner_user_id,
             "offer_rows": offer_rows,
             "history_rows": history_rows,
             "letters": letters_payload,
@@ -792,6 +803,7 @@ def _workspace_blob_read(name: str, default):
 def _workspace_blob_write(name: str, payload) -> None:
     if not _supabase_runtime_enabled():
         return
+    owner_user_id = _current_owner_user_id()
     response = requests.post(
         f"{str(os.environ.get('SUPABASE_URL') or '').rstrip('/')}/rest/v1/app_settings?on_conflict=key",
         headers={
@@ -799,7 +811,16 @@ def _workspace_blob_write(name: str, payload) -> None:
             "Content-Type": "application/json",
             "Prefer": "resolution=merge-duplicates,return=minimal",
         },
-        data=json.dumps([{"key": _workspace_blob_key(name), "value": payload}], ensure_ascii=False),
+        data=json.dumps(
+            [
+                {
+                    "key": _workspace_blob_key(name),
+                    "value": payload,
+                    "owner_user_id": owner_user_id or None,
+                }
+            ],
+            ensure_ascii=False,
+        ),
         timeout=15,
     )
     response.raise_for_status()
