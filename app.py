@@ -172,6 +172,10 @@ def _current_owner_user_id() -> str:
     return get_auth_user_id()
 
 
+def _user_scoped_table_mode() -> bool:
+    return _supabase_runtime_enabled() and bool(_current_owner_user_id())
+
+
 def _supabase_auto_sync_enabled() -> bool:
     return (os.environ.get("SUPABASE_SYNC_AUTO") or "1").strip().lower() in {"1", "true", "yes", "on", "oui"}
 
@@ -614,6 +618,133 @@ def _format_dt(value: str | None, with_time: bool = True) -> str:
     return text[:16] if with_time else text[:10]
 
 
+def _to_iso_datetime(value: str | None, *, end_of_day: bool = False) -> str | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d"):
+        try:
+            parsed = datetime.strptime(text, fmt)
+            if fmt == "%Y-%m-%d" and end_of_day:
+                parsed = parsed.replace(hour=23, minute=59, second=0)
+            return parsed.isoformat()
+        except ValueError:
+            continue
+    return text
+
+
+def _stable_uuid(*parts) -> str:
+    from uuid import NAMESPACE_URL, uuid5
+
+    raw = "||".join(str(part or "").strip() for part in parts)
+    return str(uuid5(NAMESPACE_URL, raw))
+
+
+def _upsert_supabase_rows(table: str, rows: list[dict], on_conflict: str) -> None:
+    if not rows:
+        return
+    response = requests.post(
+        f"{str(os.environ.get('SUPABASE_URL') or '').rstrip('/')}/rest/v1/{table}?on_conflict={on_conflict}",
+        headers={
+            **_supabase_headers(),
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        data=json.dumps(rows, ensure_ascii=False),
+        timeout=20,
+    )
+    response.raise_for_status()
+
+
+def _sync_user_scoped_scores_table(scores: dict) -> None:
+    if not _user_scoped_table_mode():
+        return
+    owner_user_id = _current_owner_user_id()
+    rows = []
+    for signature, payload in (scores or {}).items():
+        if not signature or not isinstance(payload, dict):
+            continue
+        rows.append(
+            {
+                "offer_signature": signature,
+                "owner_user_id": owner_user_id,
+                "score": int(payload.get("score", 0) or 0),
+                "level": str(payload.get("level") or payload.get("score_level") or "faible"),
+                "score_payload": payload,
+                "scored_at": _to_iso_datetime(payload.get("date")),
+                "updated_at": datetime.now().isoformat(),
+            }
+        )
+    _upsert_supabase_rows("offer_scores", rows, "offer_signature,owner_user_id")
+
+
+def _sync_user_scoped_letters_table(lettres: dict) -> None:
+    if not _user_scoped_table_mode():
+        return
+    owner_user_id = _current_owner_user_id()
+    rows = []
+    for signature, payload in (lettres or {}).items():
+        if not signature or not isinstance(payload, dict):
+            continue
+        rows.append(
+            {
+                "offer_signature": signature,
+                "owner_user_id": owner_user_id,
+                "title": str(payload.get("titre") or ""),
+                "company": str(payload.get("entreprise") or ""),
+                "letter_text": str(payload.get("lettre") or ""),
+                "letter_payload": payload,
+                "generated_at": _to_iso_datetime(payload.get("date_gen")),
+                "updated_at": datetime.now().isoformat(),
+            }
+        )
+    _upsert_supabase_rows("offer_letters", rows, "offer_signature,owner_user_id")
+
+
+def _sync_user_scoped_history_table(histo: list[dict]) -> None:
+    if not _user_scoped_table_mode():
+        return
+    owner_user_id = _current_owner_user_id()
+    rows = []
+    for row in (histo or []):
+        if not isinstance(row, dict):
+            continue
+        signature = str(row.get("offer_signature") or "").strip()
+        row_id = _stable_uuid(owner_user_id, signature or row.get("url") or row.get("titre") or "", row.get("date_postulation") or row.get("statut") or "")
+        rows.append(
+            {
+                "id": row_id,
+                "owner_user_id": owner_user_id,
+                "offer_signature": signature or None,
+                "source_offer_id": str(row.get("id_adzuna") or ""),
+                "offer_url": str(row.get("url") or ""),
+                "title": str(row.get("titre") or "Candidature"),
+                "status": str(row.get("statut") or "a_analyser"),
+                "notes": str(row.get("notes") or ""),
+                "applied_at": _to_iso_datetime(row.get("date_postulation")),
+                "followup_due_at": _to_iso_datetime(row.get("date_relance_prevue"), end_of_day=True),
+                "updated_at": datetime.now().isoformat(),
+            }
+        )
+    _upsert_supabase_rows("applications_history", rows, "id")
+
+
+def _sync_user_scoped_refused_table(refus: list[str]) -> None:
+    if not _user_scoped_table_mode():
+        return
+    owner_user_id = _current_owner_user_id()
+    rows = [
+        {
+            "offer_signature": str(signature or "").strip(),
+            "owner_user_id": owner_user_id,
+            "refused_at": datetime.now().isoformat(),
+        }
+        for signature in (refus or [])
+        if str(signature or "").strip()
+    ]
+    _upsert_supabase_rows("refused_offers", rows, "offer_signature,owner_user_id")
+
+
 def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
     if not _supabase_runtime_enabled():
         return None
@@ -932,6 +1063,7 @@ def _save_scores_merged(updates: dict[str, dict]) -> dict:
         scores = _lire_scores()
         scores.update(updates)
         _workspace_blob_write("workspace_scores", scores)
+        _sync_user_scoped_scores_table(scores)
         return scores
     with _scores_lock:
         scores = _lire_scores()
@@ -965,6 +1097,7 @@ def _lire_sync_supabase_state() -> dict:
 def _ecrire_lettres(lettres: dict) -> None:
     if _supabase_runtime_enabled():
         _workspace_blob_write("workspace_letters", lettres)
+        _sync_user_scoped_letters_table(lettres)
         return
     _write_json(LETTRES_PATH, lettres)
 
@@ -972,6 +1105,7 @@ def _ecrire_lettres(lettres: dict) -> None:
 def _ecrire_historique(histo: list[dict]) -> None:
     if _supabase_runtime_enabled():
         _workspace_blob_write("workspace_history", histo)
+        _sync_user_scoped_history_table(histo)
         return
     _write_json(HISTO_PATH, histo)
 
@@ -979,6 +1113,7 @@ def _ecrire_historique(histo: list[dict]) -> None:
 def _ecrire_refus(refus: list[str]) -> None:
     if _supabase_runtime_enabled():
         _workspace_blob_write("workspace_refused", refus)
+        _sync_user_scoped_refused_table(refus)
         return
     _write_json(REFUS_PATH, refus)
 

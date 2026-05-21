@@ -136,6 +136,10 @@ Important :
 - la separation finale par `user_id` dans toutes les tables Supabase viendra ensuite
 - selon la configuration Supabase, une confirmation email peut etre demandee avant la premiere connexion
 
+Pour preparer les tables `scores / lettres / refus` au multi-utilisateur, execute aussi :
+
+- [supabase/user_scoped_offer_tables.sql](supabase/user_scoped_offer_tables.sql)
+
 ## Preparation hebergement
 
 Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :
