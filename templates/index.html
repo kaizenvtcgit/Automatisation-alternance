@@ -1307,11 +1307,11 @@
                   <i class="bi bi-cloud-download"></i>
                 </div>
                 <div>
-                  <div class="fw-bold">Lancer un scan</div>
-                  <div class="text-secondary small">Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.</div>
+                  <div class="fw-bold" id="scan-action-title">Lancer un scan</div>
+                  <div class="text-secondary small" id="scan-action-subtitle">Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.</div>
                 </div>
               </div>
-              <button class="btn btn-primary mt-auto btn-recuperer" onclick="lancerStream('recuperer')">Scanner les sources</button>
+              <button class="btn btn-primary mt-auto btn-recuperer" id="scan-action-button" onclick="lancerStream('recuperer')">Scanner les sources</button>
             </div>
           </div>
           <div class="col-md-6 col-xl-3">
@@ -1322,7 +1322,7 @@
                 </div>
                 <div>
                   <div class="fw-bold">Generer les lettres</div>
-                  <div class="text-secondary small">Utilise Groq pour rediger les lettres manquantes et met a jour le pipeline.</div>
+                  <div class="text-secondary small" id="letters-action-subtitle">Utilise Groq pour rediger les lettres manquantes et met a jour le pipeline.</div>
                 </div>
               </div>
               <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Generer</button>
@@ -1336,7 +1336,7 @@
                 </div>
                 <div>
                   <div class="fw-bold">Lancer l'agent</div>
-                  <div class="text-secondary small">Ouvre le navigateur et tente les candidatures automatiques a partir des lettres generees.</div>
+                  <div class="text-secondary small" id="agent-action-subtitle">Ouvre le navigateur et tente les candidatures automatiques a partir des lettres generees.</div>
                 </div>
               </div>
               <button class="btn btn-dark mt-auto btn-postuler" onclick="lancerStream('postuler')">Postuler</button>
@@ -2222,6 +2222,11 @@
       const pipelineSubtitle = document.getElementById('pipeline-toolbar-subtitle');
       const historySubtitle = document.getElementById('history-panel-subtitle');
       const relancesSubtitle = document.getElementById('relances-panel-subtitle');
+      const scanActionTitle = document.getElementById('scan-action-title');
+      const scanActionSubtitle = document.getElementById('scan-action-subtitle');
+      const scanActionButton = document.getElementById('scan-action-button');
+      const lettersActionSubtitle = document.getElementById('letters-action-subtitle');
+      const agentActionSubtitle = document.getElementById('agent-action-subtitle');
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
       if (!accessState.enabled) {
         statusNode.textContent = '';
@@ -2242,6 +2247,22 @@
       if (pipelineSubtitle) pipelineSubtitle.textContent = `Vue Kanban personnelle de l'espace ${workspaceLabel} pour prioriser les offres et suivre les actions.`;
       if (historySubtitle) historySubtitle.textContent = `Les candidatures, statuts et notes affichés ici appartiennent à l'espace ${workspaceLabel}.`;
       if (relancesSubtitle) relancesSubtitle.textContent = `Seules les relances liées à l'espace ${workspaceLabel} apparaissent dans cette liste.`;
+      if (CLOUD_MODE) {
+        const sharedScan = workspaceLabel !== 'principal';
+        if (scanActionTitle) scanActionTitle.textContent = sharedScan ? 'Lancer un scan partage' : 'Lancer un scan';
+        if (scanActionSubtitle) scanActionSubtitle.textContent = sharedScan
+          ? `Met a jour la base source partagee. Les resultats visibles resteront filtres pour l'espace ${workspaceLabel}.`
+          : 'Recupere les offres, dedoublonne la source partagee et met a jour les donnees visibles.';
+        if (scanActionButton) scanActionButton.textContent = sharedScan ? 'Scanner la source partagee' : 'Scanner les sources';
+        if (lettersActionSubtitle) lettersActionSubtitle.textContent = `Genere les lettres et alimente le suivi personnel de l'espace ${workspaceLabel}.`;
+        if (agentActionSubtitle) agentActionSubtitle.textContent = `Tente les candidatures automatiques a partir des lettres et du suivi de l'espace ${workspaceLabel}.`;
+      } else {
+        if (scanActionTitle) scanActionTitle.textContent = 'Lancer un scan';
+        if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.';
+        if (scanActionButton) scanActionButton.textContent = 'Scanner les sources';
+        if (lettersActionSubtitle) lettersActionSubtitle.textContent = 'Utilise Groq pour rediger les lettres manquantes et met a jour le pipeline.';
+        if (agentActionSubtitle) agentActionSubtitle.textContent = "Ouvre le navigateur et tente les candidatures automatiques a partir des lettres generees.";
+      }
     }
 
     function getStoredWorkspace() {
@@ -3667,7 +3688,7 @@ async function copierLettre() {
     async function triggerSupabaseSync(silent = true, reason = 'manual') {
       if (!silent) startAppLoading('Synchronisation Supabase', 'Le miroir distant est en cours de mise à jour.');
       try {
-        const response = await fetch('/api/supabase/sync', {
+        const response = await fetch(withWorkspaceUrl('/api/supabase/sync'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({reason})
@@ -3708,7 +3729,7 @@ async function copierLettre() {
       };
       const loadingLabel = loadingLabels[type] || ['Traitement en cours', 'L action demandée est en cours.'];
       startAppLoading(loadingLabel[0], loadingLabel[1]);
-      evtSource = new EventSource(`/api/stream/${type}`);
+      evtSource = new EventSource(withWorkspaceUrl(`/api/stream/${type}`));
       evtSource.onmessage = async event => {
         const data = JSON.parse(event.data);
         if (data.error) {
