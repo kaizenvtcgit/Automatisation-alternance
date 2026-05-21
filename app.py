@@ -1491,6 +1491,7 @@ def api_auth_status():
         {
             "ok": True,
             "enabled": _access_protection_enabled(),
+            "auth_enabled": _supabase_auth_enabled(),
             "unlocked": _access_unlocked(),
             "cloud_mode": _cloud_mode_enabled(),
             "workspace": _current_workspace(),
@@ -1602,7 +1603,15 @@ def api_user_logout():
 def api_auth_unlock():
     data = request.get_json(silent=True) or {}
     provided = str(data.get("token") or "").strip()
-    workspace = set_workspace_slug(data.get("workspace") or request.args.get("workspace") or "principal")
+    requested_workspace = data.get("workspace") or request.args.get("workspace") or "principal"
+    if _supabase_auth_enabled():
+        if _auth_logged_in():
+            auth_user = _auth_user_payload() or {}
+            workspace = set_workspace_slug(auth_user.get("workspace") or "principal")
+        else:
+            workspace = set_workspace_slug("principal")
+    else:
+        workspace = set_workspace_slug(requested_workspace)
     if not _access_protection_enabled():
         return jsonify({"ok": True, "enabled": False, "unlocked": True, "workspace": workspace})
     if not provided or provided != _access_secret():

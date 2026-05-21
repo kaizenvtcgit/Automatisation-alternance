@@ -1968,9 +1968,11 @@
           </div>
         </div>
         <div class="modal-body pt-0">
-          <label class="form-label" for="access-workspace-input">Espace personnel</label>
-          <input class="form-control mb-3" id="access-workspace-input" type="text" placeholder="ex: julie, paul, test-ux">
-          <div class="small text-secondary mb-3">Chaque espace garde ses propres parametres sur le meme lien.</div>
+          <div id="access-workspace-block">
+            <label class="form-label" for="access-workspace-input">Espace personnel</label>
+            <input class="form-control mb-3" id="access-workspace-input" type="text" placeholder="ex: julie, paul, test-ux">
+            <div class="small text-secondary mb-3" id="access-workspace-help">Chaque espace garde ses propres parametres sur le meme lien.</div>
+          </div>
           <label class="form-label" for="access-token-input">Token APP_SECRET</label>
           <input class="form-control" id="access-token-input" type="password" placeholder="Saisir le token">
           <div class="small text-danger mt-2 d-none" id="access-token-error"></div>
@@ -2046,7 +2048,7 @@
     let pendingServerStopOnClose = false;
     let setupGuideIndex = 0;
     let setupGuideAutoshown = false;
-    let accessState = {enabled: false, unlocked: true, workspace: 'principal'};
+    let accessState = {enabled: false, unlocked: true, workspace: 'principal', authEnabled: false};
     let userAuthState = {enabled: false, authenticated: false, user: null};
     let loadingOverlayTimer = null;
     let loadingOverlayDepth = 0;
@@ -2255,6 +2257,8 @@
       const userAuthBtn = document.getElementById('user-auth-btn');
       const userLogoutBtn = document.getElementById('user-logout-btn');
       const logoutBtn = document.getElementById('access-logout-btn');
+      const workspaceBlock = document.getElementById('access-workspace-block');
+      const workspaceHelp = document.getElementById('access-workspace-help');
       const stopBtn = document.querySelector('.btn-outline-danger[onclick="fermerServeur()"]');
       const pipelineSubtitle = document.getElementById('pipeline-toolbar-subtitle');
       const historySubtitle = document.getElementById('history-panel-subtitle');
@@ -2264,7 +2268,10 @@
       const scanActionButton = document.getElementById('scan-action-button');
       const lettersActionSubtitle = document.getElementById('letters-action-subtitle');
       const agentActionSubtitle = document.getElementById('agent-action-subtitle');
+      const authModeEnabled = !!(accessState.authEnabled || userAuthState.enabled);
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
+      if (workspaceBlock) workspaceBlock.classList.toggle('d-none', authModeEnabled);
+      if (workspaceHelp && authModeEnabled) workspaceHelp.textContent = 'Le compte personnel definira automatiquement ton espace.';
       if (!accessState.enabled) {
         statusNode.textContent = '';
         workspaceNode.textContent = '';
@@ -2441,6 +2448,8 @@
       try {
         await fetch(withWorkspaceUrl('/api/user/logout'), {method: 'POST'});
       } catch (_) {}
+      accessState.workspace = 'principal';
+      setStoredWorkspace('principal');
       userAuthState = {enabled: userAuthState.enabled, authenticated: false, user: null};
       renderAccessState();
       showUserAuthModal();
@@ -2483,9 +2492,19 @@
       errorNode.textContent = errorMessage || '';
       errorNode.classList.toggle('d-none', !errorMessage);
       const workspaceInput = document.getElementById('access-workspace-input');
-      if (workspaceInput && !workspaceInput.value.trim()) workspaceInput.value = getStoredWorkspace();
+      const authModeEnabled = !!(accessState.authEnabled || userAuthState.enabled);
+      if (workspaceInput) {
+        workspaceInput.disabled = authModeEnabled;
+        if (!authModeEnabled && !workspaceInput.value.trim()) workspaceInput.value = getStoredWorkspace();
+      }
       modalAccessLock.show();
-      setTimeout(() => (document.getElementById('access-workspace-input')?.value ? document.getElementById('access-token-input') : document.getElementById('access-workspace-input'))?.focus(), 120);
+      setTimeout(() => {
+        if (authModeEnabled) {
+          document.getElementById('access-token-input')?.focus();
+          return;
+        }
+        (document.getElementById('access-workspace-input')?.value ? document.getElementById('access-token-input') : document.getElementById('access-workspace-input'))?.focus();
+      }, 120);
     }
 
     function hideAccessModal() {
@@ -2502,11 +2521,12 @@
         const data = await response.json();
         accessState = {
           enabled: !!data.enabled,
+          authEnabled: !!data.auth_enabled,
           unlocked: !!data.unlocked,
           workspace: data.workspace || getStoredWorkspace(),
         };
       } catch (_) {
-        accessState = {enabled: false, unlocked: true, workspace: getStoredWorkspace()};
+        accessState = {enabled: false, authEnabled: false, unlocked: true, workspace: getStoredWorkspace()};
       }
       renderAccessState();
       return accessState;
@@ -2527,8 +2547,9 @@
       const workspaceInput = document.getElementById('access-workspace-input');
       const button = document.getElementById('access-unlock-btn');
       const token = input.value.trim();
-      const workspace = (workspaceInput?.value || '').trim() || 'principal';
-      setStoredWorkspace(workspace);
+      const authModeEnabled = !!(accessState.authEnabled || userAuthState.enabled);
+      const workspace = authModeEnabled ? 'principal' : ((workspaceInput?.value || '').trim() || 'principal');
+      if (!authModeEnabled) setStoredWorkspace(workspace);
       if (!token) {
         showAccessModal('Le token est requis.');
         return;
@@ -2545,7 +2566,12 @@
           showAccessModal(data.error || 'Token invalide');
           return;
         }
-        accessState = {enabled: !!data.enabled, unlocked: !!data.unlocked, workspace: data.workspace || workspace};
+        accessState = {
+          enabled: !!data.enabled,
+          authEnabled: !!data.auth_enabled,
+          unlocked: !!data.unlocked,
+          workspace: data.workspace || workspace
+        };
         renderAccessState();
         hideAccessModal();
         await chargerTout();
@@ -2558,7 +2584,12 @@
 
     async function logoutAccessToken() {
       await fetch('/api/auth/logout', {method: 'POST'});
-      accessState = {enabled: true, unlocked: false, workspace: getStoredWorkspace()};
+      accessState = {
+        enabled: true,
+        authEnabled: !!(accessState.authEnabled || userAuthState.enabled),
+        unlocked: false,
+        workspace: getStoredWorkspace()
+      };
       renderAccessState();
       showAccessModal();
     }
