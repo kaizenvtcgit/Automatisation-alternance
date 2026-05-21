@@ -1664,6 +1664,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    const CLOUD_MODE = {{ "true" if cloud_mode else "false" }};
     const STATUS_LABELS = {
       nouvelle: 'Nouvelle offre',
       a_analyser: 'A analyser',
@@ -1770,6 +1771,8 @@
     function renderAccessState() {
       const statusNode = document.getElementById('access-status');
       const logoutBtn = document.getElementById('access-logout-btn');
+      const stopBtn = document.querySelector('.btn-outline-danger[onclick="fermerServeur()"]');
+      if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
       if (!accessState.enabled) {
         statusNode.textContent = '';
         logoutBtn.classList.add('d-none');
@@ -3213,6 +3216,10 @@ async function copierLettre() {
     }
 
     async function fermerServeur() {
+      if (CLOUD_MODE) {
+        showToast('Action indisponible', "L'arrêt du serveur est désactivé en mode cloud.", 'warn');
+        return;
+      }
       pendingServerStopOnClose = false;
       if (!confirm("Fermer le serveur local ? L'interface ne repondra plus tant que tu ne l'auras pas relance.")) return;
       try {
@@ -3259,12 +3266,14 @@ async function copierLettre() {
 
     registerCurrentTab();
     window.addEventListener('beforeunload', event => {
+      if (CLOUD_MODE) return;
       if (!isLastKnownTab()) return;
       pendingServerStopOnClose = true;
       event.preventDefault();
       event.returnValue = '';
     });
     window.addEventListener('pagehide', () => {
+      if (CLOUD_MODE) return;
       const shouldStop = pendingServerStopOnClose && isLastKnownTab();
       unregisterCurrentTab();
       if (!shouldStop) return;

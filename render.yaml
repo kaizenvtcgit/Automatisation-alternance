@@ -1,0 +1,43 @@
+services:
+  - type: web
+    name: alternance-auto
+    runtime: python
+    plan: starter
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --bind 0.0.0.0:$PORT --workers 2 --threads 4 wsgi:app
+    healthCheckPath: /healthz
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.10
+      - key: ALTERNANCE_CLOUD_MODE
+        value: "1"
+      - key: APP_HOST
+        value: 0.0.0.0
+      - key: STORAGE_BACKEND
+        value: local
+      - key: SUPABASE_SYNC_AUTO
+        value: "1"
+      - key: APP_SECRET
+        sync: false
+      - key: APP_SESSION_SECRET
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: FT_CLIENT_ID
+        sync: false
+      - key: FT_CLIENT_SECRET
+        sync: false
+      - key: ADZUNA_APP_ID
+        sync: false
+      - key: ADZUNA_APP_KEY
+        sync: false
+      - key: LBA_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

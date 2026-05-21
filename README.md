@@ -114,6 +114,9 @@ Mets `0` si tu preferes garder une synchronisation uniquement manuelle.
 Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :
 
 - `wsgi.py` expose l'application Flask pour `gunicorn`
+- `render.yaml` prepare un premier deploiement controle sur Render
+- `.python-version` verrouille Python 3.12 pour le cloud
+- `/healthz` fournit un endpoint de health check
 - `APP_HOST`, `APP_PORT`, `PORT` et `ALTERNANCE_CLOUD_MODE` permettent d'adapter le demarrage
 - `STORAGE_BACKEND=local` conserve le stockage actuel sur fichiers
 - en local, le comportement par defaut reste `127.0.0.1:5001`
@@ -123,6 +126,10 @@ Exemple de commande compatible cloud :
 ```bash
 gunicorn wsgi:app
 ```
+
+Pour la procedure detaillee du premier lot de mise en ligne :
+
+- voir [DEPLOIEMENT_RENDER.md](DEPLOIEMENT_RENDER.md)
 
 ## Donnees locales
 

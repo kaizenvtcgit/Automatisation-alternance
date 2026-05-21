@@ -67,6 +67,10 @@ def _supabase_auto_sync_enabled() -> bool:
     return (os.environ.get("SUPABASE_SYNC_AUTO") or "1").strip().lower() in {"1", "true", "yes", "on", "oui"}
 
 
+def _cloud_mode_enabled() -> bool:
+    return (os.environ.get("ALTERNANCE_CLOUD_MODE") or "0").strip() == "1"
+
+
 def _repair_text(value: str) -> str:
     text = str(value or "")
     if any(marker in text for marker in ("Ã", "Â", "â€", "â€™", "â€œ", "â€\x9d", "â€¦")):
@@ -752,7 +756,7 @@ def handle_unexpected_error(err: Exception):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("index.html", cloud_mode=_cloud_mode_enabled())
 
 
 @app.before_request
@@ -766,7 +770,7 @@ def require_access_token():
         return None
     if path.startswith("/api/"):
         return jsonify({"ok": False, "locked": True, "error": "Accès protégé par token"}), HTTPStatus.UNAUTHORIZED
-    return render_template("index.html"), HTTPStatus.UNAUTHORIZED
+    return render_template("index.html", cloud_mode=_cloud_mode_enabled()), HTTPStatus.UNAUTHORIZED
 
 
 @app.route("/api/auth/status")
@@ -776,6 +780,7 @@ def api_auth_status():
             "ok": True,
             "enabled": _access_protection_enabled(),
             "unlocked": _access_unlocked(),
+            "cloud_mode": _cloud_mode_enabled(),
         }
     )
 
@@ -1081,6 +1086,7 @@ def api_stats():
             "supabase_sync": _lire_sync_supabase_state(),
             "setup": get_setup_status(),
             "health": health,
+            "cloud_mode": _cloud_mode_enabled(),
         }
     )
 
@@ -1655,6 +1661,9 @@ def api_arreter():
 def api_serveur_fermer():
     global _proc_actif
 
+    if _cloud_mode_enabled():
+        return jsonify({"ok": False, "error": "Arrêt distant désactivé en mode cloud"}), HTTPStatus.FORBIDDEN
+
     if _proc_actif and _proc_actif.poll() is None:
         _proc_actif.terminate()
 
@@ -1664,6 +1673,11 @@ def api_serveur_fermer():
 
     Thread(target=_shutdown_app, daemon=True).start()
     return jsonify({"ok": True, "message": "Serveur en cours d'arret"})
+
+
+@app.route("/healthz")
+def healthz():
+    return jsonify({"ok": True, "cloud_mode": _cloud_mode_enabled()}), HTTPStatus.OK
 
 
 if __name__ == "__main__":
