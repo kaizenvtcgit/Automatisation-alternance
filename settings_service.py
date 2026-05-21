@@ -368,10 +368,16 @@ def get_settings() -> dict:
         remote_profile = remote_settings.get(profile_key)
         if not isinstance(remote_profile, dict) and workspace_slug == "principal":
             remote_profile = remote_settings.get("candidate_profile", {}) if isinstance(remote_settings.get("candidate_profile"), dict) else {}
+        if not isinstance(remote_profile, dict):
+            remote_profile = {}
         remote_agent = remote_settings.get(agent_key)
         if not isinstance(remote_agent, dict) and workspace_slug == "principal":
             remote_agent = remote_settings.get("agent_behavior", {}) if isinstance(remote_settings.get("agent_behavior"), dict) else {}
+        if not isinstance(remote_agent, dict):
+            remote_agent = {}
         remote_search = snapshot.get("search_profile", {}) if isinstance(snapshot.get("search_profile"), dict) else {}
+        if not isinstance(remote_search, dict):
+            remote_search = {}
 
         for key in ("prenom", "nom", "email", "tel", "portfolio", "linkedin", "github", "cv_path", "presentation"):
             if (has_workspace_profile or workspace_slug != "principal") and key in remote_profile:
