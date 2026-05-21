@@ -60,6 +60,9 @@ _proc_actif: subprocess.Popen | None = None
 _scores_lock = Lock()
 _scan_state_lock = Lock()
 _supabase_runtime_cache: dict[str, object] = {"ts": 0.0, "payload": None}
+_cloud_task_lock = Lock()
+CLOUD_TASK_STATE_PATH = BASE_DIR / "export" / "cloud_task_state.json"
+CLOUD_TASK_LOG_PATH = BASE_DIR / "export" / "cloud_task.log"
 
 
 def _invalidate_supabase_runtime_cache() -> None:
@@ -630,6 +633,108 @@ def _read_json(path: Path, default):
 
 def _write_json(path: Path, payload) -> None:
     write_json_atomic(path, payload)
+
+
+def _cloud_task_state_default() -> dict:
+    return {
+        "status": "idle",
+        "task_type": "",
+        "label": "",
+        "started_at": "",
+        "finished_at": "",
+        "exit_code": None,
+        "message": "",
+        "log_path": str(CLOUD_TASK_LOG_PATH),
+    }
+
+
+def _lire_cloud_task_state() -> dict:
+    data = _read_json(CLOUD_TASK_STATE_PATH, _cloud_task_state_default())
+    return data if isinstance(data, dict) else _cloud_task_state_default()
+
+
+def _ecrire_cloud_task_state(payload: dict) -> dict:
+    merged = {**_cloud_task_state_default(), **(payload if isinstance(payload, dict) else {})}
+    _write_json(CLOUD_TASK_STATE_PATH, merged)
+    return merged
+
+
+def _tail_cloud_task_log(limit: int = 120) -> list[str]:
+    if not CLOUD_TASK_LOG_PATH.exists():
+        return []
+    try:
+        lines = CLOUD_TASK_LOG_PATH.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return []
+    return lines[-limit:]
+
+
+def _launch_cloud_background_task(task_type: str, label: str, cmd: list[str], extra_env: dict | None = None) -> tuple[bool, str, dict]:
+    global _proc_actif
+    with _cloud_task_lock:
+        if _proc_actif is not None and _proc_actif.poll() is None:
+            state = _lire_cloud_task_state()
+            return False, "already_running", state
+
+        CLOUD_TASK_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        CLOUD_TASK_LOG_PATH.write_text("", encoding="utf-8")
+        started_at = datetime.now().isoformat(timespec="seconds")
+        state = _ecrire_cloud_task_state(
+            {
+                "status": "running",
+                "task_type": task_type,
+                "label": label,
+                "started_at": started_at,
+                "finished_at": "",
+                "exit_code": None,
+                "message": f"{label} lance en arriere-plan.",
+            }
+        )
+        env = {
+            **os.environ,
+            "PYTHONUNBUFFERED": "1",
+            "PYTHONIOENCODING": "utf-8",
+            **(extra_env or {}),
+        }
+        log_handle = CLOUD_TASK_LOG_PATH.open("a", encoding="utf-8", buffering=1)
+        proc = subprocess.Popen(
+            cmd,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            stdin=subprocess.DEVNULL,
+            cwd=str(BASE_DIR),
+            env=env,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        _proc_actif = proc
+
+        def _watch() -> None:
+            global _proc_actif
+            try:
+                code = proc.wait()
+                finished_at = datetime.now().isoformat(timespec="seconds")
+                _ecrire_cloud_task_state(
+                    {
+                        "status": "completed" if code == 0 else "failed",
+                        "task_type": task_type,
+                        "label": label,
+                        "started_at": started_at,
+                        "finished_at": finished_at,
+                        "exit_code": code,
+                        "message": f"{label} termine." if code == 0 else f"{label} termine avec erreurs.",
+                    }
+                )
+            finally:
+                try:
+                    log_handle.close()
+                except Exception:
+                    pass
+                _proc_actif = None
+
+        Thread(target=_watch, daemon=True).start()
+        return True, "started", state
 
 
 def _supabase_headers() -> dict[str, str]:
@@ -2266,7 +2371,38 @@ def stream_recuperer():
 
 @app.route("/api/scan/start", methods=["POST"])
 def api_scan_start():
+    if _cloud_mode_enabled():
+        ok, status, state = _launch_cloud_background_task("recuperer", "Scan des sources", [sys.executable, "main.py"])
+        return jsonify({"ok": ok, "status": status, "task": state})
     return jsonify({"ok": True, "stream_url": "/api/stream/recuperer"})
+
+
+@app.route("/api/cloud-task/start", methods=["POST"])
+def api_cloud_task_start():
+    if not _cloud_mode_enabled():
+        return jsonify({"ok": False, "error": "Route reservee au mode cloud"}), HTTPStatus.BAD_REQUEST
+    data = request.get_json(silent=True) or {}
+    task_type = str(data.get("type") or "").strip().lower()
+    task_map = {
+        "recuperer": ("Scan des sources", [sys.executable, "main.py"], None),
+        "generer-lettres": ("Generation des lettres", [sys.executable, "main.py", "lettres"], None),
+        "postuler": ("Lancement de l agent", [sys.executable, "main.py", "postuler", "--auto"], {"ALTERNANCE_WEB_MODE": "1"}),
+        "sync-supabase": ("Synchronisation Supabase", [sys.executable, "scripts/sync_to_supabase.py", "--execute"], None),
+    }
+    config = task_map.get(task_type)
+    if not config:
+        return jsonify({"ok": False, "error": "Type de tache inconnu"}), HTTPStatus.BAD_REQUEST
+    label, cmd, extra_env = config
+    ok, status, state = _launch_cloud_background_task(task_type, label, cmd, extra_env)
+    return jsonify({"ok": ok, "status": status, "task": state})
+
+
+@app.route("/api/cloud-task/state")
+def api_cloud_task_state():
+    if not _cloud_mode_enabled():
+        return jsonify({"ok": False, "error": "Route reservee au mode cloud"}), HTTPStatus.BAD_REQUEST
+    state = _lire_cloud_task_state()
+    return jsonify({"ok": True, "task": state, "log_lines": _tail_cloud_task_log()})
 
 
 @app.route("/api/stream/postuler")
@@ -2591,6 +2727,15 @@ def api_arreter():
     global _proc_actif
     if _proc_actif and _proc_actif.poll() is None:
         _proc_actif.terminate()
+        if _cloud_mode_enabled():
+            _ecrire_cloud_task_state(
+                {
+                    **_lire_cloud_task_state(),
+                    "status": "failed",
+                    "finished_at": datetime.now().isoformat(timespec="seconds"),
+                    "message": "Traitement arrete manuellement.",
+                }
+            )
         return jsonify({"ok": True})
     return jsonify({"ok": False})
 

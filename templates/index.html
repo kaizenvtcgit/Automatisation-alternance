@@ -2043,6 +2043,7 @@
     let coachLoading = false;
     let coachRecognition = null;
     let coachListening = false;
+    let cloudTaskPoller = null;
     const TAB_REGISTRY_KEY = 'alternance_auto_open_tabs';
     const tabSessionId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     let pendingServerStopOnClose = false;
@@ -3909,6 +3910,15 @@ async function copierLettre() {
       panel.scrollTop = panel.scrollHeight;
     }
 
+    function setLogContent(lines = []) {
+      const panel = document.getElementById('log-panel');
+      const items = Array.isArray(lines) ? lines.filter(Boolean) : [];
+      panel.innerHTML = items.length
+        ? items.map(line => `<span>${esc(line)}</span>`).join('\n')
+        : 'Pret.';
+      panel.scrollTop = panel.scrollHeight;
+    }
+
     async function triggerSupabaseSync(silent = true, reason = 'manual') {
       if (!silent) startAppLoading('Synchronisation Supabase', 'Le miroir distant est en cours de mise à jour.');
       try {
@@ -3939,6 +3949,10 @@ async function copierLettre() {
     }
 
     function lancerStream(type) {
+      if (CLOUD_MODE) {
+        lancerCloudTask(type);
+        return;
+      }
       if (evtSource) {
         evtSource.close();
         evtSource = null;
@@ -3993,14 +4007,83 @@ async function copierLettre() {
       };
     }
 
+    function stopCloudTaskPolling() {
+      if (cloudTaskPoller) {
+        clearInterval(cloudTaskPoller);
+        cloudTaskPoller = null;
+      }
+    }
+
+    async function refreshCloudTaskState({silent = false} = {}) {
+      if (!CLOUD_MODE) return null;
+      try {
+        const response = await fetch(withWorkspaceUrl('/api/cloud-task/state'));
+        const data = await response.json();
+        if (!data.ok) return null;
+        const task = data.task || {};
+        const processNode = document.getElementById('process-status');
+        if (Array.isArray(data.log_lines)) setLogContent(data.log_lines);
+        if (task.status === 'running') {
+          if (processNode) processNode.textContent = `${task.label || 'Traitement'} en cours`;
+          setButtonsDisabled(true);
+        } else {
+          if (processNode) processNode.textContent = '';
+          setButtonsDisabled(false);
+          stopCloudTaskPolling();
+          if (!silent) await chargerTout();
+        }
+        return data;
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function lancerCloudTask(type) {
+      stopCloudTaskPolling();
+      const loadingLabels = {
+        recuperer: ['Scan des sources', 'Le scan est lancé en arrière-plan sur le serveur cloud.'],
+        'generer-lettres': ['Generation des lettres', 'La génération est lancée en arrière-plan sur le serveur cloud.'],
+        postuler: ['Lancement de l agent', 'L agent est lancé en arrière-plan sur le serveur cloud.'],
+        'sync-supabase': ['Synchronisation Supabase', 'La synchronisation est lancée en arrière-plan.'],
+      };
+      const loadingLabel = loadingLabels[type] || ['Traitement en cours', 'Le traitement est lancé en arrière-plan.'];
+      document.getElementById('log-panel').textContent = `Lancement ${type}...`;
+      setButtonsDisabled(true);
+      startAppLoading(loadingLabel[0], loadingLabel[1]);
+      try {
+        const url = type === 'recuperer' ? withWorkspaceUrl('/api/scan/start') : withWorkspaceUrl('/api/cloud-task/start');
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: type === 'recuperer' ? JSON.stringify({}) : JSON.stringify({type})
+        });
+        const data = await response.json();
+        if (!data.ok && data.status !== 'already_running') {
+          throw new Error(data.error || 'Lancement impossible');
+        }
+        appendLog(data.status === 'already_running' ? 'Un traitement est deja en cours sur le serveur.' : `${loadingLabel[0]} lance en arriere-plan.`, data.status === 'already_running' ? 'log-warn' : 'log-ok');
+        await refreshCloudTaskState({silent: true});
+        cloudTaskPoller = setInterval(() => {
+          refreshCloudTaskState({silent: false});
+        }, 3500);
+      } catch (error) {
+        appendLog(error.message || 'Lancement impossible', 'log-err');
+        setButtonsDisabled(false);
+      } finally {
+        stopAppLoading(true);
+      }
+    }
+
     async function arreter() {
       await fetch('/api/arreter', {method: 'POST'});
+      stopCloudTaskPolling();
       if (evtSource) {
         evtSource.close();
         evtSource = null;
       }
       appendLog('Processus arrete', 'log-warn');
       setButtonsDisabled(false);
+      document.getElementById('process-status').textContent = '';
       await chargerTout();
     }
 
@@ -4103,7 +4186,17 @@ async function copierLettre() {
     ensureAccessUnlocked(true).then(async ok => {
       if (!ok) return;
       const userOk = await ensureUserAuthenticated(true);
-      if (userOk) chargerTout();
+      if (userOk) {
+        await chargerTout();
+        if (CLOUD_MODE) {
+          const taskState = await refreshCloudTaskState({silent: true});
+          if (taskState?.task?.status === 'running') {
+            cloudTaskPoller = setInterval(() => {
+              refreshCloudTaskState({silent: false});
+            }, 3500);
+          }
+        }
+      }
     });
     setInterval(async () => {
       const accessOk = await ensureAccessUnlocked(false);
