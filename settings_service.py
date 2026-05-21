@@ -327,6 +327,8 @@ def get_settings() -> dict:
     env = _read_env_map()
     profile = _read_profile_settings()
     workspace_slug = get_workspace_slug()
+    auth_user_id = get_auth_user_id()
+    cloud_authenticated = _supabase_settings_enabled() and bool(auth_user_id)
     settings = {
         "workspace": workspace_slug,
         "profile": {
@@ -356,7 +358,7 @@ def get_settings() -> dict:
             "max_candidatures_session": _parse_int(env.get("AGENT_MAX_CANDIDATURES_SESSION", "20"), 20, 1, 500),
         },
     }
-    if _supabase_settings_enabled() and workspace_slug != "principal":
+    if cloud_authenticated or (_supabase_settings_enabled() and workspace_slug != "principal"):
         settings["profile"] = _blank_workspace_profile()
         settings["search"] = _blank_workspace_search()
     snapshot = _supabase_settings_snapshot()
@@ -459,6 +461,7 @@ def save_settings(payload: dict) -> dict:
     current = get_settings()
     workspace_slug = current.get("workspace") or get_workspace_slug()
     auth_user_id = get_auth_user_id()
+    cloud_authenticated = _supabase_settings_enabled() and bool(auth_user_id)
     profile_input = payload.get("profile", {}) if isinstance(payload.get("profile"), dict) else {}
     search_input = payload.get("search", {}) if isinstance(payload.get("search"), dict) else {}
     api_input = payload.get("api_keys", {}) if isinstance(payload.get("api_keys"), dict) else {}
@@ -560,10 +563,12 @@ def save_settings(payload: dict) -> dict:
         _write_env_updates(env_updates)
         write_json_atomic(PROFILE_PATH, profile_payload)
 
-    for key, value in env_updates.items():
-        os.environ[key] = value
+    if not cloud_authenticated:
+        for key, value in env_updates.items():
+            os.environ[key] = value
 
-    _refresh_runtime_modules()
+    if not cloud_authenticated:
+        _refresh_runtime_modules()
     return get_settings()
 
 

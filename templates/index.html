@@ -3175,8 +3175,10 @@
         if (!data.ok) throw new Error(data.error || 'Chargement impossible');
         populateSettings(data.settings);
         if (!silent) appendLog('Parametres recharges', 'log-ok');
+        return data.settings;
       } catch (error) {
         if (!silent) appendLog(`Erreur parametres: ${error.message}`, 'log-warn');
+        return null;
       }
     }
 
@@ -3195,7 +3197,9 @@
         populateSettings(data.settings);
         appendLog('Parametres sauvegardes', 'log-ok');
         showToast('Parametres enregistres', 'Les nouveaux reglages ont bien ete sauvegardes.', 'success');
-        await chargerTout();
+        const stats = await fetchJsonSafe('/api/stats', statsData || {});
+        statsData = (stats && typeof stats === 'object' && !Array.isArray(stats)) ? stats : (statsData || {});
+        renderStats();
         renderSetupGuideModal();
       } catch (error) {
         appendLog(`Erreur sauvegarde parametres: ${error.message}`, 'log-err');
