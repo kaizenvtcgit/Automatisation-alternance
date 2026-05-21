@@ -912,7 +912,11 @@
         <i class="bi bi-briefcase-fill me-2" style="color:var(--blue)"></i>Alternance.Auto
       </div>
       <div class="navbar-actions">
+        <div id="access-status" class="small text-secondary"></div>
         <div id="process-status" class="small text-secondary"></div>
+        <button class="btn btn-sm btn-outline-secondary d-none" id="access-logout-btn" onclick="logoutAccessToken()">
+          <i class="bi bi-shield-lock me-1"></i>Verrouiller
+        </button>
         <button class="btn btn-sm btn-outline-danger" onclick="fermerServeur()">
           <i class="bi bi-power me-1"></i>Fermer le serveur
         </button>
@@ -1637,6 +1641,27 @@
     </div>
   </div>
 
+  <div class="modal fade" id="modalAccessLock" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <div>
+            <h5 class="modal-title mb-1">Acces protege</h5>
+            <div class="text-secondary small">Entre le token d'acces de l'application pour de verrouiller l'interface.</div>
+          </div>
+        </div>
+        <div class="modal-body pt-0">
+          <label class="form-label" for="access-token-input">Token APP_SECRET</label>
+          <input class="form-control" id="access-token-input" type="password" placeholder="Saisir le token">
+          <div class="small text-danger mt-2 d-none" id="access-token-error"></div>
+        </div>
+        <div class="modal-footer border-0">
+          <button class="btn btn-primary" type="button" id="access-unlock-btn" onclick="submitAccessToken()">Deverrouiller</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const STATUS_LABELS = {
@@ -1661,6 +1686,7 @@
     let modalLettre = null;
     let modalSearchCoach = null;
     let modalSetupGuide = null;
+    let modalAccessLock = null;
     let offersSort = { key: 'date', direction: 'desc' };
     let selectedOfferId = '';
     let coachMessages = [];
@@ -1671,6 +1697,7 @@
     let pendingServerStopOnClose = false;
     let setupGuideIndex = 0;
     let setupGuideAutoshown = false;
+    let accessState = {enabled: false, unlocked: true};
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -1738,6 +1765,103 @@
       const instance = new bootstrap.Toast(toast, {delay: type === 'error' ? 7000 : 4500});
       toast.addEventListener('hidden.bs.toast', () => toast.remove());
       instance.show();
+    }
+
+    function renderAccessState() {
+      const statusNode = document.getElementById('access-status');
+      const logoutBtn = document.getElementById('access-logout-btn');
+      if (!accessState.enabled) {
+        statusNode.textContent = '';
+        logoutBtn.classList.add('d-none');
+        return;
+      }
+      if (accessState.unlocked) {
+        statusNode.innerHTML = '<span class="pulse"></span>Acces protege actif';
+        logoutBtn.classList.remove('d-none');
+      } else {
+        statusNode.textContent = 'Interface verrouillee';
+        logoutBtn.classList.add('d-none');
+      }
+    }
+
+    function showAccessModal(errorMessage = '') {
+      if (!modalAccessLock) modalAccessLock = new bootstrap.Modal(document.getElementById('modalAccessLock'));
+      const errorNode = document.getElementById('access-token-error');
+      errorNode.textContent = errorMessage || '';
+      errorNode.classList.toggle('d-none', !errorMessage);
+      modalAccessLock.show();
+      setTimeout(() => document.getElementById('access-token-input')?.focus(), 120);
+    }
+
+    function hideAccessModal() {
+      if (modalAccessLock) modalAccessLock.hide();
+      const errorNode = document.getElementById('access-token-error');
+      errorNode.textContent = '';
+      errorNode.classList.add('d-none');
+      document.getElementById('access-token-input').value = '';
+    }
+
+    async function fetchAccessStatus() {
+      try {
+        const response = await fetch('/api/auth/status');
+        const data = await response.json();
+        accessState = {
+          enabled: !!data.enabled,
+          unlocked: !!data.unlocked,
+        };
+      } catch (_) {
+        accessState = {enabled: false, unlocked: true};
+      }
+      renderAccessState();
+      return accessState;
+    }
+
+    async function ensureAccessUnlocked(showModalIfNeeded = true) {
+      const state = await fetchAccessStatus();
+      if (state.enabled && !state.unlocked) {
+        if (showModalIfNeeded) showAccessModal();
+        return false;
+      }
+      if (!state.enabled || state.unlocked) hideAccessModal();
+      return true;
+    }
+
+    async function submitAccessToken() {
+      const input = document.getElementById('access-token-input');
+      const button = document.getElementById('access-unlock-btn');
+      const token = input.value.trim();
+      if (!token) {
+        showAccessModal('Le token est requis.');
+        return;
+      }
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/auth/unlock', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({token})
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          showAccessModal(data.error || 'Token invalide');
+          return;
+        }
+        accessState = {enabled: !!data.enabled, unlocked: !!data.unlocked};
+        renderAccessState();
+        hideAccessModal();
+        await chargerTout();
+      } catch (error) {
+        showAccessModal(error.message || 'Impossible de deverrouiller');
+      } finally {
+        button.disabled = false;
+      }
+    }
+
+    async function logoutAccessToken() {
+      await fetch('/api/auth/logout', {method: 'POST'});
+      accessState = {enabled: true, unlocked: false};
+      renderAccessState();
+      showAccessModal();
     }
 
     function getOpenTabIds() {
@@ -2390,6 +2514,12 @@
       try {
         const response = await fetch(url);
         const data = await response.json();
+        if (response.status === 401 && data?.locked) {
+          accessState = {enabled: true, unlocked: false};
+          renderAccessState();
+          showAccessModal(data.error || 'Acces protege');
+          return fallbackValue;
+        }
         if (!response.ok) {
           throw new Error(data?.error || `${url} a renvoyé ${response.status}`);
         }
@@ -2729,6 +2859,8 @@
 
     async function chargerTout() {
       try {
+        const accessOk = await ensureAccessUnlocked(true);
+        if (!accessOk) return;
         const [stats, offres, histo, lettres, settings] = await Promise.all([
           fetchJsonSafe('/api/stats', statsData || {}),
           fetchJsonSafe('/api/offres', offresData || []),
@@ -3151,9 +3283,19 @@ async function copierLettre() {
     document.querySelectorAll('.api-key-input').forEach(input => {
       input.addEventListener('input', () => setApiKeyStatus(input.id, !!input.value.trim()));
     });
+    document.getElementById('access-token-input').addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        submitAccessToken();
+      }
+    });
     loadSelectedOfferId();
-    chargerTout();
+    ensureAccessUnlocked(true).then(ok => {
+      if (ok) chargerTout();
+    });
     setInterval(async () => {
+      const accessOk = await ensureAccessUnlocked(false);
+      if (!accessOk) return;
       const data = await fetchJsonSafe('/api/stats', statsData || {});
       if (data && typeof data === 'object' && !Array.isArray(data)) {
         statsData = data;

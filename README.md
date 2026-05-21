@@ -81,6 +81,16 @@ Pour un nouvel utilisateur, le plus important est de completer d'abord :
 
 L'interface affiche maintenant un bloc `Configuration initiale` pour aider a voir rapidement ce qu'il manque.
 
+## Protection d'acces
+
+Si tu veux partager l'application sur un reseau local ou une machine de test, tu peux activer un verrou simple :
+
+1. renseigne `APP_SECRET` dans `.env`
+2. relance l'application
+3. l'interface demandera ce token au premier acces
+
+Tu peux aussi definir `APP_SESSION_SECRET` si tu veux separer la cle de session Flask du token lui-meme.
+
 ## Preparation hebergement
 
 Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :

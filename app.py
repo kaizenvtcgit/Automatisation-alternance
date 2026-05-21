@@ -21,7 +21,7 @@ from threading import Lock, Thread
 from urllib.request import urlopen
 
 from dotenv import load_dotenv
-from flask import Flask, Response, jsonify, render_template, request
+from flask import Flask, Response, jsonify, render_template, request, session
 from settings_service import build_shareable_settings_example, get_settings, get_setup_status, save_settings
 from storage_service import (
     BASE_DIR,
@@ -41,12 +41,26 @@ from werkzeug.exceptions import HTTPException
 load_dotenv(BASE_DIR / ".env")
 
 app = Flask(__name__)
+app.secret_key = (os.environ.get("APP_SESSION_SECRET") or os.environ.get("APP_SECRET") or "alternance-auto-dev-secret").strip()
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=14)
 
 CSV_SEP = ";"
 
 _proc_actif: subprocess.Popen | None = None
 _scores_lock = Lock()
 _scan_state_lock = Lock()
+
+
+def _access_secret() -> str:
+    return (os.environ.get("APP_SECRET") or "").strip()
+
+
+def _access_protection_enabled() -> bool:
+    return bool(_access_secret())
+
+
+def _access_unlocked() -> bool:
+    return not _access_protection_enabled() or session.get("app_unlocked") is True
 
 
 def _repair_text(value: str) -> str:
@@ -114,6 +128,15 @@ def build_health_status() -> dict:
     venv_python = BASE_DIR / ".venv" / "Scripts" / "python.exe"
     cv_path_raw = str(profile.get("cv_path") or "").strip()
     cv_path = Path(cv_path_raw) if cv_path_raw else None
+
+    checks.append(
+        _health_check_item(
+            "Protection d'accès",
+            "ok" if _access_protection_enabled() else "warn",
+            "Un token d'accès APP_SECRET protège l'interface." if _access_protection_enabled() else "Aucune protection d'accès n'est active pour l'interface.",
+            "api",
+        )
+    )
 
     checks.append(
         _health_check_item(
@@ -267,6 +290,7 @@ def build_shareable_diagnostic() -> dict:
             "mode": "local",
             "python": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
             "storage_backend": os.environ.get("STORAGE_BACKEND", "local"),
+            "access_protection_enabled": _access_protection_enabled(),
         },
         "profile_snapshot": {
             "has_name": bool(profile.get("prenom") and profile.get("nom")),
@@ -711,6 +735,50 @@ def handle_unexpected_error(err: Exception):
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.before_request
+def require_access_token():
+    if not _access_protection_enabled():
+        return None
+    path = request.path or "/"
+    if path == "/" or path.startswith("/static/") or path in {"/api/auth/status", "/api/auth/unlock", "/api/auth/logout"}:
+        return None
+    if _access_unlocked():
+        return None
+    if path.startswith("/api/"):
+        return jsonify({"ok": False, "locked": True, "error": "Accès protégé par token"}), HTTPStatus.UNAUTHORIZED
+    return render_template("index.html"), HTTPStatus.UNAUTHORIZED
+
+
+@app.route("/api/auth/status")
+def api_auth_status():
+    return jsonify(
+        {
+            "ok": True,
+            "enabled": _access_protection_enabled(),
+            "unlocked": _access_unlocked(),
+        }
+    )
+
+
+@app.route("/api/auth/unlock", methods=["POST"])
+def api_auth_unlock():
+    data = request.get_json(silent=True) or {}
+    provided = str(data.get("token") or "").strip()
+    if not _access_protection_enabled():
+        return jsonify({"ok": True, "enabled": False, "unlocked": True})
+    if not provided or provided != _access_secret():
+        return jsonify({"ok": False, "error": "Token invalide", "enabled": True, "unlocked": False}), HTTPStatus.UNAUTHORIZED
+    session.permanent = True
+    session["app_unlocked"] = True
+    return jsonify({"ok": True, "enabled": True, "unlocked": True})
+
+
+@app.route("/api/auth/logout", methods=["POST"])
+def api_auth_logout():
+    session.pop("app_unlocked", None)
+    return jsonify({"ok": True, "enabled": _access_protection_enabled(), "unlocked": False})
 
 
 @app.route("/api/settings")
