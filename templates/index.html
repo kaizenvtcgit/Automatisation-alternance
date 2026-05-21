@@ -867,6 +867,26 @@
     .coach-typing span:nth-child(2) { animation-delay: 0.12s; }
     .coach-typing span:nth-child(3) { animation-delay: 0.24s; }
 
+    .coach-input-row {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.65rem;
+      align-items: stretch;
+    }
+
+    .coach-voice-status {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.55rem;
+      min-height: 1.2em;
+    }
+
+    .btn-voice-active {
+      background: rgba(180, 71, 61, 0.12);
+      border-color: rgba(180, 71, 61, 0.3);
+      color: var(--red);
+    }
+
     .toast-shell {
       position: fixed;
       top: 5.2rem;
@@ -1029,6 +1049,10 @@
       }
 
       .offer-card-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .coach-input-row {
         grid-template-columns: 1fr;
       }
 
@@ -1785,10 +1809,14 @@
         <div class="modal-body">
           <div class="coach-chat mb-3" id="coach-chat"></div>
           <div class="coach-suggestions mb-3" id="coach-suggestions-box" style="display:none"></div>
-          <div class="input-group">
+          <div class="coach-input-row">
             <input class="form-control" id="coach-input" placeholder="Réponds ici pour préciser ce que tu cherches..." onkeydown="if(event.key === 'Enter'){ event.preventDefault(); envoyerMessageCoach(); }">
+            <button class="btn btn-outline-secondary" type="button" id="coach-mic-btn" onclick="toggleCoachVoiceInput()" title="Parler au micro">
+              <i class="bi bi-mic"></i>
+            </button>
             <button class="btn btn-primary" type="button" id="coach-send-btn" onclick="envoyerMessageCoach()">Envoyer</button>
           </div>
+          <div class="coach-voice-status" id="coach-voice-status"></div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
@@ -1886,6 +1914,8 @@
     let coachMessages = [];
     let coachSuggestions = null;
     let coachLoading = false;
+    let coachRecognition = null;
+    let coachListening = false;
     const TAB_REGISTRY_KEY = 'alternance_auto_open_tabs';
     const tabSessionId = `tab_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     let pendingServerStopOnClose = false;
@@ -1940,6 +1970,32 @@
       if (input && output) output.textContent = `${input.value}${suffix}`;
     }
 
+    function shouldUseBrowserCvPicker() {
+      const coarsePointer = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+      const mobileAgent = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+      return !!CLOUD_MODE || coarsePointer || mobileAgent;
+    }
+
+    function refreshCvPickerUi() {
+      const browseBtn = document.getElementById('settings-cv-browse-btn');
+      const uploadBtn = document.getElementById('settings-cv-upload-btn');
+      const meta = document.getElementById('settings-cv-meta');
+      if (!browseBtn || !uploadBtn || !meta) return;
+      if (shouldUseBrowserCvPicker()) {
+        browseBtn.textContent = 'Choisir un fichier';
+        uploadBtn.classList.add('d-none');
+        if (!document.getElementById('settings-cv-path').value.trim()) {
+          meta.textContent = 'Depuis un téléphone ou en ligne, le CV se choisit directement dans les fichiers de l appareil.';
+        }
+      } else {
+        browseBtn.textContent = 'Parcourir';
+        uploadBtn.classList.remove('d-none');
+        if (!document.getElementById('settings-cv-path').value.trim()) {
+          meta.textContent = 'Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l application.';
+        }
+      }
+    }
+
     function showToast(title, message, type = 'success') {
       const shell = document.getElementById('toast-shell');
       const toast = document.createElement('div');
@@ -1959,6 +2015,81 @@
       const instance = new bootstrap.Toast(toast, {delay: type === 'error' ? 7000 : 4500});
       toast.addEventListener('hidden.bs.toast', () => toast.remove());
       instance.show();
+    }
+
+    function updateCoachVoiceUi(message = '') {
+      const micBtn = document.getElementById('coach-mic-btn');
+      const status = document.getElementById('coach-voice-status');
+      if (micBtn) {
+        micBtn.classList.toggle('btn-voice-active', coachListening);
+        micBtn.innerHTML = coachListening ? '<i class="bi bi-mic-fill"></i>' : '<i class="bi bi-mic"></i>';
+        micBtn.setAttribute('aria-pressed', coachListening ? 'true' : 'false');
+        micBtn.title = coachListening ? 'Arreter l ecoute' : 'Parler au micro';
+      }
+      if (status) {
+        status.textContent = message || (coachListening ? 'Ecoute en cours...' : '');
+      }
+    }
+
+    function buildCoachRecognition() {
+      const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Recognition) return null;
+      const recognition = new Recognition();
+      recognition.lang = 'fr-FR';
+      recognition.interimResults = true;
+      recognition.continuous = false;
+      recognition.onstart = () => {
+        coachListening = true;
+        updateCoachVoiceUi('Ecoute en cours...');
+      };
+      recognition.onresult = event => {
+        const input = document.getElementById('coach-input');
+        if (!input) return;
+        let finalText = '';
+        let interimText = '';
+        for (let i = event.resultIndex; i < event.results.length; i += 1) {
+          const transcript = event.results[i][0]?.transcript || '';
+          if (event.results[i].isFinal) finalText += `${transcript} `;
+          else interimText += `${transcript} `;
+        }
+        const baseText = input.dataset.voiceBase || '';
+        input.value = `${baseText}${finalText || interimText}`.trim();
+        updateCoachVoiceUi(finalText ? 'Texte dicte ajoute.' : 'Ecoute en cours...');
+      };
+      recognition.onerror = event => {
+        coachListening = false;
+        updateCoachVoiceUi('');
+        if (event.error !== 'no-speech' && event.error !== 'aborted') {
+          showToast('Micro indisponible', 'La reconnaissance vocale a rencontre un probleme sur ce navigateur.', 'error');
+        }
+      };
+      recognition.onend = () => {
+        coachListening = false;
+        const input = document.getElementById('coach-input');
+        if (input) delete input.dataset.voiceBase;
+        updateCoachVoiceUi('');
+      };
+      return recognition;
+    }
+
+    function toggleCoachVoiceInput() {
+      const input = document.getElementById('coach-input');
+      if (!input) return;
+      if (!coachRecognition) coachRecognition = buildCoachRecognition();
+      if (!coachRecognition) {
+        showToast('Micro non pris en charge', 'La dictée vocale n est pas disponible sur ce navigateur.', 'error');
+        return;
+      }
+      if (coachListening) {
+        coachRecognition.stop();
+        return;
+      }
+      input.dataset.voiceBase = `${input.value.trim()}${input.value.trim() ? ' ' : ''}`;
+      try {
+        coachRecognition.start();
+      } catch (_) {
+        showToast('Micro indisponible', 'Le micro ne peut pas demarrer pour le moment.', 'error');
+      }
     }
 
     function renderAccessState() {
@@ -2253,11 +2384,13 @@
     }
 
     async function ouvrirCoachRecherche() {
+      if (coachListening && coachRecognition) coachRecognition.stop();
       coachMessages = [];
       coachSuggestions = null;
       renderCoachChat();
       renderCoachSuggestions();
       document.getElementById('coach-input').value = '';
+      updateCoachVoiceUi('');
       if (!modalSearchCoach) modalSearchCoach = new bootstrap.Modal(document.getElementById('modalSearchCoach'));
       modalSearchCoach.show();
       await interrogerCoachRecherche();
@@ -2268,6 +2401,7 @@
       const input = document.getElementById('coach-input');
       const value = input.value.trim();
       if (!value) return;
+      if (coachListening && coachRecognition) coachRecognition.stop();
       coachMessages.push({role: 'user', content: value});
       input.value = '';
       renderCoachChat();
@@ -2555,6 +2689,7 @@
       document.getElementById('settings-cv-meta').textContent = profile.cv_path
         ? `CV actuel : ${profile.cv_path}`
         : "Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l'application.";
+      refreshCvPickerUi();
       document.getElementById('settings-presentation').value = profile.presentation || '';
 
       document.getElementById('editor-postes-cibles').setTags(search.postes_cibles || []);
@@ -2684,6 +2819,10 @@
     }
 
     async function browseCvPath() {
+      if (shouldUseBrowserCvPicker()) {
+        document.getElementById('settings-cv-file')?.click();
+        return;
+      }
       const button = document.getElementById('settings-cv-browse-btn');
       button.disabled = true;
       try {
@@ -2716,6 +2855,7 @@
         if (!data.ok) throw new Error(data.error || 'Import impossible');
         if (data.settings) populateSettings(data.settings);
         document.getElementById('settings-cv-meta').textContent = `CV importé : ${data.filename}`;
+        refreshCvPickerUi();
         showToast('CV importé', 'Le CV a bien été ajouté à l’application.', 'success');
       } catch (error) {
         showToast('Import du CV impossible', error.message, 'error');
@@ -3485,6 +3625,11 @@ async function copierLettre() {
       clearSetupHighlights();
     });
 
+    document.getElementById('modalSearchCoach').addEventListener('hidden.bs.modal', () => {
+      if (coachListening && coachRecognition) coachRecognition.stop();
+      updateCoachVoiceUi('');
+    });
+
     registerCurrentTab();
     window.addEventListener('beforeunload', event => {
       if (CLOUD_MODE) return;
@@ -3509,6 +3654,7 @@ async function copierLettre() {
     });
 
     setupTagEditors();
+    refreshCvPickerUi();
     document.getElementById('settings-zone-mode').addEventListener('change', event => applyZoneModeDefaults(event.target.value));
     document.querySelectorAll('.api-key-input').forEach(input => {
       input.addEventListener('input', () => setApiKeyStatus(input.id, !!input.value.trim()));
