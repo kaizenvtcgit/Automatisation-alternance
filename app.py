@@ -755,15 +755,16 @@ def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
         return cached if isinstance(cached, dict) else None
     try:
         offers = _supabase_fetch("offers", order="updated_at.desc")
-        scores = _supabase_fetch("offer_scores")
-        letters = _supabase_fetch("offer_letters")
-        history = _supabase_fetch("applications_history", order="created_at.desc")
-        refused = _supabase_fetch("refused_offers")
+        user_scope_filters = {"owner_user_id": f"eq.{owner_user_id}"} if owner_user_id else {"owner_user_id": "is.null"}
+        scores = _supabase_fetch("offer_scores", filters=user_scope_filters)
+        letters = _supabase_fetch("offer_letters", filters=user_scope_filters)
+        history = _supabase_fetch("applications_history", order="created_at.desc", filters=user_scope_filters)
+        refused = _supabase_fetch("refused_offers", filters=user_scope_filters)
         scan_runs = _supabase_fetch("scan_runs", order="started_at.desc", limit=6)
         app_settings_rows = _supabase_fetch(
             "app_settings",
             select="key,value,owner_user_id",
-            filters={"owner_user_id": f"eq.{owner_user_id}"} if owner_user_id else {"owner_user_id": "is.null"},
+            filters=user_scope_filters,
         )
         latest_scan_id = scan_runs[0]["id"] if scan_runs and isinstance(scan_runs[0], dict) else None
         scan_sources = _supabase_fetch("scan_run_sources", order="created_at.desc", filters={"scan_run_id": f"eq.{latest_scan_id}"}) if latest_scan_id else []
