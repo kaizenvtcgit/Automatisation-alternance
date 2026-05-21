@@ -508,9 +508,19 @@ def _build_search_coach_context() -> dict:
     settings = get_settings()
     current_search = settings.get("search", {})
     current_profile = settings.get("profile", {})
+    if not isinstance(current_search, dict):
+        current_search = {}
+    if not isinstance(current_profile, dict):
+        current_profile = {}
     history = _lire_historique()
     scores = _lire_scores()
     offers = _lire_csv()
+    if not isinstance(history, list):
+        history = []
+    if not isinstance(scores, dict):
+        scores = {}
+    if not isinstance(offers, list):
+        offers = []
 
     top_offers = []
     for row in offers:
@@ -554,6 +564,17 @@ def _build_search_coach_context() -> dict:
         "letters_count": len(_lire_lettres()),
         "scores_count": len(scores),
     }
+
+
+def _coach_list(value) -> list:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, tuple):
+        return list(value)
+    if isinstance(value, str):
+        text = value.strip()
+        return [text] if text else []
+    return []
 
 
 def _ensure_stdio() -> None:
@@ -1767,11 +1788,15 @@ def api_settings_search_coach():
     coach_context = _build_search_coach_context()
     current_search = coach_context.get("current_search", {})
     current_profile = coach_context.get("profile", {})
+    if not isinstance(current_search, dict):
+        current_search = {}
+    if not isinstance(current_profile, dict):
+        current_profile = {}
 
     has_context = bool(
-        coach_context.get("recent_history")
-        or coach_context.get("top_scored_offers")
-        or coach_context.get("profile", {}).get("cv_excerpt")
+        _coach_list(coach_context.get("recent_history"))
+        or _coach_list(coach_context.get("top_scored_offers"))
+        or str((coach_context.get("profile") or {}).get("cv_excerpt") or "").strip()
     )
 
     from groq import Groq
@@ -1877,10 +1902,10 @@ Regles:
             payload = json.loads(raw)
             suggestions = payload.get("suggestions", {}) if isinstance(payload.get("suggestions"), dict) else {}
             cleaned = {
-                "postes_cibles": [str(x).strip() for x in suggestions.get("postes_cibles", []) if str(x).strip()][:10],
-                "mots_cles_positifs": [str(x).strip() for x in suggestions.get("mots_cles_positifs", []) if str(x).strip()][:12],
-                "mots_cles_negatifs": [str(x).strip() for x in suggestions.get("mots_cles_negatifs", []) if str(x).strip()][:12],
-                "types_contrat": [str(x).strip().lower() for x in suggestions.get("types_contrat", []) if str(x).strip()][:4],
+                "postes_cibles": [str(x).strip() for x in _coach_list(suggestions.get("postes_cibles")) if str(x).strip()][:10],
+                "mots_cles_positifs": [str(x).strip() for x in _coach_list(suggestions.get("mots_cles_positifs")) if str(x).strip()][:12],
+                "mots_cles_negatifs": [str(x).strip() for x in _coach_list(suggestions.get("mots_cles_negatifs")) if str(x).strip()][:12],
+                "types_contrat": [str(x).strip().lower() for x in _coach_list(suggestions.get("types_contrat")) if str(x).strip()][:4],
                 "zone_mode": str(suggestions.get("zone_mode", current_search.get("zone_mode", "idf")) or "idf").strip().lower(),
                 "zone_geo": str(suggestions.get("zone_geo", current_search.get("zone_geo", "")) or "").strip(),
             }

@@ -2747,7 +2747,7 @@
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Assistant indisponible');
         coachMessages.push({role: 'assistant', content: data.reply || 'Je t’écoute.'});
-        coachSuggestions = data.suggestions || null;
+        coachSuggestions = (data.suggestions && typeof data.suggestions === 'object') ? data.suggestions : null;
         renderCoachSuggestions();
       } catch (error) {
         showToast('Assistant IA indisponible', error.message, 'error');
