@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import time
+import unicodedata
 import webbrowser
 from datetime import datetime, timedelta
 from http import HTTPStatus
@@ -102,6 +103,21 @@ def _repair_text(value: str) -> str:
             except (UnicodeEncodeError, UnicodeDecodeError):
                 continue
     return text.replace("\u00a0", " ").replace("\u202f", " ")
+
+
+def _normalized_text(value: str) -> str:
+    text = unicodedata.normalize("NFD", str(value or ""))
+    return "".join(ch for ch in text if unicodedata.category(ch) != "Mn").lower()
+
+
+def _text_contains_keyword(text: str, keyword: str) -> bool:
+    source = _normalized_text(text)
+    target = _normalized_text(keyword)
+    if not target:
+        return False
+    if len(target) <= 3:
+        return re.search(rf"\b{re.escape(target)}\b", source) is not None
+    return target in source
 
 
 def _repair_payload_strings(value):
@@ -1069,6 +1085,67 @@ def _build_offer_payload(row: dict, scan_state: dict, lettres: dict, scores: dic
     return payload
 
 
+def _offer_matches_workspace_search(offer: dict) -> bool:
+    if not _supabase_runtime_enabled():
+        return True
+
+    search = (get_settings().get("search") or {})
+    if not isinstance(search, dict):
+        return True
+
+    title = offer.get("IntitulÃ© du poste", "")
+    company = offer.get("Entreprise", "")
+    location = offer.get("Ville ou zone", "")
+    description = offer.get("Description (texte complet)", "")
+    contract = offer.get("Type de contrat", "")
+    haystack = " ".join([title, company, location, description, contract])
+
+    negative_terms = [str(item).strip() for item in (search.get("mots_cles_negatifs") or []) if str(item).strip()]
+    if any(_text_contains_keyword(haystack, term) for term in negative_terms):
+        return False
+
+    contract_types = [str(item).strip().lower() for item in (search.get("types_contrat") or []) if str(item).strip()]
+    contract_norm = _normalized_text(contract)
+    if contract_types:
+        alternance_markers = ("alternance", "apprentissage", "apprenticeship", "contrat pro", "professionnalisation")
+        contract_ok = False
+        for wanted in contract_types:
+            if wanted == "alternance":
+                if any(marker in contract_norm for marker in alternance_markers):
+                    contract_ok = True
+                    break
+            elif _text_contains_keyword(contract_norm, wanted):
+                contract_ok = True
+                break
+        if not contract_ok:
+            return False
+
+    positive_terms = [
+        *[str(item).strip() for item in (search.get("postes_cibles") or []) if str(item).strip()],
+        *[str(item).strip() for item in (search.get("mots_cles_positifs") or []) if str(item).strip()],
+    ]
+    if positive_terms and not any(_text_contains_keyword(haystack, term) for term in positive_terms):
+        return False
+
+    zone_mode = str(search.get("zone_mode") or "").strip().lower()
+    zone_geo = str(search.get("zone_geo") or "").strip()
+    include_remote = bool(search.get("inclure_remote", True))
+    location_blob = " ".join([location, description])
+    is_remote = any(_text_contains_keyword(location_blob, marker) for marker in ("remote", "teletravail", "hybride", "hybrid", "work from home"))
+    if zone_mode == "remote":
+        return is_remote
+    if zone_geo and zone_mode not in {"remote", "france", ""}:
+        if _text_contains_keyword(location_blob, zone_geo):
+            return True
+        if include_remote and is_remote:
+            return True
+        return False
+    if not include_remote and is_remote:
+        return False
+
+    return True
+
+
 def _filtered_offers() -> list[dict]:
     rows = _lire_csv()
     scan_state, lettres, scores, histo, refus_ids = _pipeline_context()
@@ -1084,9 +1161,13 @@ def _filtered_offers() -> list[dict]:
     statut = (request.args.get("statut") or "").strip()
     pertinence = (request.args.get("pertinence") or "").strip().lower()
     score_min = request.args.get("score_min", type=int)
+    if score_min is None and _supabase_runtime_enabled():
+        score_min = int((get_settings().get("search") or {}).get("score_min") or 0)
 
     filtered = []
     for row in offers:
+        if not _offer_matches_workspace_search(row):
+            continue
         haystack = " ".join(
             [
                 row.get("Intitulé du poste", ""),
@@ -1102,7 +1183,7 @@ def _filtered_offers() -> list[dict]:
             continue
         if statut and row.get("pipeline_status") != statut:
             continue
-        if score_min is not None and (score_value is None or int(score_value) < score_min):
+        if score_min is not None and score_min > 0 and (score_value is None or int(score_value) < score_min):
             continue
         if pertinence == "forte" and (score_value is None or int(score_value) < 75):
             continue
