@@ -109,6 +109,33 @@ SUPABASE_SYNC_AUTO=1
 
 Mets `0` si tu preferes garder une synchronisation uniquement manuelle.
 
+## Comptes personnels (beta)
+
+Le projet peut maintenant preparer un vrai mode `compte perso` au-dessus du partage par `workspace`.
+
+Variables utiles :
+
+```env
+SUPABASE_URL=
+SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
+SUPABASE_AUTH_ENABLED=1
+```
+
+Quand `SUPABASE_AUTH_ENABLED=1` est actif en cloud :
+
+- l'utilisateur deverrouille toujours d'abord l'instance avec `APP_SECRET` si tu l'utilises
+- puis une modale `Compte personnel` permet de :
+  - creer un compte email / mot de passe
+  - se connecter
+- l'application rattache ensuite automatiquement la session a un espace dedie
+
+Important :
+
+- ce mode reste une transition propre vers un vrai multi-utilisateur
+- la separation finale par `user_id` dans toutes les tables Supabase viendra ensuite
+- selon la configuration Supabase, une confirmation email peut etre demandee avant la premiere connexion
+
 ## Preparation hebergement
 
 Le projet reste d'abord concu pour tourner en local. Pour preparer un futur hebergement sans casser le mode local :

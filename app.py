@@ -61,6 +61,88 @@ _scan_state_lock = Lock()
 _supabase_runtime_cache: dict[str, object] = {"ts": 0.0, "payload": None}
 
 
+def _supabase_publishable_key() -> str:
+    return (os.environ.get("SUPABASE_PUBLISHABLE_KEY") or os.environ.get("SUPABASE_ANON_KEY") or "").strip()
+
+
+def _supabase_auth_enabled() -> bool:
+    return (
+        (os.environ.get("SUPABASE_AUTH_ENABLED") or "0").strip().lower() in {"1", "true", "yes", "on", "oui"}
+        and _cloud_mode_enabled()
+        and bool((os.environ.get("SUPABASE_URL") or "").strip())
+        and bool(_supabase_publishable_key())
+    )
+
+
+def _auth_workspace_slug(user_id: str = "", email: str = "") -> str:
+    raw = str(user_id or "").strip()
+    if raw:
+        return f"user-{raw.split('-')[0][:12]}"
+    email_prefix = str(email or "").split("@", 1)[0].strip()
+    if email_prefix:
+        return f"user-{email_prefix}"
+    return "principal"
+
+
+def _auth_user_payload() -> dict | None:
+    user_id = str(session.get("auth_user_id") or "").strip()
+    email = str(session.get("auth_user_email") or "").strip()
+    if not user_id and not email:
+        return None
+    return {
+        "id": user_id,
+        "email": email,
+        "workspace": str(session.get("workspace_slug") or _auth_workspace_slug(user_id, email)).strip() or "principal",
+    }
+
+
+def _auth_logged_in() -> bool:
+    return _auth_user_payload() is not None
+
+
+def _set_auth_session(user_payload: dict, access_token: str = "", refresh_token: str = "") -> dict:
+    user_id = str((user_payload or {}).get("id") or "").strip()
+    email = str((user_payload or {}).get("email") or "").strip()
+    workspace = set_workspace_slug(_auth_workspace_slug(user_id, email))
+    session["auth_user_id"] = user_id
+    session["auth_user_email"] = email
+    session["auth_access_token"] = str(access_token or "").strip()
+    session["auth_refresh_token"] = str(refresh_token or "").strip()
+    return {"id": user_id, "email": email, "workspace": workspace}
+
+
+def _clear_auth_session() -> None:
+    for key in ("auth_user_id", "auth_user_email", "auth_access_token", "auth_refresh_token"):
+        session.pop(key, None)
+
+
+def _supabase_auth_headers(access_token: str = "") -> dict[str, str]:
+    headers = {
+        "apikey": _supabase_publishable_key(),
+        "Content-Type": "application/json",
+    }
+    token = str(access_token or "").strip()
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    return headers
+
+
+def _supabase_auth_request(path: str, payload: dict | None = None, *, method: str = "POST", access_token: str = "") -> dict:
+    base = str(os.environ.get("SUPABASE_URL") or "").rstrip("/")
+    response = requests.request(
+        method.upper(),
+        f"{base}{path}",
+        headers=_supabase_auth_headers(access_token),
+        data=json.dumps(payload or {}, ensure_ascii=False) if payload is not None else None,
+        timeout=15,
+    )
+    data = response.json() if response.content else {}
+    if not response.ok:
+        message = data.get("msg") or data.get("error_description") or data.get("error") or f"Erreur Supabase Auth ({response.status_code})"
+        raise RuntimeError(str(message))
+    return data if isinstance(data, dict) else {}
+
+
 def _access_secret() -> str:
     return (os.environ.get("APP_SECRET") or "").strip()
 
@@ -1259,6 +1341,106 @@ def api_auth_status():
     )
 
 
+@app.route("/api/user/status")
+def api_user_status():
+    user = _auth_user_payload()
+    return jsonify(
+        {
+            "ok": True,
+            "enabled": _supabase_auth_enabled(),
+            "authenticated": user is not None,
+            "user": user,
+        }
+    )
+
+
+@app.route("/api/user/signup", methods=["POST"])
+def api_user_signup():
+    if not _supabase_auth_enabled():
+        return jsonify({"ok": False, "error": "Authentification Supabase non active"}), HTTPStatus.BAD_REQUEST
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email") or "").strip().lower()
+    password = str(data.get("password") or "")
+    if not email or not password:
+        return jsonify({"ok": False, "error": "Email et mot de passe requis"}), HTTPStatus.BAD_REQUEST
+    try:
+        payload = _supabase_auth_request(
+            "/auth/v1/signup",
+            {
+                "email": email,
+                "password": password,
+                "data": {
+                    "workspace_hint": _auth_workspace_slug("", email),
+                },
+            },
+        )
+    except Exception as err:
+        return jsonify({"ok": False, "error": str(err)}), HTTPStatus.BAD_REQUEST
+    session_payload = payload.get("session") if isinstance(payload.get("session"), dict) else None
+    user_payload = payload.get("user") if isinstance(payload.get("user"), dict) else None
+    authenticated = False
+    user = None
+    if session_payload and user_payload:
+        user = _set_auth_session(
+            user_payload,
+            access_token=str(session_payload.get("access_token") or ""),
+            refresh_token=str(session_payload.get("refresh_token") or ""),
+        )
+        authenticated = True
+    return jsonify(
+        {
+            "ok": True,
+            "authenticated": authenticated,
+            "user": user,
+            "requires_email_confirmation": not authenticated,
+            "message": (
+                "Compte cree. Verifie l'email de confirmation avant de te connecter."
+                if not authenticated
+                else "Compte cree et connecte."
+            ),
+        }
+    )
+
+
+@app.route("/api/user/login", methods=["POST"])
+def api_user_login():
+    if not _supabase_auth_enabled():
+        return jsonify({"ok": False, "error": "Authentification Supabase non active"}), HTTPStatus.BAD_REQUEST
+    data = request.get_json(silent=True) or {}
+    email = str(data.get("email") or "").strip().lower()
+    password = str(data.get("password") or "")
+    if not email or not password:
+        return jsonify({"ok": False, "error": "Email et mot de passe requis"}), HTTPStatus.BAD_REQUEST
+    try:
+        payload = _supabase_auth_request(
+            "/auth/v1/token?grant_type=password",
+            {"email": email, "password": password},
+        )
+    except Exception as err:
+        return jsonify({"ok": False, "error": str(err)}), HTTPStatus.UNAUTHORIZED
+    user_payload = payload.get("user") if isinstance(payload.get("user"), dict) else {}
+    user = _set_auth_session(
+        user_payload,
+        access_token=str(payload.get("access_token") or ""),
+        refresh_token=str(payload.get("refresh_token") or ""),
+    )
+    session.permanent = True
+    return jsonify({"ok": True, "authenticated": True, "user": user})
+
+
+@app.route("/api/user/logout", methods=["POST"])
+def api_user_logout():
+    if _supabase_auth_enabled():
+        token = str(session.get("auth_access_token") or "").strip()
+        if token:
+            try:
+                _supabase_auth_request("/auth/v1/logout?scope=local", {}, access_token=token)
+            except Exception:
+                pass
+    _clear_auth_session()
+    return jsonify({"ok": True, "enabled": _supabase_auth_enabled(), "authenticated": False})
+
+
 @app.route("/api/auth/unlock", methods=["POST"])
 def api_auth_unlock():
     data = request.get_json(silent=True) or {}
@@ -1276,6 +1458,7 @@ def api_auth_unlock():
 @app.route("/api/auth/logout", methods=["POST"])
 def api_auth_logout():
     session.pop("app_unlocked", None)
+    _clear_auth_session()
     return jsonify({"ok": True, "enabled": _access_protection_enabled(), "unlocked": False, "workspace": _current_workspace()})
 
 
