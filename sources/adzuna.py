@@ -12,6 +12,7 @@ from ._common import nettoyer_html
 
 APP_ID  = os.environ.get("ADZUNA_APP_ID", "")
 APP_KEY = os.environ.get("ADZUNA_APP_KEY", "")
+CLOUD_MODE = (os.environ.get("ALTERNANCE_CLOUD_MODE", "0").strip() == "1")
 
 API_URL            = "https://api.adzuna.com/v1/api/jobs/fr/search/1"
 RESULTATS_PAR_PAGE = 50
@@ -30,6 +31,10 @@ REQUETES: list[str] = [
     "alternance web designer",
     "alternance design numérique",
 ]
+
+ACTIVE_REQUETES: list[str] = REQUETES[:2] if CLOUD_MODE else REQUETES
+ACTIVE_RESULTS_PER_PAGE = 15 if CLOUD_MODE else RESULTATS_PAR_PAGE
+REQUEST_TIMEOUT = 10 if CLOUD_MODE else 30
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────
@@ -68,17 +73,17 @@ def recuperer() -> list[dict]:
 
     vues: dict[str, dict] = {}
 
-    for requete in REQUETES:
+    for requete in ACTIVE_REQUETES:
         params = {
             "app_id":           APP_ID,
             "app_key":          APP_KEY,
             "what":             requete,
-            "results_per_page": RESULTATS_PAR_PAGE,
+            "results_per_page": ACTIVE_RESULTS_PER_PAGE,
             "where":            WHERE,
             "distance":         DISTANCE_KM,
         }
         try:
-            resp = requests.get(API_URL, params=params, timeout=30)
+            resp = requests.get(API_URL, params=params, timeout=REQUEST_TIMEOUT)
         except requests.Timeout:
             print(f"[Adzuna] TIMEOUT sur '{requete}'", file=sys.stderr)
             continue

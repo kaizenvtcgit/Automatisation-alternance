@@ -640,6 +640,7 @@ def _cloud_task_state_default() -> dict:
         "status": "idle",
         "task_type": "",
         "label": "",
+        "pid": None,
         "started_at": "",
         "finished_at": "",
         "exit_code": None,
@@ -648,9 +649,45 @@ def _cloud_task_state_default() -> dict:
     }
 
 
+def _process_alive(pid: int | None) -> bool:
+    try:
+        target = int(pid or 0)
+    except (TypeError, ValueError):
+        return False
+    if target <= 0:
+        return False
+    try:
+        os.kill(target, 0)
+    except OSError:
+        return False
+    return True
+
+
 def _lire_cloud_task_state() -> dict:
     data = _read_json(CLOUD_TASK_STATE_PATH, _cloud_task_state_default())
-    return data if isinstance(data, dict) else _cloud_task_state_default()
+    state = data if isinstance(data, dict) else _cloud_task_state_default()
+    if state.get("status") == "running":
+        pid = state.get("pid")
+        started_at = str(state.get("started_at") or "").strip()
+        is_stale = False
+        if started_at:
+            try:
+                started_dt = datetime.fromisoformat(started_at)
+                is_stale = (datetime.now() - started_dt).total_seconds() > 420
+            except ValueError:
+                is_stale = False
+        if not _process_alive(pid) or is_stale:
+            finished_at = datetime.now().isoformat(timespec="seconds")
+            state = _ecrire_cloud_task_state(
+                {
+                    **state,
+                    "status": "failed",
+                    "finished_at": finished_at,
+                    "exit_code": -1,
+                    "message": "La tache cloud a ete interrompue ou a depasse le delai maximal.",
+                }
+            )
+    return state
 
 
 def _ecrire_cloud_task_state(payload: dict) -> dict:
@@ -684,6 +721,7 @@ def _launch_cloud_background_task(task_type: str, label: str, cmd: list[str], ex
                 "status": "running",
                 "task_type": task_type,
                 "label": label,
+                "pid": None,
                 "started_at": started_at,
                 "finished_at": "",
                 "exit_code": None,
@@ -709,6 +747,7 @@ def _launch_cloud_background_task(task_type: str, label: str, cmd: list[str], ex
             errors="replace",
         )
         _proc_actif = proc
+        state = _ecrire_cloud_task_state({**state, "pid": proc.pid})
 
         def _watch() -> None:
             global _proc_actif
@@ -720,6 +759,7 @@ def _launch_cloud_background_task(task_type: str, label: str, cmd: list[str], ex
                         "status": "completed" if code == 0 else "failed",
                         "task_type": task_type,
                         "label": label,
+                        "pid": proc.pid,
                         "started_at": started_at,
                         "finished_at": finished_at,
                         "exit_code": code,

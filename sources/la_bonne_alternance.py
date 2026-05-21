@@ -13,6 +13,7 @@ import requests
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 API_KEY  = os.environ.get("LBA_API_KEY", "")
+CLOUD_MODE = (os.environ.get("ALTERNANCE_CLOUD_MODE", "0").strip() == "1")
 # API correcte confirmée via swagger.json : api.apprentissage.beta.gouv.fr/api/swagger.json
 BASE_URL = "https://api.apprentissage.beta.gouv.fr/api"
 
@@ -27,6 +28,7 @@ RADIUS_KM = 60
 # E1210 : Développement et intégration multimédia
 # E1211 : Scénarisation multimédia
 ROME_CODES = "E1205,E1207,E1210,E1211"
+REQUEST_TIMEOUT = 12 if CLOUD_MODE else 30
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────
@@ -134,7 +136,7 @@ def recuperer() -> list[dict]:
     }
 
     try:
-        resp = requests.get(url, params=params, headers=headers, timeout=30)
+        resp = requests.get(url, params=params, headers=headers, timeout=REQUEST_TIMEOUT)
     except requests.Timeout:
         print("[La Bonne Alternance] TIMEOUT — serveur trop lent.", file=sys.stderr)
         return []

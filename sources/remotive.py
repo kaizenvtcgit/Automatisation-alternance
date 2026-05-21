@@ -1,5 +1,6 @@
 """Source Remotive — offres remote internationales (bonus)."""
 
+import os
 import sys
 
 import requests
@@ -10,6 +11,7 @@ from ._common import nettoyer_html
 
 API_URL      = "https://remotive.com/api/remote-jobs"
 RESULT_LIMIT = 50
+CLOUD_MODE   = (os.environ.get("ALTERNANCE_CLOUD_MODE", "0").strip() == "1")
 
 REQUETES: list[str] = [
     "motion designer apprenticeship",
@@ -20,6 +22,10 @@ REQUETES: list[str] = [
     "product designer junior",
     "ux designer junior",
 ]
+
+ACTIVE_REQUETES: list[str] = REQUETES[:2] if CLOUD_MODE else REQUETES
+ACTIVE_RESULT_LIMIT = 15 if CLOUD_MODE else RESULT_LIMIT
+REQUEST_TIMEOUT = 10 if CLOUD_MODE else 30
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────
@@ -47,12 +53,15 @@ def _vers_offre(job: dict, requete: str) -> dict:
 
 def recuperer() -> list[dict]:
     """Récupère les offres Remotive (remote). Retourne une liste vide en cas d'erreur."""
+    if CLOUD_MODE:
+        print("[Remotive] Mode cloud leger actif — source bonus ignoree.")
+        return []
     vues: dict[str, dict] = {}
 
-    for requete in REQUETES:
-        params = {"search": requete, "limit": RESULT_LIMIT}
+    for requete in ACTIVE_REQUETES:
+        params = {"search": requete, "limit": ACTIVE_RESULT_LIMIT}
         try:
-            resp = requests.get(API_URL, params=params, timeout=30)
+            resp = requests.get(API_URL, params=params, timeout=REQUEST_TIMEOUT)
         except requests.Timeout:
             print(f"[Remotive] TIMEOUT sur '{requete}'", file=sys.stderr)
             continue

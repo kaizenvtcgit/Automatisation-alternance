@@ -9,6 +9,7 @@ import requests
 
 CLIENT_ID     = os.environ.get("FT_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("FT_CLIENT_SECRET", "")
+CLOUD_MODE = (os.environ.get("ALTERNANCE_CLOUD_MODE", "0").strip() == "1")
 
 TOKEN_URL  = "https://entreprise.francetravail.fr/connexion/oauth2/access_token"
 SEARCH_URL = "https://api.francetravail.io/partenaire/offresdemploi/v2/offres/search"
@@ -30,6 +31,11 @@ REQUETES: list[str] = [
     "design numérique",
     "alternance design",
 ]
+
+ACTIVE_DEPARTEMENTS_IDF: list[str] = DEPARTEMENTS_IDF[:2] if CLOUD_MODE else DEPARTEMENTS_IDF
+ACTIVE_REQUETES: list[str] = REQUETES[:2] if CLOUD_MODE else REQUETES
+SEARCH_RANGE = "0-14" if CLOUD_MODE else "0-49"
+SEARCH_TIMEOUT = 10 if CLOUD_MODE else 30
 
 
 # ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -126,15 +132,15 @@ def recuperer() -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     vues: dict[str, dict] = {}
 
-    for requete in REQUETES:
-        for dept in DEPARTEMENTS_IDF:
+    for requete in ACTIVE_REQUETES:
+        for dept in ACTIVE_DEPARTEMENTS_IDF:
             params = {
                 "motsCles":   requete,
                 "departement": dept,
-                "range":      "0-49",
+                "range":      SEARCH_RANGE,
             }
             try:
-                resp = requests.get(SEARCH_URL, headers=headers, params=params, timeout=30)
+                resp = requests.get(SEARCH_URL, headers=headers, params=params, timeout=SEARCH_TIMEOUT)
             except requests.Timeout:
                 print(f"[France Travail] TIMEOUT '{requete}' dept {dept}", file=sys.stderr)
                 continue

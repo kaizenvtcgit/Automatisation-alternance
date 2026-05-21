@@ -3,6 +3,7 @@ Orchestrateur des sources d'offres.
 Appelle chaque source, fusionne et dédoublonne les résultats.
 """
 
+import os
 import sys
 from datetime import datetime
 from typing import Callable
@@ -10,13 +11,17 @@ from typing import Callable
 from ._common import cle_deduplication, filtrer_zone_idf
 from . import adzuna, france_travail, la_bonne_alternance, remotive
 
+CLOUD_MODE = (os.environ.get("ALTERNANCE_CLOUD_MODE", "0").strip() == "1")
+
 # Sources dans l'ordre d'appel (les premières ont priorité en cas de conflit de clé)
 _SOURCES: list[tuple[str, Callable[[], list[dict]]]] = [
     ("France Travail",         france_travail.recuperer),
     ("La Bonne Alternance",    la_bonne_alternance.recuperer),
     ("Adzuna",                 adzuna.recuperer),
-    ("Remotive (bonus)",       remotive.recuperer),
 ]
+
+if not CLOUD_MODE:
+    _SOURCES.append(("Remotive (bonus)", remotive.recuperer))
 
 
 def _dedoublonner(offres: list[dict]) -> tuple[list[dict], int]:
