@@ -919,6 +919,78 @@
       margin: 1rem;
     }
 
+    .app-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1400;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      background: rgba(244, 241, 234, 0.58);
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.22s ease;
+    }
+
+    .app-loading-overlay.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .app-loading-card {
+      width: min(92vw, 360px);
+      padding: 1.2rem 1.2rem 1rem;
+      border-radius: 22px;
+      background: rgba(255, 250, 242, 0.96);
+      border: 1px solid rgba(217, 208, 191, 0.9);
+      box-shadow: 0 22px 48px rgba(39, 48, 70, 0.14);
+      text-align: center;
+    }
+
+    .app-loading-orbit {
+      width: 70px;
+      height: 70px;
+      margin: 0 auto 1rem;
+      position: relative;
+    }
+
+    .app-loading-orbit::before,
+    .app-loading-orbit::after {
+      content: "";
+      position: absolute;
+      border-radius: 999px;
+      inset: 0;
+    }
+
+    .app-loading-orbit::before {
+      border: 2px solid rgba(31, 94, 255, 0.16);
+    }
+
+    .app-loading-orbit::after {
+      width: 14px;
+      height: 14px;
+      background: linear-gradient(135deg, var(--blue), var(--rose));
+      top: -5px;
+      left: calc(50% - 7px);
+      box-shadow: 0 0 0 6px rgba(31, 94, 255, 0.08);
+      animation: loadingOrbit 1.05s linear infinite;
+      transform-origin: 7px 40px;
+    }
+
+    .app-loading-title {
+      font-weight: 800;
+      color: var(--ink);
+      margin-bottom: 0.35rem;
+    }
+
+    .app-loading-copy {
+      color: var(--muted);
+      font-size: 0.92rem;
+      line-height: 1.55;
+    }
+
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -932,6 +1004,11 @@
     @keyframes coachTyping {
       0%, 80%, 100% { transform: translateY(0); opacity: 0.35; }
       40% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    @keyframes loadingOrbit {
+      from { transform: rotate(0deg) translateY(0); }
+      to { transform: rotate(360deg) translateY(0); }
     }
 
     @media (max-width: 991px) {
@@ -1139,6 +1216,13 @@
   </nav>
 
   <div class="toast-shell" id="toast-shell"></div>
+  <div class="app-loading-overlay" id="app-loading-overlay" aria-hidden="true">
+    <div class="app-loading-card">
+      <div class="app-loading-orbit" aria-hidden="true"></div>
+      <div class="app-loading-title" id="app-loading-title">Patiente un instant</div>
+      <div class="app-loading-copy" id="app-loading-copy">L'application traite la demande.</div>
+    </div>
+  </div>
 
   <div class="container-fluid page-shell py-4">
     <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
@@ -1922,6 +2006,8 @@
     let setupGuideIndex = 0;
     let setupGuideAutoshown = false;
     let accessState = {enabled: false, unlocked: true, workspace: 'principal'};
+    let loadingOverlayTimer = null;
+    let loadingOverlayDepth = 0;
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -2015,6 +2101,34 @@
       const instance = new bootstrap.Toast(toast, {delay: type === 'error' ? 7000 : 4500});
       toast.addEventListener('hidden.bs.toast', () => toast.remove());
       instance.show();
+    }
+
+    function startAppLoading(title = 'Patiente un instant', copy = 'L application traite la demande.') {
+      loadingOverlayDepth += 1;
+      const overlay = document.getElementById('app-loading-overlay');
+      const titleNode = document.getElementById('app-loading-title');
+      const copyNode = document.getElementById('app-loading-copy');
+      if (titleNode) titleNode.textContent = title;
+      if (copyNode) copyNode.textContent = copy;
+      clearTimeout(loadingOverlayTimer);
+      loadingOverlayTimer = setTimeout(() => {
+        if (loadingOverlayDepth > 0 && overlay) {
+          overlay.classList.add('is-visible');
+          overlay.setAttribute('aria-hidden', 'false');
+        }
+      }, 160);
+    }
+
+    function stopAppLoading(force = false) {
+      if (force) loadingOverlayDepth = 0;
+      else loadingOverlayDepth = Math.max(0, loadingOverlayDepth - 1);
+      if (loadingOverlayDepth > 0) return;
+      clearTimeout(loadingOverlayTimer);
+      const overlay = document.getElementById('app-loading-overlay');
+      if (overlay) {
+        overlay.classList.remove('is-visible');
+        overlay.setAttribute('aria-hidden', 'true');
+      }
     }
 
     function updateCoachVoiceUi(message = '') {
@@ -2797,6 +2911,7 @@
     async function saveSettings() {
       const button = document.getElementById('settings-save-btn');
       button.disabled = true;
+      startAppLoading('Sauvegarde des paramètres', 'Les réglages sont en cours de mise à jour.');
       try {
         const response = await fetch('/api/settings', {
           method: 'POST',
@@ -2814,6 +2929,7 @@
         appendLog(`Erreur sauvegarde parametres: ${error.message}`, 'log-err');
         showToast('Sauvegarde impossible', error.message, 'error');
       } finally {
+        stopAppLoading();
         button.disabled = false;
       }
     }
@@ -2844,6 +2960,7 @@
       if (!file) return;
       const button = document.getElementById('settings-cv-upload-btn');
       button.disabled = true;
+      startAppLoading('Import du CV', 'Le fichier est envoyé puis rattaché au profil.');
       const formData = new FormData();
       formData.append('cv', file);
       try {
@@ -2860,6 +2977,7 @@
       } catch (error) {
         showToast('Import du CV impossible', error.message, 'error');
       } finally {
+        stopAppLoading();
         input.value = '';
         button.disabled = false;
       }
@@ -3341,6 +3459,7 @@
       }
 
       if (button) button.disabled = true;
+      startAppLoading('Scoring des offres', 'Les offres visibles sans score sont en cours d analyse.');
       try {
         const response = await fetch('/api/offres/scorer-batch', {
           method: 'POST',
@@ -3355,6 +3474,7 @@
         await chargerTout();
         appendLog(`${data.updated || 0} offre(s) scoree(s) en lot`, 'log-ok');
       } finally {
+        stopAppLoading();
         if (button) button.disabled = false;
       }
     }
@@ -3386,13 +3506,18 @@
     async function sauvegarderLettre() {
       const textarea = document.getElementById('lettre-texte');
       const id = textarea.dataset.id;
-      await fetch(`/api/lettre/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({lettre: textarea.value})
-      });
-      await chargerTout();
-      document.getElementById('lettre-meta').textContent = 'Sauvegardee a l instant';
+      startAppLoading('Sauvegarde de la lettre', 'La lettre de motivation est en cours d enregistrement.');
+      try {
+        await fetch(`/api/lettre/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({lettre: textarea.value})
+        });
+        await chargerTout();
+        document.getElementById('lettre-meta').textContent = 'Sauvegardee a l instant';
+      } finally {
+        stopAppLoading();
+      }
     }
 
     async function regenererLettre() {
@@ -3400,24 +3525,29 @@
       const id = textarea.dataset.id;
       const offer = offerById(id);
       if (!offer) return;
-      const response = await fetch('/api/lettre/regen', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({
-          id,
-          titre: getOfferTitle(offer),
-          entreprise: offer['Entreprise'],
-          description: offer['Description (texte complet)']
-        })
-      });
-      const data = await response.json();
-      if (!data.ok) {
-        alert(data.error || 'Erreur generation lettre');
-        return;
+      startAppLoading('Generation de la lettre', 'L IA prépare une nouvelle version de la lettre de motivation.');
+      try {
+        const response = await fetch('/api/lettre/regen', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            id,
+            titre: getOfferTitle(offer),
+            entreprise: offer['Entreprise'],
+            description: offer['Description (texte complet)']
+          })
+        });
+        const data = await response.json();
+        if (!data.ok) {
+          alert(data.error || 'Erreur generation lettre');
+          return;
+        }
+        textarea.value = data.lettre;
+        await chargerTout();
+        document.getElementById('lettre-meta').textContent = 'Regeneree a l instant';
+      } finally {
+        stopAppLoading();
       }
-      textarea.value = data.lettre;
-      await chargerTout();
-      document.getElementById('lettre-meta').textContent = 'Regeneree a l instant';
     }
 
 async function copierLettre() {
@@ -3498,27 +3628,32 @@ async function copierLettre() {
     }
 
     async function triggerSupabaseSync(silent = true, reason = 'manual') {
-      const response = await fetch('/api/supabase/sync', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({reason})
-      });
-      const data = await response.json();
-      if (!silent) {
-        if (data.ok) {
-          appendLog('Synchronisation Supabase lancee en arriere-plan.', 'log-ok');
-        } else if (data.status === 'already_running') {
-          appendLog('Une synchronisation Supabase est deja en cours.', 'log-warn');
-        } else if (data.status === 'process_busy') {
-          appendLog('Synchronisation Supabase reportee : un autre processus est en cours.', 'log-warn');
-        } else if (data.status === 'not_configured') {
-          appendLog('Synchronisation Supabase impossible : configuration manquante.', 'log-warn');
-        } else {
-          appendLog('Synchronisation Supabase non lancee.', 'log-warn');
+      if (!silent) startAppLoading('Synchronisation Supabase', 'Le miroir distant est en cours de mise à jour.');
+      try {
+        const response = await fetch('/api/supabase/sync', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({reason})
+        });
+        const data = await response.json();
+        if (!silent) {
+          if (data.ok) {
+            appendLog('Synchronisation Supabase lancee en arriere-plan.', 'log-ok');
+          } else if (data.status === 'already_running') {
+            appendLog('Une synchronisation Supabase est deja en cours.', 'log-warn');
+          } else if (data.status === 'process_busy') {
+            appendLog('Synchronisation Supabase reportee : un autre processus est en cours.', 'log-warn');
+          } else if (data.status === 'not_configured') {
+            appendLog('Synchronisation Supabase impossible : configuration manquante.', 'log-warn');
+          } else {
+            appendLog('Synchronisation Supabase non lancee.', 'log-warn');
+          }
         }
+        await chargerTout();
+        return data;
+      } finally {
+        if (!silent) stopAppLoading();
       }
-      await chargerTout();
-      return data;
     }
 
     function lancerStream(type) {
@@ -3528,12 +3663,21 @@ async function copierLettre() {
       }
       document.getElementById('log-panel').textContent = `Lancement ${type}...`;
       setButtonsDisabled(true);
+      const loadingLabels = {
+        recuperer: ['Scan des sources', 'Les offres sont en cours de récupération et de dédoublonnage.'],
+        'generer-lettres': ['Generation des lettres', 'Les lettres de motivation sont en cours de préparation.'],
+        postuler: ['Lancement de l agent', 'L agent de candidature se prépare et peut prendre quelques secondes.'],
+        'sync-supabase': ['Synchronisation Supabase', 'Le miroir distant est en cours de mise à jour.'],
+      };
+      const loadingLabel = loadingLabels[type] || ['Traitement en cours', 'L action demandée est en cours.'];
+      startAppLoading(loadingLabel[0], loadingLabel[1]);
       evtSource = new EventSource(`/api/stream/${type}`);
       evtSource.onmessage = async event => {
         const data = JSON.parse(event.data);
         if (data.error) {
           appendLog(data.error, 'log-err');
           setButtonsDisabled(false);
+          stopAppLoading(true);
           evtSource.close();
           evtSource = null;
           return;
@@ -3548,6 +3692,7 @@ async function copierLettre() {
         if (data.done) {
           appendLog(`Termine (code ${data.code})`, data.code === 0 ? 'log-ok' : 'log-warn');
           setButtonsDisabled(false);
+          stopAppLoading(true);
           evtSource.close();
           evtSource = null;
           if (data.code === 0 && (type === 'recuperer' || type === 'generer-lettres')) {
@@ -3561,6 +3706,7 @@ async function copierLettre() {
         if (evtSource) evtSource.close();
         evtSource = null;
         setButtonsDisabled(false);
+        stopAppLoading(true);
         await chargerTout();
       };
     }
