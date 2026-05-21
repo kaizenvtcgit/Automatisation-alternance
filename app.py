@@ -1536,13 +1536,21 @@ def api_stats():
     for offer in offers:
         status = offer.get("pipeline_status", "a_analyser")
         pipeline_counts[status] = pipeline_counts.get(status, 0) + 1
+    nb_nouvelles_visible = sum(1 for offer in offers if offer.get("is_new"))
+    nb_interessantes_visible = pipeline_counts.get("interessante", 0)
+    nb_a_analyser_visible = pipeline_counts.get("a_analyser", 0)
+    nb_postulations_envoyees = sum(1 for row in histo if normalize_status(row.get("statut")) == "postule")
     return jsonify(
         {
             "nb_offres": len(offers),
             "nb_postulations": len(histo),
-            "nb_envoyees": sum(1 for row in histo if normalize_status(row.get("statut")) == "postule"),
+            "nb_envoyees": nb_postulations_envoyees,
             "nb_relances": len(relances),
             "nb_lettres": sum(1 for offer in offers if offer.get("letter_generated")),
+            "nb_nouvelles_visible": nb_nouvelles_visible,
+            "nb_interessantes_visible": nb_interessantes_visible,
+            "nb_a_analyser_visible": nb_a_analyser_visible,
+            "nb_nouvelles_scan_global": int(last_scan.get("new_offers", 0) or 0),
             "process_actif": _proc_actif is not None and _proc_actif.poll() is None,
             "pipeline": pipeline_counts,
             "scan_state": last_scan,
@@ -1550,6 +1558,7 @@ def api_stats():
             "setup": get_setup_status(),
             "health": health,
             "cloud_mode": _cloud_mode_enabled(),
+            "shared_scan": _cloud_mode_enabled(),
             "workspace": _current_workspace(),
         }
     )

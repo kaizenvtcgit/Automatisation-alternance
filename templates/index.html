@@ -3099,14 +3099,21 @@
       const scan = statsData.scan_state || {};
       const sync = statsData.supabase_sync || {};
       const setup = statsData.setup || {};
+      const sharedScan = !!statsData.shared_scan;
+      const visibleNewOffers = statsData.nb_nouvelles_visible ?? scan.new_offers ?? 0;
+      const visibleInterestingOffers = statsData.nb_interessantes_visible ?? statsData.pipeline?.interessante ?? 0;
+      const visibleToAnalyzeOffers = statsData.nb_a_analyser_visible ?? statsData.pipeline?.a_analyser ?? 0;
+      const sentApplications = statsData.nb_envoyees ?? statsData.nb_postulations ?? 0;
       document.getElementById('stat-offres').textContent = statsData.nb_offres || 0;
-      document.getElementById('stat-offres-note').textContent = `${statsData.pipeline?.a_analyser || 0} a analyser`;
-      document.getElementById('stat-nouvelles').textContent = scan.new_offers || 0;
-      document.getElementById('stat-last-scan').textContent = scan.finished_at ? `Dernier scan: ${formatDate(scan.finished_at)}` : 'Aucun scan';
-      document.getElementById('stat-interessantes').textContent = statsData.pipeline?.interessante || 0;
-      document.getElementById('stat-interessantes-note').textContent = `${statsData.pipeline?.a_analyser || 0} encore a analyser`;
-      document.getElementById('stat-postulations').textContent = statsData.nb_postulations || 0;
-      document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance a faire`;
+      document.getElementById('stat-offres-note').textContent = `${visibleToAnalyzeOffers} a analyser dans cet espace`;
+      document.getElementById('stat-nouvelles').textContent = visibleNewOffers;
+      document.getElementById('stat-last-scan').textContent = scan.finished_at
+        ? `${sharedScan ? 'Scan partage' : 'Dernier scan'}: ${formatDate(scan.finished_at)}`
+        : 'Aucun scan';
+      document.getElementById('stat-interessantes').textContent = visibleInterestingOffers;
+      document.getElementById('stat-interessantes-note').textContent = `${visibleToAnalyzeOffers} encore a analyser dans cet espace`;
+      document.getElementById('stat-postulations').textContent = sentApplications;
+      document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance a faire dans cet espace`;
       document.getElementById('supabase-sync-summary').textContent =
         sync.status === 'completed'
           ? `Derniere sync: ${formatDate(sync.last_success_at)}`
@@ -3122,7 +3129,9 @@
       document.getElementById('badge-relances').textContent = relancesData().length;
       document.getElementById('scan-summary').textContent =
         scan.finished_at
-          ? `${scan.exported_offers || 0} offres exportees, ${scan.duplicates_ignored || 0} doublons ignores`
+          ? sharedScan
+            ? `${statsData.nb_offres || 0} offres visibles dans cet espace, ${scan.exported_offers || 0} dans le scan partage`
+            : `${scan.exported_offers || 0} offres exportees, ${scan.duplicates_ignored || 0} doublons ignores`
           : 'Aucun scan enregistre';
 
       const setupSummary = document.getElementById('setup-status-summary');
