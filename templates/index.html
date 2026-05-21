@@ -2269,6 +2269,10 @@
       const lettersActionSubtitle = document.getElementById('letters-action-subtitle');
       const agentActionSubtitle = document.getElementById('agent-action-subtitle');
       const authModeEnabled = !!(accessState.authEnabled || userAuthState.enabled);
+      const workspaceLabel = accessState.workspace || 'principal';
+      const scopeLabel = userAuthState.authenticated
+        ? (userAuthState.user?.email || 'ce compte')
+        : `l'espace ${workspaceLabel}`;
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
       if (workspaceBlock) workspaceBlock.classList.toggle('d-none', authModeEnabled);
       if (workspaceHelp && authModeEnabled) workspaceHelp.textContent = 'Le compte personnel definira automatiquement ton espace.';
@@ -2283,14 +2287,15 @@
       }
       if (accessState.unlocked) {
         statusNode.innerHTML = '<span class="pulse"></span>Acces protege actif';
-        workspaceNode.textContent = `Espace: ${accessState.workspace || 'principal'}`;
+        workspaceNode.textContent = authModeEnabled
+          ? (userAuthState.authenticated ? 'Compte personnel actif' : 'Compte personnel a connecter')
+          : `Espace: ${workspaceLabel}`;
         logoutBtn.classList.remove('d-none');
       } else {
         statusNode.textContent = 'Interface verrouillee';
-        workspaceNode.textContent = `Espace: ${accessState.workspace || 'principal'}`;
+        workspaceNode.textContent = authModeEnabled ? 'Compte personnel requis' : `Espace: ${workspaceLabel}`;
         logoutBtn.classList.add('d-none');
       }
-      const workspaceLabel = accessState.workspace || 'principal';
       if (userStatusNode) {
         userStatusNode.textContent = userAuthState.enabled
           ? (userAuthState.authenticated ? `Compte: ${userAuthState.user?.email || 'connecte'}` : 'Compte requis')
@@ -2298,18 +2303,18 @@
       }
       if (userAuthBtn) userAuthBtn.classList.toggle('d-none', !userAuthState.enabled || !!userAuthState.authenticated);
       if (userLogoutBtn) userLogoutBtn.classList.toggle('d-none', !userAuthState.enabled || !userAuthState.authenticated);
-      if (pipelineSubtitle) pipelineSubtitle.textContent = `Vue Kanban personnelle de l'espace ${workspaceLabel} pour prioriser les offres et suivre les actions.`;
-      if (historySubtitle) historySubtitle.textContent = `Les candidatures, statuts et notes affichés ici appartiennent à l'espace ${workspaceLabel}.`;
-      if (relancesSubtitle) relancesSubtitle.textContent = `Seules les relances liées à l'espace ${workspaceLabel} apparaissent dans cette liste.`;
+      if (pipelineSubtitle) pipelineSubtitle.textContent = `Vue Kanban personnelle liée à ${scopeLabel} pour prioriser les offres et suivre les actions.`;
+      if (historySubtitle) historySubtitle.textContent = `Les candidatures, statuts et notes affichés ici appartiennent à ${scopeLabel}.`;
+      if (relancesSubtitle) relancesSubtitle.textContent = `Seules les relances liées à ${scopeLabel} apparaissent dans cette liste.`;
       if (CLOUD_MODE) {
-        const sharedScan = workspaceLabel !== 'principal';
+        const sharedScan = authModeEnabled ? true : workspaceLabel !== 'principal';
         if (scanActionTitle) scanActionTitle.textContent = sharedScan ? 'Lancer un scan partage' : 'Lancer un scan';
         if (scanActionSubtitle) scanActionSubtitle.textContent = sharedScan
-          ? `Met a jour la base source partagee. Les resultats visibles resteront filtres pour l'espace ${workspaceLabel}.`
+          ? `Met a jour la base source partagee. Les resultats visibles resteront filtres pour ${scopeLabel}.`
           : 'Recupere les offres, dedoublonne la source partagee et met a jour les donnees visibles.';
         if (scanActionButton) scanActionButton.textContent = sharedScan ? 'Scanner la source partagee' : 'Scanner les sources';
-        if (lettersActionSubtitle) lettersActionSubtitle.textContent = `Genere les lettres et alimente le suivi personnel de l'espace ${workspaceLabel}.`;
-        if (agentActionSubtitle) agentActionSubtitle.textContent = `Tente les candidatures automatiques a partir des lettres et du suivi de l'espace ${workspaceLabel}.`;
+        if (lettersActionSubtitle) lettersActionSubtitle.textContent = `Genere les lettres et alimente le suivi personnel de ${scopeLabel}.`;
+        if (agentActionSubtitle) agentActionSubtitle.textContent = `Tente les candidatures automatiques a partir des lettres et du suivi de ${scopeLabel}.`;
       } else {
         if (scanActionTitle) scanActionTitle.textContent = 'Lancer un scan';
         if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.';
@@ -2457,6 +2462,9 @@
 
     function getStoredWorkspace() {
       try {
+        if (userAuthState.enabled && userAuthState.authenticated && userAuthState.user?.workspace) {
+          return userAuthState.user.workspace;
+        }
         const queryWorkspace = new URLSearchParams(window.location.search).get('workspace');
         if (queryWorkspace) return queryWorkspace;
         return localStorage.getItem('alternance_auto_workspace') || 'principal';
@@ -2475,7 +2483,9 @@
 
     function withWorkspaceUrl(rawUrl) {
       try {
-        const workspace = accessState.workspace || getStoredWorkspace() || 'principal';
+        const workspace = (userAuthState.enabled && userAuthState.authenticated && userAuthState.user?.workspace)
+          ? userAuthState.user.workspace
+          : (accessState.workspace || getStoredWorkspace() || 'principal');
         const resolved = new URL(rawUrl, window.location.origin);
         if (resolved.origin === window.location.origin && resolved.pathname.startsWith('/api/')) {
           resolved.searchParams.set('workspace', workspace);
