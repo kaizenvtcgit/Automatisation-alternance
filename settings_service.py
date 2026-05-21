@@ -158,7 +158,7 @@ def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
         )
         profile_resp.raise_for_status()
         profile_rows = profile_resp.json()
-        if not profile_rows:
+        if not profile_rows and workspace_slug == "principal":
             profile_resp = requests.get(
                 f"{base}/rest/v1/search_profiles",
                 params={"select": "slug,name,is_active,profile_data", "is_active": "eq.true", "limit": "1"},
@@ -256,6 +256,35 @@ def _profile_payload_from_input(data: dict) -> dict:
     return payload
 
 
+def _blank_workspace_profile() -> dict:
+    return {
+        "prenom": "",
+        "nom": "",
+        "email": "",
+        "tel": "",
+        "portfolio": "",
+        "linkedin": "",
+        "github": "",
+        "cv_path": "",
+        "presentation": "",
+    }
+
+
+def _blank_workspace_search() -> dict:
+    defaults = _default_profile_settings()
+    return {
+        "postes_cibles": [],
+        "mots_cles_positifs": [],
+        "mots_cles_negatifs": [],
+        "types_contrat": list(defaults["types_contrat"]),
+        "zone_geo": "",
+        "zone_mode": str(defaults["zone_mode"] or "idf"),
+        "rayon_km": int(defaults["rayon_km"]),
+        "score_min": int(defaults["score_min"]),
+        "inclure_remote": bool(defaults["inclure_remote"]),
+    }
+
+
 def get_settings() -> dict:
     env = _read_env_map()
     profile = _read_profile_settings()
@@ -289,6 +318,9 @@ def get_settings() -> dict:
             "max_candidatures_session": _parse_int(env.get("AGENT_MAX_CANDIDATURES_SESSION", "20"), 20, 1, 500),
         },
     }
+    if _supabase_settings_enabled() and workspace_slug != "principal":
+        settings["profile"] = _blank_workspace_profile()
+        settings["search"] = _blank_workspace_search()
     snapshot = _supabase_settings_snapshot()
     if snapshot:
         remote_settings = snapshot.get("app_settings", {}) if isinstance(snapshot.get("app_settings"), dict) else {}
@@ -296,10 +328,10 @@ def get_settings() -> dict:
         agent_key = _workspace_app_setting_key("agent_behavior", workspace_slug)
         has_workspace_profile = isinstance(remote_settings.get(profile_key), dict)
         remote_profile = remote_settings.get(profile_key)
-        if not isinstance(remote_profile, dict):
+        if not isinstance(remote_profile, dict) and workspace_slug == "principal":
             remote_profile = remote_settings.get("candidate_profile", {}) if isinstance(remote_settings.get("candidate_profile"), dict) else {}
         remote_agent = remote_settings.get(agent_key)
-        if not isinstance(remote_agent, dict):
+        if not isinstance(remote_agent, dict) and workspace_slug == "principal":
             remote_agent = remote_settings.get("agent_behavior", {}) if isinstance(remote_settings.get("agent_behavior"), dict) else {}
         remote_search = snapshot.get("search_profile", {}) if isinstance(snapshot.get("search_profile"), dict) else {}
 

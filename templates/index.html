@@ -2247,6 +2247,19 @@
       return workspace;
     }
 
+    function withWorkspaceUrl(rawUrl) {
+      try {
+        const workspace = accessState.workspace || getStoredWorkspace() || 'principal';
+        const resolved = new URL(rawUrl, window.location.origin);
+        if (resolved.origin === window.location.origin && resolved.pathname.startsWith('/api/')) {
+          resolved.searchParams.set('workspace', workspace);
+        }
+        return resolved.pathname + resolved.search + resolved.hash;
+      } catch (_) {
+        return rawUrl;
+      }
+    }
+
     function showAccessModal(errorMessage = '') {
       if (!modalAccessLock) modalAccessLock = new bootstrap.Modal(document.getElementById('modalAccessLock'));
       const errorNode = document.getElementById('access-token-error');
@@ -2268,7 +2281,7 @@
 
     async function fetchAccessStatus() {
       try {
-        const response = await fetch('/api/auth/status');
+        const response = await fetch(withWorkspaceUrl('/api/auth/status'));
         const data = await response.json();
         accessState = {
           enabled: !!data.enabled,
@@ -2898,7 +2911,7 @@
 
     async function chargerSettings(silent = false) {
       try {
-        const response = await fetch('/api/settings');
+        const response = await fetch(withWorkspaceUrl('/api/settings'));
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Chargement impossible');
         populateSettings(data.settings);
@@ -2913,7 +2926,7 @@
       button.disabled = true;
       startAppLoading('Sauvegarde des paramètres', 'Les réglages sont en cours de mise à jour.');
       try {
-        const response = await fetch('/api/settings', {
+        const response = await fetch(withWorkspaceUrl('/api/settings'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify(collectSettingsPayload())
@@ -2942,7 +2955,7 @@
       const button = document.getElementById('settings-cv-browse-btn');
       button.disabled = true;
       try {
-        const response = await fetch('/api/settings/cv-path', {method: 'POST'});
+        const response = await fetch(withWorkspaceUrl('/api/settings/cv-path'), {method: 'POST'});
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Selection impossible');
         if (data.path) {
@@ -2964,7 +2977,7 @@
       const formData = new FormData();
       formData.append('cv', file);
       try {
-        const response = await fetch('/api/settings/cv-upload', {
+        const response = await fetch(withWorkspaceUrl('/api/settings/cv-upload'), {
           method: 'POST',
           body: formData
         });
@@ -2994,7 +3007,7 @@
 
     async function fetchJsonSafe(url, fallbackValue) {
       try {
-        const response = await fetch(url);
+        const response = await fetch(withWorkspaceUrl(url));
         const data = await response.json();
         if (response.status === 401 && data?.locked) {
           accessState = {enabled: true, unlocked: false};
