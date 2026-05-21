@@ -77,6 +77,10 @@ def _current_workspace() -> str:
     return get_workspace_slug()
 
 
+def _cloud_workspace_isolated() -> bool:
+    return _supabase_runtime_enabled() and _current_workspace() != "principal"
+
+
 def _workspace_blob_key(name: str) -> str:
     return f"{name}::{_current_workspace()}"
 
@@ -774,6 +778,8 @@ def _lire_historique() -> list[dict]:
         payload = _workspace_blob_read("workspace_history", None)
         if isinstance(payload, list):
             return payload
+        if _cloud_workspace_isolated():
+            return []
     data = _read_json(HISTO_PATH, [])
     if isinstance(data, list) and data:
         return data
@@ -789,6 +795,8 @@ def _lire_lettres() -> dict:
         payload = _workspace_blob_read("workspace_letters", None)
         if isinstance(payload, dict):
             return payload
+        if _cloud_workspace_isolated():
+            return {}
     data = _read_json(LETTRES_PATH, {})
     if isinstance(data, dict) and data:
         return data
@@ -804,6 +812,8 @@ def _lire_scores() -> dict:
         payload = _workspace_blob_read("workspace_scores", None)
         if isinstance(payload, dict):
             return payload
+        if _cloud_workspace_isolated():
+            return {}
     data = _read_json(SCORES_PATH, {})
     if isinstance(data, dict) and data:
         return data
@@ -832,6 +842,8 @@ def _lire_refus() -> list[str]:
         payload = _workspace_blob_read("workspace_refused", None)
         if isinstance(payload, list):
             return payload
+        if _cloud_workspace_isolated():
+            return []
     data = _read_json(REFUS_PATH, [])
     if isinstance(data, list) and data:
         return data
