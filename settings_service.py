@@ -2,12 +2,16 @@ import importlib
 import json
 import os
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
+
+import requests
 from storage_service import BASE_DIR, PROFILE_PATH, read_json, write_json_atomic
 
 
 ENV_PATH = BASE_DIR / ".env"
+_SUPABASE_SETTINGS_CACHE: dict[str, object] = {"ts": 0.0, "payload": None}
 
 
 def _parse_bool(value, default: bool = False) -> bool:
@@ -66,7 +70,62 @@ def _read_env_map() -> dict[str, str]:
             continue
         key, value = line.split("=", 1)
         values[key.strip()] = value.strip()
+    for key, value in os.environ.items():
+        if key.isupper():
+            values[key] = str(value)
     return values
+
+
+def _supabase_settings_enabled() -> bool:
+    return bool(os.environ.get("ALTERNANCE_CLOUD_MODE") == "1" and os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_SERVICE_ROLE_KEY"))
+
+
+def _supabase_headers() -> dict[str, str]:
+    service_role = str(os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    return {
+        "apikey": service_role,
+        "Authorization": f"Bearer {service_role}",
+    }
+
+
+def _supabase_settings_snapshot(ttl_seconds: int = 15) -> dict:
+    if not _supabase_settings_enabled():
+        return {}
+    cached = _SUPABASE_SETTINGS_CACHE.get("payload")
+    ts = float(_SUPABASE_SETTINGS_CACHE.get("ts") or 0.0)
+    if cached and (time.time() - ts) < ttl_seconds:
+        return cached if isinstance(cached, dict) else {}
+
+    try:
+        base = str(os.environ.get("SUPABASE_URL") or "").rstrip("/")
+        headers = _supabase_headers()
+        app_settings_resp = requests.get(
+            f"{base}/rest/v1/app_settings",
+            params={"select": "key,value"},
+            headers=headers,
+            timeout=10,
+        )
+        app_settings_resp.raise_for_status()
+        app_settings_rows = app_settings_resp.json()
+
+        profile_resp = requests.get(
+            f"{base}/rest/v1/search_profiles",
+            params={"select": "slug,name,is_active,profile_data", "is_active": "eq.true", "limit": "1"},
+            headers=headers,
+            timeout=10,
+        )
+        profile_resp.raise_for_status()
+        profile_rows = profile_resp.json()
+
+        payload = {
+            "app_settings": {row.get("key"): row.get("value") for row in app_settings_rows if isinstance(row, dict)},
+            "search_profile": (profile_rows[0].get("profile_data") if profile_rows and isinstance(profile_rows[0], dict) else {}) or {},
+        }
+        _SUPABASE_SETTINGS_CACHE["ts"] = time.time()
+        _SUPABASE_SETTINGS_CACHE["payload"] = payload
+        return payload
+    except Exception:
+        return {}
 
 
 def _write_env_updates(updates: dict[str, str]) -> None:
@@ -148,7 +207,7 @@ def _profile_payload_from_input(data: dict) -> dict:
 def get_settings() -> dict:
     env = _read_env_map()
     profile = _read_profile_settings()
-    return {
+    settings = {
         "profile": {
             "prenom": env.get("CANDIDAT_PRENOM", ""),
             "nom": env.get("CANDIDAT_NOM", ""),
@@ -176,6 +235,27 @@ def get_settings() -> dict:
             "max_candidatures_session": _parse_int(env.get("AGENT_MAX_CANDIDATURES_SESSION", "20"), 20, 1, 500),
         },
     }
+    snapshot = _supabase_settings_snapshot()
+    if snapshot:
+        remote_settings = snapshot.get("app_settings", {}) if isinstance(snapshot.get("app_settings"), dict) else {}
+        remote_profile = remote_settings.get("candidate_profile", {}) if isinstance(remote_settings.get("candidate_profile"), dict) else {}
+        remote_agent = remote_settings.get("agent_behavior", {}) if isinstance(remote_settings.get("agent_behavior"), dict) else {}
+        remote_search = snapshot.get("search_profile", {}) if isinstance(snapshot.get("search_profile"), dict) else {}
+
+        for key in ("prenom", "nom", "email", "tel", "portfolio", "linkedin", "github", "cv_path", "presentation"):
+            if not settings["profile"].get(key) and remote_profile.get(key):
+                settings["profile"][key] = str(remote_profile.get(key) or "").strip()
+
+        if remote_search:
+            settings["search"] = _profile_payload_from_input({**settings["search"], **remote_search})
+
+        if remote_agent:
+            settings["agent"] = {
+                "confirmation_required": _parse_bool(remote_agent.get("confirmation_required", settings["agent"]["confirmation_required"]), True),
+                "delay_seconds": _parse_int(remote_agent.get("delay_seconds"), settings["agent"]["delay_seconds"], 1, 30),
+                "max_candidatures_session": _parse_int(remote_agent.get("max_candidatures_session"), settings["agent"]["max_candidatures_session"], 1, 500),
+            }
+    return settings
 
 
 def get_setup_status() -> dict:

@@ -20,6 +20,7 @@ from pathlib import Path
 from threading import Lock, Thread
 from urllib.request import urlopen
 
+import requests
 from dotenv import load_dotenv
 from flask import Flask, Response, jsonify, render_template, request, session
 from settings_service import build_shareable_settings_example, get_settings, get_setup_status, save_settings
@@ -49,6 +50,7 @@ CSV_SEP = ";"
 _proc_actif: subprocess.Popen | None = None
 _scores_lock = Lock()
 _scan_state_lock = Lock()
+_supabase_runtime_cache: dict[str, object] = {"ts": 0.0, "payload": None}
 
 
 def _access_secret() -> str:
@@ -69,6 +71,10 @@ def _supabase_auto_sync_enabled() -> bool:
 
 def _cloud_mode_enabled() -> bool:
     return (os.environ.get("ALTERNANCE_CLOUD_MODE") or "0").strip() == "1"
+
+
+def _supabase_runtime_enabled() -> bool:
+    return bool(_cloud_mode_enabled() and (os.environ.get("SUPABASE_URL") or "").strip() and (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip())
 
 
 def _repair_text(value: str) -> str:
@@ -451,9 +457,211 @@ def _write_json(path: Path, payload) -> None:
     write_json_atomic(path, payload)
 
 
+def _supabase_headers() -> dict[str, str]:
+    service_role = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    return {
+        "apikey": service_role,
+        "Authorization": f"Bearer {service_role}",
+    }
+
+
+def _supabase_fetch(table: str, *, select: str = "*", order: str | None = None, limit: int | None = None, filters: dict[str, str] | None = None) -> list[dict]:
+    base = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+    params: dict[str, str] = {"select": select}
+    if order:
+        params["order"] = order
+    if limit is not None:
+        params["limit"] = str(limit)
+    if filters:
+        params.update(filters)
+    response = requests.get(
+        f"{base}/rest/v1/{table}",
+        params=params,
+        headers=_supabase_headers(),
+        timeout=15,
+    )
+    response.raise_for_status()
+    payload = response.json()
+    return payload if isinstance(payload, list) else []
+
+
+def _format_dt(value: str | None, with_time: bool = True) -> str:
+    if not value:
+        return ""
+    text = str(value).replace("T", " ").replace("Z", "")
+    return text[:16] if with_time else text[:10]
+
+
+def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
+    if not _supabase_runtime_enabled():
+        return None
+    cached = _supabase_runtime_cache.get("payload")
+    ts = float(_supabase_runtime_cache.get("ts") or 0.0)
+    if cached and (time.time() - ts) < ttl_seconds:
+        return cached if isinstance(cached, dict) else None
+    try:
+        offers = _supabase_fetch("offers", order="updated_at.desc")
+        scores = _supabase_fetch("offer_scores")
+        letters = _supabase_fetch("offer_letters")
+        history = _supabase_fetch("applications_history", order="created_at.desc")
+        refused = _supabase_fetch("refused_offers")
+        scan_runs = _supabase_fetch("scan_runs", order="started_at.desc", limit=6)
+        latest_scan_id = scan_runs[0]["id"] if scan_runs and isinstance(scan_runs[0], dict) else None
+        scan_sources = _supabase_fetch("scan_run_sources", order="created_at.desc", filters={"scan_run_id": f"eq.{latest_scan_id}"}) if latest_scan_id else []
+
+        score_map = {
+            row.get("offer_signature"): {
+                **(row.get("score_payload") if isinstance(row.get("score_payload"), dict) else {}),
+                "score": row.get("score"),
+                "level": row.get("level"),
+                "date": _format_dt(row.get("scored_at")),
+            }
+            for row in scores
+            if isinstance(row, dict) and row.get("offer_signature")
+        }
+        letter_map = {
+            row.get("offer_signature"): row
+            for row in letters
+            if isinstance(row, dict) and row.get("offer_signature")
+        }
+        history_rows = []
+        history_map: dict[str, dict] = {}
+        for row in history:
+            if not isinstance(row, dict):
+                continue
+            signature = str(row.get("offer_signature") or "").strip()
+            local_row = {
+                "offer_signature": signature,
+                "id_adzuna": row.get("source_offer_id") or "",
+                "url": row.get("offer_url") or "",
+                "titre": row.get("title") or "",
+                "statut": row.get("status") or "a_analyser",
+                "notes": row.get("notes") or "",
+                "date_postulation": _format_dt(row.get("applied_at")),
+                "date_relance_prevue": _format_dt(row.get("followup_due_at"), with_time=False),
+            }
+            history_rows.append(local_row)
+            if signature and signature not in history_map:
+                history_map[signature] = local_row
+
+        refused_ids = {str(row.get("offer_signature") or "").strip() for row in refused if isinstance(row, dict)}
+        offer_rows: list[dict] = []
+        offer_records: dict[str, dict] = {}
+        for row in offers:
+            if not isinstance(row, dict):
+                continue
+            signature = str(row.get("signature") or "").strip()
+            if not signature:
+                continue
+            score_info = score_map.get(signature, {})
+            letter_info = letter_map.get(signature, {})
+            histo_row = history_map.get(signature)
+            local_row = {
+                "ID annonce": row.get("source_offer_id") or signature,
+                "Intitulé du poste": row.get("title") or signature,
+                "Entreprise": row.get("company") or "",
+                "Ville ou zone": row.get("location") or "",
+                "Lien vers l'annonce": row.get("offer_url") or "",
+                "Date de publication": _format_dt(row.get("published_at"), with_time=False),
+                "Type de contrat": row.get("contract_type") or "",
+                "Source": row.get("source") or "",
+                "Description (texte complet)": row.get("description") or "",
+                "pipeline_id": signature,
+                "pipeline_status": row.get("pipeline_status") or "a_analyser",
+                "is_new": False,
+                "is_refused": signature in refused_ids or bool(row.get("is_refused")),
+                "is_applied": bool(histo_row and histo_row.get("statut") == "postule"),
+                "analysis_done": bool(score_info),
+                "letter_generated": bool(letter_info.get("letter_text")),
+                "score_value": score_info.get("score"),
+                "score_level": score_info.get("level"),
+                "positive_reasons": score_info.get("positiveReasons", []),
+                "negative_reasons": score_info.get("negativeReasons", []),
+                "detected_keywords": score_info.get("detectedKeywords", []),
+                "warnings": score_info.get("warnings", []),
+                "score_reasons": score_info.get("positiveReasons", score_info.get("raisons", [])),
+                "first_seen_at": _format_dt(row.get("first_seen_at")),
+                "last_seen_at": _format_dt(row.get("last_seen_at")),
+            }
+            offer_rows.append(local_row)
+            offer_records[signature] = {
+                "manual_status": row.get("pipeline_status") or "",
+                "score": score_info.get("score"),
+                "score_level": score_info.get("level"),
+                "letter_generated": bool(letter_info.get("letter_text")),
+                "analyzed": bool(score_info),
+                "first_seen_at": _format_dt(row.get("first_seen_at")),
+                "last_seen_at": _format_dt(row.get("last_seen_at")),
+            }
+
+        letters_payload = {
+            signature: {
+                "signature": signature,
+                "titre": row.get("title") or "",
+                "entreprise": row.get("company") or "",
+                "lettre": row.get("letter_text") or "",
+                "date_gen": _format_dt(row.get("generated_at")),
+                "date_modif": _format_dt(row.get("updated_at")),
+            }
+            for signature, row in letter_map.items()
+        }
+        scores_payload = {signature: value for signature, value in score_map.items()}
+
+        last_scan = {}
+        if scan_runs and isinstance(scan_runs[0], dict):
+            current = scan_runs[0]
+            last_scan = {
+                "status": current.get("status") or "unknown",
+                "started_at": _format_dt(current.get("started_at")),
+                "finished_at": _format_dt(current.get("finished_at")),
+                "offers_found": current.get("offers_found", 0) or 0,
+                "new_offers": current.get("new_offers", 0) or 0,
+                "duplicates_ignored": current.get("duplicates_ignored", 0) or 0,
+                "exported_offers": current.get("exported_offers", 0) or 0,
+                "errors": current.get("errors", []) or [],
+                "new_offer_keys": current.get("new_offer_keys", []) or [],
+                "sources_scanned": {
+                    str(src.get("source") or ""): {
+                        "status": src.get("status") or "unknown",
+                        "offers_found": src.get("offers_found", 0) or 0,
+                        "new_offers": src.get("new_offers", 0) or 0,
+                        "duplicates": src.get("duplicates", 0) or 0,
+                        "error_message": src.get("error_message") or "",
+                        "timestamp": _format_dt(src.get("source_timestamp")),
+                    }
+                    for src in scan_sources
+                    if isinstance(src, dict) and src.get("source")
+                },
+            }
+
+        payload = {
+            "offer_rows": offer_rows,
+            "history_rows": history_rows,
+            "letters": letters_payload,
+            "scores": scores_payload,
+            "refused_ids": refused_ids,
+            "scan_state": {
+                "offers": offer_records,
+                "last_scan": last_scan,
+                "history": [],
+            },
+        }
+        _supabase_runtime_cache["ts"] = time.time()
+        _supabase_runtime_cache["payload"] = payload
+        return payload
+    except Exception:
+        return None
+
+
 def _lire_csv() -> list[dict]:
     from main import is_offer_within_max_age
     from sources._common import is_relevant_offer
+
+    if _supabase_runtime_enabled() and not CSV_PATH.exists():
+        snapshot = _supabase_runtime_snapshot()
+        if snapshot:
+            rows = snapshot.get("offer_rows", [])
+            return rows if isinstance(rows, list) else []
 
     if not CSV_PATH.exists():
         return []
@@ -475,16 +683,34 @@ def _lire_csv() -> list[dict]:
 
 def _lire_historique() -> list[dict]:
     data = _read_json(HISTO_PATH, [])
+    if isinstance(data, list) and data:
+        return data
+    snapshot = _supabase_runtime_snapshot()
+    if snapshot:
+        rows = snapshot.get("history_rows", [])
+        return rows if isinstance(rows, list) else []
     return data if isinstance(data, list) else []
 
 
 def _lire_lettres() -> dict:
     data = _read_json(LETTRES_PATH, {})
+    if isinstance(data, dict) and data:
+        return data
+    snapshot = _supabase_runtime_snapshot()
+    if snapshot:
+        payload = snapshot.get("letters", {})
+        return payload if isinstance(payload, dict) else {}
     return data if isinstance(data, dict) else {}
 
 
 def _lire_scores() -> dict:
     data = _read_json(SCORES_PATH, {})
+    if isinstance(data, dict) and data:
+        return data
+    snapshot = _supabase_runtime_snapshot()
+    if snapshot:
+        payload = snapshot.get("scores", {})
+        return payload if isinstance(payload, dict) else {}
     return data if isinstance(data, dict) else {}
 
 
@@ -498,6 +724,12 @@ def _save_scores_merged(updates: dict[str, dict]) -> dict:
 
 def _lire_refus() -> list[str]:
     data = _read_json(REFUS_PATH, [])
+    if isinstance(data, list) and data:
+        return data
+    snapshot = _supabase_runtime_snapshot()
+    if snapshot:
+        payload = snapshot.get("refused_ids", [])
+        return payload if isinstance(payload, list) else []
     return data if isinstance(data, list) else []
 
 
@@ -549,6 +781,13 @@ def _maybe_launch_supabase_sync(reason: str = "") -> tuple[bool, str]:
 
 def _scan_state() -> dict:
     from main import refresh_scan_state_from_exports
+
+    if _supabase_runtime_enabled() and not CSV_PATH.exists():
+        snapshot = _supabase_runtime_snapshot()
+        if snapshot:
+            payload = snapshot.get("scan_state", {})
+            if isinstance(payload, dict):
+                return payload
 
     with _scan_state_lock:
         return refresh_scan_state_from_exports()
@@ -690,14 +929,18 @@ def _build_offer_payload(row: dict, scan_state: dict, lettres: dict, scores: dic
 
 
 def _filtered_offers() -> list[dict]:
-    rows = _lire_csv()
-    scan_state, lettres, scores, histo, refus_ids = _pipeline_context()
-    histo_map = _historique_key_map(histo)
-    last_scan_new_keys = set((scan_state.get("last_scan") or {}).get("new_offer_keys", []) or [])
-    offers = [
-        _build_offer_payload(row, scan_state, lettres, scores, histo_map, refus_ids, last_scan_new_keys)
-        for row in rows
-    ]
+    snapshot = _supabase_runtime_snapshot() if _supabase_runtime_enabled() and not CSV_PATH.exists() else None
+    if snapshot and isinstance(snapshot.get("offer_rows"), list):
+        offers = list(snapshot.get("offer_rows") or [])
+    else:
+        rows = _lire_csv()
+        scan_state, lettres, scores, histo, refus_ids = _pipeline_context()
+        histo_map = _historique_key_map(histo)
+        last_scan_new_keys = set((scan_state.get("last_scan") or {}).get("new_offer_keys", []) or [])
+        offers = [
+            _build_offer_payload(row, scan_state, lettres, scores, histo_map, refus_ids, last_scan_new_keys)
+            for row in rows
+        ]
 
     q = (request.args.get("q") or "").strip().lower()
     source = (request.args.get("source") or "").strip()
