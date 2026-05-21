@@ -76,6 +76,10 @@ def _current_workspace() -> str:
     return get_workspace_slug()
 
 
+def _workspace_blob_key(name: str) -> str:
+    return f"{name}::{_current_workspace()}"
+
+
 def _supabase_auto_sync_enabled() -> bool:
     return (os.environ.get("SUPABASE_SYNC_AUTO") or "1").strip().lower() in {"1", "true", "yes", "on", "oui"}
 
@@ -517,6 +521,7 @@ def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
         history = _supabase_fetch("applications_history", order="created_at.desc")
         refused = _supabase_fetch("refused_offers")
         scan_runs = _supabase_fetch("scan_runs", order="started_at.desc", limit=6)
+        app_settings_rows = _supabase_fetch("app_settings", select="key,value")
         latest_scan_id = scan_runs[0]["id"] if scan_runs and isinstance(scan_runs[0], dict) else None
         scan_sources = _supabase_fetch("scan_run_sources", order="created_at.desc", filters={"scan_run_id": f"eq.{latest_scan_id}"}) if latest_scan_id else []
 
@@ -651,6 +656,7 @@ def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
             "letters": letters_payload,
             "scores": scores_payload,
             "refused_ids": refused_ids,
+            "app_settings": {row.get("key"): row.get("value") for row in app_settings_rows if isinstance(row, dict)},
             "scan_state": {
                 "offers": offer_records,
                 "last_scan": last_scan,
@@ -662,6 +668,61 @@ def _supabase_runtime_snapshot(ttl_seconds: int = 12) -> dict | None:
         return payload
     except Exception:
         return None
+
+
+def _workspace_blob_read(name: str, default):
+    snapshot = _supabase_runtime_snapshot()
+    if not snapshot:
+        return default
+    app_settings = snapshot.get("app_settings", {})
+    if not isinstance(app_settings, dict):
+        return default
+    payload = app_settings.get(_workspace_blob_key(name))
+    if payload is None:
+        return default
+    if isinstance(default, list) and not isinstance(payload, list):
+        return default
+    if isinstance(default, dict) and not isinstance(payload, dict):
+        return default
+    return payload
+
+
+def _workspace_blob_write(name: str, payload) -> None:
+    if not _supabase_runtime_enabled():
+        return
+    response = requests.post(
+        f"{str(os.environ.get('SUPABASE_URL') or '').rstrip('/')}/rest/v1/app_settings?on_conflict=key",
+        headers={
+            **_supabase_headers(),
+            "Content-Type": "application/json",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        data=json.dumps([{"key": _workspace_blob_key(name), "value": payload}], ensure_ascii=False),
+        timeout=15,
+    )
+    response.raise_for_status()
+    _supabase_runtime_cache["ts"] = 0.0
+    _supabase_runtime_cache["payload"] = None
+
+
+def _workspace_pipeline_data() -> dict:
+    payload = _workspace_blob_read("workspace_pipeline", {})
+    return payload if isinstance(payload, dict) else {}
+
+
+def _workspace_pipeline_save(payload: dict) -> None:
+    _workspace_blob_write("workspace_pipeline", payload)
+
+
+def _workspace_pipeline_update_offer(offre_id: str, updates: dict) -> None:
+    payload = _workspace_pipeline_data()
+    offers = payload.get("offers", {})
+    offers = offers if isinstance(offers, dict) else {}
+    current = offers.get(offre_id, {})
+    current = current if isinstance(current, dict) else {}
+    offers[offre_id] = {**current, **updates}
+    payload["offers"] = offers
+    _workspace_pipeline_save(payload)
 
 
 def _lire_csv() -> list[dict]:
@@ -693,6 +754,10 @@ def _lire_csv() -> list[dict]:
 
 
 def _lire_historique() -> list[dict]:
+    if _supabase_runtime_enabled():
+        payload = _workspace_blob_read("workspace_history", None)
+        if isinstance(payload, list):
+            return payload
     data = _read_json(HISTO_PATH, [])
     if isinstance(data, list) and data:
         return data
@@ -704,6 +769,10 @@ def _lire_historique() -> list[dict]:
 
 
 def _lire_lettres() -> dict:
+    if _supabase_runtime_enabled():
+        payload = _workspace_blob_read("workspace_letters", None)
+        if isinstance(payload, dict):
+            return payload
     data = _read_json(LETTRES_PATH, {})
     if isinstance(data, dict) and data:
         return data
@@ -715,6 +784,10 @@ def _lire_lettres() -> dict:
 
 
 def _lire_scores() -> dict:
+    if _supabase_runtime_enabled():
+        payload = _workspace_blob_read("workspace_scores", None)
+        if isinstance(payload, dict):
+            return payload
     data = _read_json(SCORES_PATH, {})
     if isinstance(data, dict) and data:
         return data
@@ -726,6 +799,11 @@ def _lire_scores() -> dict:
 
 
 def _save_scores_merged(updates: dict[str, dict]) -> dict:
+    if _supabase_runtime_enabled():
+        scores = _lire_scores()
+        scores.update(updates)
+        _workspace_blob_write("workspace_scores", scores)
+        return scores
     with _scores_lock:
         scores = _lire_scores()
         scores.update(updates)
@@ -734,6 +812,10 @@ def _save_scores_merged(updates: dict[str, dict]) -> dict:
 
 
 def _lire_refus() -> list[str]:
+    if _supabase_runtime_enabled():
+        payload = _workspace_blob_read("workspace_refused", None)
+        if isinstance(payload, list):
+            return payload
     data = _read_json(REFUS_PATH, [])
     if isinstance(data, list) and data:
         return data
@@ -750,7 +832,24 @@ def _lire_sync_supabase_state() -> dict:
 
 
 def _ecrire_lettres(lettres: dict) -> None:
+    if _supabase_runtime_enabled():
+        _workspace_blob_write("workspace_letters", lettres)
+        return
     _write_json(LETTRES_PATH, lettres)
+
+
+def _ecrire_historique(histo: list[dict]) -> None:
+    if _supabase_runtime_enabled():
+        _workspace_blob_write("workspace_history", histo)
+        return
+    _write_json(HISTO_PATH, histo)
+
+
+def _ecrire_refus(refus: list[str]) -> None:
+    if _supabase_runtime_enabled():
+        _workspace_blob_write("workspace_refused", refus)
+        return
+    _write_json(REFUS_PATH, refus)
 
 
 def _supabase_sync_configured() -> bool:
@@ -798,6 +897,18 @@ def _scan_state() -> dict:
         if snapshot:
             payload = snapshot.get("scan_state", {})
             if isinstance(payload, dict):
+                workspace_payload = _workspace_pipeline_data()
+                workspace_offers = workspace_payload.get("offers", {})
+                if isinstance(workspace_offers, dict) and workspace_offers:
+                    merged_offers = dict(payload.get("offers") or {})
+                    for key, value in workspace_offers.items():
+                        base = merged_offers.get(key, {})
+                        base = base if isinstance(base, dict) else {}
+                        merged_offers[key] = {**base, **(value if isinstance(value, dict) else {})}
+                    return {
+                        **payload,
+                        "offers": merged_offers,
+                    }
                 return payload
 
     with _scan_state_lock:
@@ -815,12 +926,31 @@ def _sync_pipeline_status(
 ) -> None:
     from main import _offer_key_from_parts, sync_pipeline_status
 
-    sync_pipeline_status(_offer_key_from_parts(offre_id, url, titre, entreprise, source, lieu), statut)
+    key = _offer_key_from_parts(offre_id, url, titre, entreprise, source, lieu)
+    if _supabase_runtime_enabled():
+        _workspace_pipeline_update_offer(key, {"manual_status": statut})
+        return
+    sync_pipeline_status(key, statut)
 
 
 def _mark_offer_analyzed(offre_id: str, evaluation: dict) -> None:
     from main import mark_offer_analyzed
 
+    if _supabase_runtime_enabled():
+        _workspace_pipeline_update_offer(
+            offre_id,
+            {
+                "analyzed": True,
+                "score": evaluation.get("score"),
+                "score_level": evaluation.get("level"),
+                "positive_reasons": evaluation.get("positiveReasons", evaluation.get("raisons", [])),
+                "negative_reasons": evaluation.get("negativeReasons", []),
+                "detected_keywords": evaluation.get("detectedKeywords", []),
+                "warnings": evaluation.get("warnings", []),
+                "last_seen_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
+        return
     mark_offer_analyzed(offre_id, evaluation)
 
 
@@ -940,18 +1070,14 @@ def _build_offer_payload(row: dict, scan_state: dict, lettres: dict, scores: dic
 
 
 def _filtered_offers() -> list[dict]:
-    snapshot = _supabase_runtime_snapshot() if _supabase_runtime_enabled() and not CSV_PATH.exists() else None
-    if snapshot and isinstance(snapshot.get("offer_rows"), list):
-        offers = list(snapshot.get("offer_rows") or [])
-    else:
-        rows = _lire_csv()
-        scan_state, lettres, scores, histo, refus_ids = _pipeline_context()
-        histo_map = _historique_key_map(histo)
-        last_scan_new_keys = set((scan_state.get("last_scan") or {}).get("new_offer_keys", []) or [])
-        offers = [
-            _build_offer_payload(row, scan_state, lettres, scores, histo_map, refus_ids, last_scan_new_keys)
-            for row in rows
-        ]
+    rows = _lire_csv()
+    scan_state, lettres, scores, histo, refus_ids = _pipeline_context()
+    histo_map = _historique_key_map(histo)
+    last_scan_new_keys = set((scan_state.get("last_scan") or {}).get("new_offer_keys", []) or [])
+    offers = [
+        _build_offer_payload(row, scan_state, lettres, scores, histo_map, refus_ids, last_scan_new_keys)
+        for row in rows
+    ]
 
     q = (request.args.get("q") or "").strip().lower()
     source = (request.args.get("source") or "").strip()
@@ -1485,11 +1611,20 @@ def api_lettre_put(offre_id: str):
         "date_modif": datetime.now().strftime("%Y-%m-%d %H:%M"),
     }
     _ecrire_lettres(lettres)
-    mark_offer_letter_generated(
-        offre_id,
-        titre=lettres[offre_id].get("titre", ""),
-        entreprise=lettres[offre_id].get("entreprise", ""),
-    )
+    if _supabase_runtime_enabled():
+        _workspace_pipeline_update_offer(
+            offre_id,
+            {
+                "letter_generated": True,
+                "last_seen_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+        )
+    else:
+        mark_offer_letter_generated(
+            offre_id,
+            titre=lettres[offre_id].get("titre", ""),
+            entreprise=lettres[offre_id].get("entreprise", ""),
+        )
     _maybe_launch_supabase_sync("lettre_save")
     return jsonify({"ok": True})
 
@@ -1521,7 +1656,28 @@ def api_lettre_regen():
                 max_tokens=800,
             )
             lettre = resp.choices[0].message.content.strip()
-            _sauvegarder_lettre(offre_id, lettre, titre, entreprise)
+            if _supabase_runtime_enabled():
+                lettres = _lire_lettres()
+                existing = lettres.get(offre_id, {})
+                lettres[offre_id] = {
+                    **existing,
+                    "signature": offre_id,
+                    "lettre": lettre,
+                    "titre": titre,
+                    "entreprise": entreprise,
+                    "date_gen": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "date_modif": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                }
+                _ecrire_lettres(lettres)
+                _workspace_pipeline_update_offer(
+                    offre_id,
+                    {
+                        "letter_generated": True,
+                        "last_seen_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    },
+                )
+            else:
+                _sauvegarder_lettre(offre_id, lettre, titre, entreprise)
             _maybe_launch_supabase_sync("lettre_regen")
             return jsonify({"ok": True, "lettre": lettre, "modele": modele})
         except Exception as exc:
@@ -1642,7 +1798,7 @@ def api_historique_statut():
             row.get("source", ""),
             row.get("lieu", ""),
         )
-        _write_json(HISTO_PATH, histo)
+        _ecrire_historique(histo)
         _maybe_launch_supabase_sync("historique_statut")
         return jsonify({"ok": True, "statut": nouveau_normalise})
     for index, row in enumerate(histo):
@@ -1662,7 +1818,7 @@ def api_historique_statut():
             row.get("entreprise", ""),
         )
         break
-    _write_json(HISTO_PATH, histo)
+    _ecrire_historique(histo)
     _maybe_launch_supabase_sync("historique_statut")
     return jsonify({"ok": True})
 
@@ -1678,7 +1834,7 @@ def api_historique_notes():
         if match:
             histo[index]["notes"] = data.get("notes", "")
             break
-    _write_json(HISTO_PATH, histo)
+    _ecrire_historique(histo)
     _maybe_launch_supabase_sync("historique_notes")
     return jsonify({"ok": True})
 
@@ -1783,7 +1939,7 @@ def api_offres_refuser():
     refus = _lire_refus()
     if offre_id not in refus:
         refus.append(offre_id)
-    _write_json(REFUS_PATH, refus)
+    _ecrire_refus(refus)
     _sync_pipeline_status(offre_id, "refusee")
     _maybe_launch_supabase_sync("offre_refusee")
     return jsonify({"ok": True})
@@ -1794,7 +1950,7 @@ def api_offres_refuser_annuler():
     data = request.get_json(silent=True) or {}
     offre_id = data.get("id", "")
     refus = [row for row in _lire_refus() if row != offre_id]
-    _write_json(REFUS_PATH, refus)
+    _ecrire_refus(refus)
     _sync_pipeline_status(offre_id, "")
     _maybe_launch_supabase_sync("offre_refus_annule")
     return jsonify({"ok": True})
@@ -1839,7 +1995,7 @@ def api_historique_ajouter():
         existing["statut"] = "postule"
         if not existing.get("date_relance_prevue"):
             existing["date_relance_prevue"] = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d")
-        _write_json(HISTO_PATH, histo)
+        _ecrire_historique(histo)
         _sync_pipeline_status(
             offre_id,
             "postule",
@@ -1873,7 +2029,7 @@ def api_historique_ajouter():
             "notes": "",
         }
     )
-    _write_json(HISTO_PATH, histo)
+    _ecrire_historique(histo)
     _sync_pipeline_status(
         offre_id,
         "postule",
@@ -1899,7 +2055,7 @@ def api_historique_supprimer():
         for row in histo
         if not _history_row_matches(row, id_adzuna, url_cible)
     ]
-    _write_json(HISTO_PATH, histo)
+    _ecrire_historique(histo)
     _sync_pipeline_status(id_adzuna, "", url_cible)
     _maybe_launch_supabase_sync("historique_suppression")
     return jsonify({"ok": True, "supprime": before - len(histo)})
