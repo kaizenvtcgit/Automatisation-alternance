@@ -1406,7 +1406,7 @@
           <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
             <div>
               <div class="pipeline-toolbar-title">Pipeline de candidature</div>
-              <div class="pipeline-toolbar-subtitle">Vue Kanban pour prioriser les offres, suivre les actions et laisser respirer davantage les cartes.</div>
+              <div class="pipeline-toolbar-subtitle" id="pipeline-toolbar-subtitle">Vue Kanban personnelle pour prioriser les offres, suivre les actions et laisser respirer davantage les cartes.</div>
             </div>
             <div class="badge text-bg-light px-3 py-2" id="pipeline-toolbar-count">0 offre</div>
           </div>
@@ -1495,6 +1495,10 @@
       </div>
 
       <div class="tab-pane fade" id="tab-historique">
+        <div class="card p-3 mb-3">
+          <div class="fw-bold">Historique personnel</div>
+          <div class="text-secondary small" id="history-panel-subtitle">Les candidatures et notes affichées ici appartiennent à cet espace.</div>
+        </div>
         <div class="card p-0 overflow-hidden">
           <div class="table-responsive">
             <table class="table table-hover historique-table">
@@ -1516,6 +1520,10 @@
       </div>
 
       <div class="tab-pane fade" id="tab-relances">
+        <div class="card p-3 mb-3">
+          <div class="fw-bold">Relances de cet espace</div>
+          <div class="text-secondary small" id="relances-panel-subtitle">Seules les candidatures de cet espace apparaissent dans cette liste.</div>
+        </div>
         <div class="card p-0 overflow-hidden">
           <div class="table-responsive">
             <table class="table table-hover">
@@ -2211,6 +2219,9 @@
       const workspaceNode = document.getElementById('workspace-status');
       const logoutBtn = document.getElementById('access-logout-btn');
       const stopBtn = document.querySelector('.btn-outline-danger[onclick="fermerServeur()"]');
+      const pipelineSubtitle = document.getElementById('pipeline-toolbar-subtitle');
+      const historySubtitle = document.getElementById('history-panel-subtitle');
+      const relancesSubtitle = document.getElementById('relances-panel-subtitle');
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
       if (!accessState.enabled) {
         statusNode.textContent = '';
@@ -2227,6 +2238,10 @@
         workspaceNode.textContent = `Espace: ${accessState.workspace || 'principal'}`;
         logoutBtn.classList.add('d-none');
       }
+      const workspaceLabel = accessState.workspace || 'principal';
+      if (pipelineSubtitle) pipelineSubtitle.textContent = `Vue Kanban personnelle de l'espace ${workspaceLabel} pour prioriser les offres et suivre les actions.`;
+      if (historySubtitle) historySubtitle.textContent = `Les candidatures, statuts et notes affichés ici appartiennent à l'espace ${workspaceLabel}.`;
+      if (relancesSubtitle) relancesSubtitle.textContent = `Seules les relances liées à l'espace ${workspaceLabel} apparaissent dans cette liste.`;
     }
 
     function getStoredWorkspace() {
@@ -3221,7 +3236,7 @@
       const data = filteredOffers('pipeline');
       const grid = document.getElementById('kanban-grid');
       const countLabel = document.getElementById('pipeline-toolbar-count');
-      if (countLabel) countLabel.textContent = `${data.length} offre${data.length > 1 ? 's' : ''}`;
+      if (countLabel) countLabel.textContent = `${data.length} offre${data.length > 1 ? 's' : ''} dans cet espace`;
       const statusNotes = {
         nouvelle: 'A trier rapidement',
         a_analyser: 'A qualifier',
