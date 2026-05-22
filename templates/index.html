@@ -2567,7 +2567,7 @@
       }
       button.disabled = true;
       try {
-        const response = await fetch('/api/auth/unlock', {
+        const response = await fetch(withWorkspaceUrl('/api/auth/unlock'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({token, workspace})
@@ -2594,7 +2594,7 @@
     }
 
     async function logoutAccessToken() {
-      await fetch('/api/auth/logout', {method: 'POST'});
+      await fetch(withWorkspaceUrl('/api/auth/logout'), {method: 'POST'});
       accessState = {
         enabled: true,
         authEnabled: !!(accessState.authEnabled || userAuthState.enabled),
@@ -2750,7 +2750,7 @@
       coachLoading = true;
       renderCoachChat();
       try {
-        const response = await fetch('/api/settings/search-coach', {
+        const response = await fetch(withWorkspaceUrl('/api/settings/search-coach'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({messages: coachMessages})
@@ -2992,11 +2992,11 @@
     }
 
     function telechargerDiagnosticComplet() {
-      window.location.href = '/api/health/export';
+      window.location.href = withWorkspaceUrl('/api/health/export');
     }
 
     function telechargerConfigExemple() {
-      window.location.href = '/api/settings/export-example';
+      window.location.href = withWorkspaceUrl('/api/settings/export-example');
     }
 
     function handleHealthAction(action) {
@@ -3672,7 +3672,7 @@
     }
 
     async function ouvrirAnalyse(id) {
-      const response = await fetch(`/api/offres/${encodeURIComponent(id)}/analyse`);
+      const response = await fetch(withWorkspaceUrl(`/api/offres/${encodeURIComponent(id)}/analyse`));
       const data = await response.json();
       if (!data.ok) {
         alert(data.error || 'Analyse introuvable');
@@ -3703,7 +3703,7 @@
     async function sauvegarderStatutAnalyse() {
       if (!analyseCourante) return;
       const statut = document.getElementById('analyse-status-select').value;
-      await fetch(`/api/offres/${encodeURIComponent(analyseCourante.id)}/statut`, {
+      await fetch(withWorkspaceUrl(`/api/offres/${encodeURIComponent(analyseCourante.id)}/statut`), {
         method: 'PUT',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({statut, titre: analyseCourante.title, entreprise: analyseCourante.company})
@@ -3723,7 +3723,7 @@
       if (!offer) return;
       if (button) button.disabled = true;
       try {
-        const response = await fetch('/api/offres/scorer', {
+        const response = await fetch(withWorkspaceUrl('/api/offres/scorer'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
@@ -3766,7 +3766,7 @@
       if (button) button.disabled = true;
       startAppLoading('Scoring des offres', 'Les offres visibles sans score sont en cours d analyse.');
       try {
-        const response = await fetch('/api/offres/scorer-batch', {
+        const response = await fetch(withWorkspaceUrl('/api/offres/scorer-batch'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({offers: pendingOffers})
@@ -3813,7 +3813,7 @@
       const id = textarea.dataset.id;
       startAppLoading('Sauvegarde de la lettre', 'La lettre de motivation est en cours d enregistrement.');
       try {
-        await fetch(`/api/lettre/${encodeURIComponent(id)}`, {
+        await fetch(withWorkspaceUrl(`/api/lettre/${encodeURIComponent(id)}`), {
           method: 'PUT',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({lettre: textarea.value})
@@ -3832,7 +3832,7 @@
       if (!offer) return;
       startAppLoading('Generation de la lettre', 'L IA prépare une nouvelle version de la lettre de motivation.');
       try {
-        const response = await fetch('/api/lettre/regen', {
+        const response = await fetch(withWorkspaceUrl('/api/lettre/regen'), {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({
@@ -3862,7 +3862,7 @@ async function copierLettre() {
     async function marquerOffreCommePostule(id) {
       const offer = offerById(id);
       if (!offer) return {ok: false, error: 'Offre introuvable'};
-      const response = await fetch('/api/historique/ajouter', {
+      const response = await fetch(withWorkspaceUrl('/api/historique/ajouter'), {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
@@ -3909,7 +3909,7 @@ async function copierLettre() {
       if (!analyseCourante) return;
       const offer = offerById(analyseCourante.id);
       const isRefused = offer?.is_refused;
-      await fetch('/api/offres/refuser', {
+      await fetch(withWorkspaceUrl('/api/offres/refuser'), {
         method: isRefused ? 'DELETE' : 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({id: analyseCourante.id})
@@ -3920,8 +3920,9 @@ async function copierLettre() {
 
     function setButtonsDisabled(disabled) {
       ['btn-recuperer', 'btn-lettres', 'btn-postuler', 'btn-sync-supabase'].forEach(className => {
-        const button = document.querySelector(`.${className}`);
-        if (button) button.disabled = disabled;
+        document.querySelectorAll(`.${className}`).forEach((button) => {
+          button.disabled = disabled;
+        });
       });
     }
 
@@ -4097,7 +4098,7 @@ async function copierLettre() {
     }
 
     async function arreter() {
-      await fetch('/api/arreter', {method: 'POST'});
+      await fetch(withWorkspaceUrl('/api/arreter'), {method: 'POST'});
       stopCloudTaskPolling();
       if (evtSource) {
         evtSource.close();
@@ -4117,7 +4118,7 @@ async function copierLettre() {
       pendingServerStopOnClose = false;
       if (!confirm("Fermer le serveur local ? L'interface ne repondra plus tant que tu ne l'auras pas relance.")) return;
       try {
-        await fetch('/api/serveur/fermer', {method: 'POST'});
+        await fetch(withWorkspaceUrl('/api/serveur/fermer'), {method: 'POST'});
       } catch (_) {}
       if (evtSource) {
         evtSource.close();
@@ -4181,7 +4182,7 @@ async function copierLettre() {
         navigator.sendBeacon('/api/serveur/fermer', payload);
       } catch (_) {
         try {
-          fetch('/api/serveur/fermer', {method: 'POST', keepalive: true});
+          fetch(withWorkspaceUrl('/api/serveur/fermer'), {method: 'POST', keepalive: true});
         } catch (_) {}
       }
     });
