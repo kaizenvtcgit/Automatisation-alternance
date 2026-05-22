@@ -1188,7 +1188,7 @@
       <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-offres">Offres <span class="badge text-bg-light ms-1" id="badge-offres">0</span></a></li>
       <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-historique">Candidatures <span class="badge text-bg-light ms-1" id="badge-histo">0</span></a></li>
       <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-relances">Relances <span class="badge text-bg-warning ms-1" id="badge-relances">0</span></a></li>
-      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Réglages</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Profil</a></li>
     </ul>
 
     <div class="tab-content">
@@ -1232,7 +1232,7 @@
             </div>
             <div class="d-flex gap-2 flex-wrap">
               <button class="btn btn-sm btn-primary" type="button" onclick="ouvrirGuideConfiguration()"><i class="bi bi-signpost-split me-1"></i>Voir les étapes</button>
-              <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Ouvrir les réglages</a>
+              <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Ouvrir le profil</a>
             </div>
           </div>
           <div class="summary-list mt-3" id="setup-status-list"></div>
@@ -1240,7 +1240,7 @@
         </div>
 
         <div class="row g-3 mb-4">
-          <div class="col-md-6 col-xl-3">
+          <div class="col-md-6 col-xl-6">
             <div class="card action-card p-3 d-flex flex-column">
               <div class="d-flex gap-3 mb-3">
                 <div class="action-icon" style="background:rgba(31,94,255,0.12);color:var(--blue)">
@@ -1254,21 +1254,7 @@
               <button class="btn btn-primary mt-auto btn-recuperer" id="scan-action-button" onclick="lancerStream('recuperer')">Lancer la recherche</button>
             </div>
           </div>
-          <div class="col-md-6 col-xl-3">
-            <div class="card action-card p-3 d-flex flex-column">
-              <div class="d-flex gap-3 mb-3">
-                <div class="action-icon" style="background:rgba(34,122,73,0.12);color:var(--green)">
-                  <i class="bi bi-envelope-paper"></i>
-                </div>
-                <div>
-                  <div class="fw-bold">Préparer mes lettres</div>
-                  <div class="text-secondary small" id="letters-action-subtitle">Prépare les lettres manquantes pour les offres retenues.</div>
-                </div>
-              </div>
-              <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Préparer</button>
-            </div>
-          </div>
-          <div class="col-md-6 col-xl-3">
+          <div class="col-md-6 col-xl-6">
             <div class="card action-card p-3 d-flex flex-column">
               <div class="d-flex gap-3 mb-3">
                 <div class="action-icon" style="background:rgba(39,48,70,0.12);color:var(--ink)">
@@ -1458,12 +1444,12 @@
       <div class="tab-pane fade" id="tab-settings">
         <div class="settings-actions mb-3">
           <div>
-            <div class="fw-bold">Mon profil et ma recherche</div>
-            <div class="settings-subtitle">Renseigne ici tout ce qui t aide à trouver et suivre les bonnes offres.</div>
+            <div class="fw-bold">Profil</div>
+            <div class="settings-subtitle">Renseigne ici tout ce qui t aide à trouver et suivre les bonnes offres. Les changements sont enregistrés automatiquement.</div>
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-outline-secondary" onclick="chargerSettings(true)">Actualiser</button>
-            <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Enregistrer mes réglages</button>
+            <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Enregistrer maintenant</button>
           </div>
         </div>
 
@@ -1895,7 +1881,7 @@
         <div class="modal-header border-0">
           <div>
             <h5 class="modal-title mb-1">Mon compte</h5>
-            <div class="text-secondary small" id="user-auth-subtitle">Connecte-toi pour retrouver ta recherche, tes offres et ton suivi.</div>
+            <div class="text-secondary small" id="user-auth-subtitle">Tu as déjà un compte ? Connecte-toi. Sinon, crée-en un en quelques secondes.</div>
           </div>
         </div>
         <div class="modal-body pt-0">
@@ -1907,8 +1893,8 @@
           <div class="small text-secondary mt-2">Chaque compte garde automatiquement son espace, ses paramètres et son suivi.</div>
         </div>
         <div class="modal-footer border-0 justify-content-between">
-          <button class="btn btn-outline-secondary" type="button" id="user-auth-signup-btn" onclick="submitUserSignup()">Créer mon compte</button>
-          <button class="btn btn-primary" type="button" id="user-auth-login-btn" onclick="submitUserLogin()">Se connecter</button>
+          <button class="btn btn-outline-secondary" type="button" id="user-auth-signup-btn" onclick="submitUserSignup()">Première visite ? Créer mon compte</button>
+          <button class="btn btn-primary" type="button" id="user-auth-login-btn" onclick="submitUserLogin()">J ai déjà un compte</button>
         </div>
       </div>
     </div>
@@ -1961,6 +1947,11 @@
     let lastActionTrigger = null;
     let inlineLoadingAnchor = null;
     let inlineLoadingNode = null;
+    let settingsPopulateDepth = 0;
+    let settingsSaveInFlight = false;
+    let settingsAutoSaveTimer = null;
+    let settingsAutoSavePending = false;
+    let settingsAutoSaveDirty = false;
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -2370,8 +2361,8 @@
           await chargerTout();
           return;
         }
-        showToast('Compte cree', data.message || 'Verifie ton email puis connecte-toi.', 'info');
-        showUserAuthModal(data.message || 'Compte cree. Verifie ton email puis connecte-toi.');
+        showToast('Compte cree', data.message || 'Compte créé. Tu peux maintenant te connecter.', 'info');
+        showUserAuthModal(data.message || 'Compte créé. Tu peux maintenant te connecter.');
       } catch (error) {
         showUserAuthModal(error.message || 'Creation du compte impossible');
       } finally {
@@ -2590,6 +2581,7 @@
         root._tags.push(value);
         input.value = '';
         render();
+        root.dispatchEvent(new Event('change', {bubbles: true}));
       };
 
       root.addEventListener('click', event => {
@@ -2597,6 +2589,7 @@
         if (button) {
           root._tags.splice(Number(button.dataset.index), 1);
           render();
+          root.dispatchEvent(new Event('change', {bubbles: true}));
           input.focus();
           return;
         }
@@ -2610,6 +2603,7 @@
         } else if (event.key === 'Backspace' && !input.value && root._tags.length) {
           root._tags.pop();
           render();
+          root.dispatchEvent(new Event('change', {bubbles: true}));
         }
       });
 
@@ -2988,68 +2982,74 @@
     }
 
     function populateSettings(settings) {
-      settingsData = settings || {};
-      const profile = settingsData.profile || {};
-      const search = settingsData.search || {};
-      const apiKeys = settingsData.api_keys || {};
-      const agent = settingsData.agent || {};
+      settingsPopulateDepth += 1;
+      try {
+        settingsData = settings || {};
+        const profile = settingsData.profile || {};
+        const search = settingsData.search || {};
+        const apiKeys = settingsData.api_keys || {};
+        const agent = settingsData.agent || {};
 
-      document.getElementById('settings-prenom').value = profile.prenom || '';
-      document.getElementById('settings-nom').value = profile.nom || '';
-      document.getElementById('settings-email').value = profile.email || '';
-      document.getElementById('settings-tel').value = profile.tel || '';
-      document.getElementById('settings-portfolio').value = profile.portfolio || '';
-      document.getElementById('settings-linkedin').value = profile.linkedin || '';
-      document.getElementById('settings-github').value = profile.github || '';
-      document.getElementById('settings-cv-path').value = profile.cv_path || '';
-      document.getElementById('settings-cv-meta').textContent = profile.cv_path
-        ? 'Un CV est déjà associé à ton profil.'
-        : "Ajoute ton CV pour le réutiliser plus facilement dans l'application.";
-      refreshCvPickerUi();
-      document.getElementById('settings-presentation').value = profile.presentation || '';
+        document.getElementById('settings-prenom').value = profile.prenom || '';
+        document.getElementById('settings-nom').value = profile.nom || '';
+        document.getElementById('settings-email').value = profile.email || '';
+        document.getElementById('settings-tel').value = profile.tel || '';
+        document.getElementById('settings-portfolio').value = profile.portfolio || '';
+        document.getElementById('settings-linkedin').value = profile.linkedin || '';
+        document.getElementById('settings-github').value = profile.github || '';
+        document.getElementById('settings-cv-path').value = profile.cv_path || '';
+        document.getElementById('settings-cv-meta').textContent = profile.cv_path
+          ? 'Un CV est déjà associé à ton profil.'
+          : "Ajoute ton CV pour le réutiliser plus facilement dans l'application.";
+        refreshCvPickerUi();
+        document.getElementById('settings-presentation').value = profile.presentation || '';
 
-      document.getElementById('editor-postes-cibles').setTags(search.postes_cibles || []);
-      document.getElementById('editor-mots-cles-positifs').setTags(search.mots_cles_positifs || []);
-      document.getElementById('editor-mots-cles-negatifs').setTags(search.mots_cles_negatifs || []);
+        document.getElementById('editor-postes-cibles').setTags(search.postes_cibles || []);
+        document.getElementById('editor-mots-cles-positifs').setTags(search.mots_cles_positifs || []);
+        document.getElementById('editor-mots-cles-negatifs').setTags(search.mots_cles_negatifs || []);
 
-      const contracts = new Set(search.types_contrat || []);
-      document.getElementById('contract-alternance').checked = contracts.has('alternance');
-      document.getElementById('contract-stage').checked = contracts.has('stage');
-      document.getElementById('contract-cdd').checked = contracts.has('cdd');
-      document.getElementById('contract-cdi').checked = contracts.has('cdi');
+        const contracts = new Set(search.types_contrat || []);
+        document.getElementById('contract-alternance').checked = contracts.has('alternance');
+        document.getElementById('contract-stage').checked = contracts.has('stage');
+        document.getElementById('contract-cdd').checked = contracts.has('cdd');
+        document.getElementById('contract-cdi').checked = contracts.has('cdi');
 
-      document.getElementById('settings-zone-mode').value = search.zone_mode || 'idf';
-      document.getElementById('settings-zone-geo').value = search.zone_geo || '';
-      document.getElementById('settings-inclure-remote').checked = !!search.inclure_remote;
-      document.getElementById('settings-rayon-km').value = search.rayon_km ?? 30;
-      document.getElementById('settings-score-min').value = search.score_min ?? 0;
+        document.getElementById('settings-zone-mode').value = search.zone_mode || 'idf';
+        document.getElementById('settings-zone-geo').value = search.zone_geo || '';
+        document.getElementById('settings-inclure-remote').checked = !!search.inclure_remote;
+        document.getElementById('settings-rayon-km').value = search.rayon_km ?? 30;
+        document.getElementById('settings-score-min').value = search.score_min ?? 0;
 
-      document.getElementById('settings-adzuna-app-id').value = apiKeys.adzuna_app_id || '';
-      document.getElementById('settings-adzuna-app-key').value = apiKeys.adzuna_app_key || '';
-      document.getElementById('settings-ft-client-id').value = apiKeys.ft_client_id || '';
-      document.getElementById('settings-ft-client-secret').value = apiKeys.ft_client_secret || '';
-      document.getElementById('settings-lba-api-key').value = apiKeys.lba_api_key || '';
-      document.getElementById('settings-groq-api-key').value = apiKeys.groq_api_key || '';
-      document.getElementById('settings-gemini-api-key').value = apiKeys.gemini_api_key || '';
+        document.getElementById('settings-adzuna-app-id').value = apiKeys.adzuna_app_id || '';
+        document.getElementById('settings-adzuna-app-key').value = apiKeys.adzuna_app_key || '';
+        document.getElementById('settings-ft-client-id').value = apiKeys.ft_client_id || '';
+        document.getElementById('settings-ft-client-secret').value = apiKeys.ft_client_secret || '';
+        document.getElementById('settings-lba-api-key').value = apiKeys.lba_api_key || '';
+        document.getElementById('settings-groq-api-key').value = apiKeys.groq_api_key || '';
+        document.getElementById('settings-gemini-api-key').value = apiKeys.gemini_api_key || '';
 
-      document.getElementById('settings-confirmation-required').checked = agent.confirmation_required !== false;
-      document.getElementById('settings-delay-seconds').value = agent.delay_seconds ?? 5;
-      document.getElementById('settings-max-candidatures-session').value = agent.max_candidatures_session ?? 20;
+        document.getElementById('settings-confirmation-required').checked = agent.confirmation_required !== false;
+        document.getElementById('settings-delay-seconds').value = agent.delay_seconds ?? 5;
+        document.getElementById('settings-max-candidatures-session').value = agent.max_candidatures_session ?? 20;
 
-      updateRangeLabel('settings-rayon-km', 'settings-rayon-km-value', ' km');
-      updateRangeLabel('settings-score-min', 'settings-score-min-value', ' / 100');
-      updateRangeLabel('settings-delay-seconds', 'settings-delay-seconds-value', ' s');
-      updateRangeLabel('settings-max-candidatures-session', 'settings-max-candidatures-session-value', '');
+        updateRangeLabel('settings-rayon-km', 'settings-rayon-km-value', ' km');
+        updateRangeLabel('settings-score-min', 'settings-score-min-value', ' / 100');
+        updateRangeLabel('settings-delay-seconds', 'settings-delay-seconds-value', ' s');
+        updateRangeLabel('settings-max-candidatures-session', 'settings-max-candidatures-session-value', '');
 
-      [
-        'settings-adzuna-app-id',
-        'settings-adzuna-app-key',
-        'settings-ft-client-id',
-        'settings-ft-client-secret',
-        'settings-lba-api-key',
-        'settings-groq-api-key',
-        'settings-gemini-api-key'
-      ].forEach(id => setApiKeyStatus(id, !!document.getElementById(id).value.trim()));
+        [
+          'settings-adzuna-app-id',
+          'settings-adzuna-app-key',
+          'settings-ft-client-id',
+          'settings-ft-client-secret',
+          'settings-lba-api-key',
+          'settings-groq-api-key',
+          'settings-gemini-api-key'
+        ].forEach(id => setApiKeyStatus(id, !!document.getElementById(id).value.trim()));
+        settingsAutoSaveDirty = false;
+      } finally {
+        settingsPopulateDepth = Math.max(0, settingsPopulateDepth - 1);
+      }
     }
 
     function collectSettingsPayload() {
@@ -3120,10 +3120,25 @@
       }
     }
 
-    async function saveSettings() {
+    function queueAutoSaveSettings(delay = 900) {
+      if (settingsPopulateDepth > 0) return;
+      settingsAutoSaveDirty = true;
+      clearTimeout(settingsAutoSaveTimer);
+      settingsAutoSaveTimer = setTimeout(() => {
+        saveSettings({silent: true, reason: 'autosave'});
+      }, delay);
+    }
+
+    async function saveSettings(options = {}) {
+      const silent = !!options.silent;
       const button = document.getElementById('settings-save-btn');
+      if (settingsSaveInFlight) {
+        settingsAutoSavePending = true;
+        return;
+      }
+      settingsSaveInFlight = true;
       button.disabled = true;
-      startAppLoading('Sauvegarde des paramètres', 'Les réglages sont en cours de mise à jour.');
+      if (!silent) startAppLoading('Sauvegarde des paramètres', 'Les réglages sont en cours de mise à jour.');
       try {
         const response = await fetch(withWorkspaceUrl('/api/settings'), {
           method: 'POST',
@@ -3133,8 +3148,10 @@
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Sauvegarde impossible');
         populateSettings(data.settings);
-        appendLog('Paramètres enregistrés.', 'log-ok');
-        showToast('Parametres enregistres', 'Les nouveaux reglages ont bien ete sauvegardes.', 'success');
+        if (!silent) {
+          appendLog('Paramètres enregistrés.', 'log-ok');
+          showToast('Parametres enregistres', 'Les nouveaux reglages ont bien ete sauvegardes.', 'success');
+        }
         const stats = await fetchJsonSafe('/api/stats', statsData || {});
         statsData = (stats && typeof stats === 'object' && !Array.isArray(stats)) ? stats : (statsData || {});
         renderStats();
@@ -3143,8 +3160,14 @@
         appendLog(`Impossible d enregistrer les paramètres : ${error.message}`, 'log-err');
         showToast('Sauvegarde impossible', error.message, 'error');
       } finally {
-        stopAppLoading();
+        if (!silent) stopAppLoading();
         button.disabled = false;
+        settingsSaveInFlight = false;
+        if (settingsAutoSavePending || settingsAutoSaveDirty) {
+          settingsAutoSavePending = false;
+          clearTimeout(settingsAutoSaveTimer);
+          settingsAutoSaveTimer = setTimeout(() => saveSettings({silent: true, reason: 'autosave_retry'}), 300);
+        }
       }
     }
 
@@ -3161,6 +3184,7 @@
         if (!data.ok) throw new Error(data.error || 'Selection impossible');
         if (data.path) {
           document.getElementById('settings-cv-path').value = data.path;
+          queueAutoSaveSettings(200);
         }
       } catch (error) {
         appendLog(`Erreur selection CV: ${error.message}`, 'log-warn');
@@ -4189,7 +4213,17 @@ async function copierLettre() {
     refreshCvPickerUi();
     document.getElementById('settings-zone-mode').addEventListener('change', event => applyZoneModeDefaults(event.target.value));
     document.querySelectorAll('.api-key-input').forEach(input => {
-      input.addEventListener('input', () => setApiKeyStatus(input.id, !!input.value.trim()));
+      input.addEventListener('input', () => {
+        setApiKeyStatus(input.id, !!input.value.trim());
+        queueAutoSaveSettings();
+      });
+    });
+    document.querySelectorAll('#settings-section-profile input, #settings-section-profile textarea, #settings-section-search input, #settings-section-search textarea, #settings-section-search select, #settings-section-search .form-check-input, #settings-section-agent input, #settings-section-agent .form-check-input').forEach(input => {
+      input.addEventListener('input', () => queueAutoSaveSettings());
+      input.addEventListener('change', () => queueAutoSaveSettings());
+    });
+    ['editor-postes-cibles', 'editor-mots-cles-positifs', 'editor-mots-cles-negatifs'].forEach(id => {
+      document.getElementById(id)?.addEventListener('change', () => queueAutoSaveSettings());
     });
     document.getElementById('access-token-input').addEventListener('keydown', event => {
       if (event.key === 'Enter') {

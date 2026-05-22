@@ -1624,6 +1624,11 @@ def _offer_matches_workspace_search(offer: dict, search: dict | None = None) -> 
     search = search if isinstance(search, dict) else (get_settings().get("search") or {})
     if not isinstance(search, dict):
         return True
+    if _user_scoped_table_mode():
+        has_targets = any(str(item or "").strip() for item in (search.get("postes_cibles") or []))
+        has_positive_keywords = any(str(item or "").strip() for item in (search.get("mots_cles_positifs") or []))
+        if not has_targets and not has_positive_keywords:
+            return False
 
     title = _offer_title(offer)
     company = offer.get("Entreprise", "")
@@ -1789,7 +1794,7 @@ def api_user_signup():
             "user": user,
             "requires_email_confirmation": not authenticated,
             "message": (
-                "Compte cree. Verifie l'email de confirmation avant de te connecter."
+                "Compte cree. Connecte-toi pour continuer."
                 if not authenticated
                 else "Compte cree et connecte."
             ),
