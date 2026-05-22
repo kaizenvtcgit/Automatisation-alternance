@@ -784,6 +784,7 @@ def _launch_cloud_background_task(task_type: str, label: str, cmd: list[str], ex
 
         def _watch() -> None:
             global _proc_actif
+            code = 1
             try:
                 code = proc.wait()
                 finished_at = datetime.now().isoformat(timespec="seconds")
@@ -805,6 +806,9 @@ def _launch_cloud_background_task(task_type: str, label: str, cmd: list[str], ex
                 except Exception:
                     pass
                 _proc_actif = None
+                _invalidate_supabase_runtime_cache()
+                if code == 0 and task_type in {"recuperer", "generer-lettres"}:
+                    _maybe_launch_supabase_sync(f"{task_type}_complete")
 
         Thread(target=_watch, daemon=True).start()
         return True, "started", state
@@ -1211,7 +1215,17 @@ def _lire_csv() -> list[dict]:
     from main import is_offer_within_max_age
     from sources._common import is_relevant_offer
 
-    if _supabase_runtime_enabled() and not CSV_PATH.exists():
+    if _supabase_runtime_enabled():
+        if CSV_PATH.exists():
+            try:
+                with CSV_PATH.open(encoding="utf-8-sig") as handle:
+                    rows = [_repair_payload_strings(row) for row in csv.DictReader(handle, delimiter=CSV_SEP)]
+                    return [
+                        row for row in rows
+                        if is_offer_within_max_age(row.get("Date de publication", ""))
+                    ]
+            except Exception:
+                pass
         snapshot = _supabase_runtime_snapshot()
         if snapshot:
             rows = snapshot.get("offer_rows", [])
