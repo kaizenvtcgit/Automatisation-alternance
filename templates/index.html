@@ -1164,16 +1164,16 @@
         <div id="user-status" class="small text-secondary"></div>
         <div id="process-status" class="small text-secondary d-none"></div>
         <button class="btn btn-sm btn-outline-secondary d-none" id="user-auth-btn" onclick="ouvrirAuthUtilisateur()">
-          <i class="bi bi-person-circle me-1"></i>Compte
+          <i class="bi bi-person-circle me-1"></i>Se connecter
         </button>
         <button class="btn btn-sm btn-outline-secondary d-none" id="user-logout-btn" onclick="logoutUserAuth()">
-          <i class="bi bi-box-arrow-right me-1"></i>Deconnexion
+          <i class="bi bi-box-arrow-right me-1"></i>Me déconnecter
         </button>
         <button class="btn btn-sm btn-outline-secondary d-none" id="access-logout-btn" onclick="logoutAccessToken()">
           <i class="bi bi-shield-lock me-1"></i>Verrouiller
         </button>
         <button class="btn btn-sm btn-outline-danger" onclick="fermerServeur()">
-          <i class="bi bi-power me-1"></i>Fermer le serveur
+          <i class="bi bi-power me-1"></i>Fermer l app
         </button>
       </div>
     </div>
@@ -1183,12 +1183,12 @@
 
   <div class="container-fluid page-shell py-4">
     <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
-      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-dashboard">Dashboard</a></li>
-      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-pipeline">Pipeline <span class="badge text-bg-light ms-1" id="badge-pipeline">0</span></a></li>
+      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-dashboard">Accueil</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-pipeline">Suivi <span class="badge text-bg-light ms-1" id="badge-pipeline">0</span></a></li>
       <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-offres">Offres <span class="badge text-bg-light ms-1" id="badge-offres">0</span></a></li>
-      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-historique">Historique <span class="badge text-bg-light ms-1" id="badge-histo">0</span></a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-historique">Candidatures <span class="badge text-bg-light ms-1" id="badge-histo">0</span></a></li>
       <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-relances">Relances <span class="badge text-bg-warning ms-1" id="badge-relances">0</span></a></li>
-      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Parametres</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-settings">Réglages</a></li>
     </ul>
 
     <div class="tab-content">
@@ -1196,9 +1196,9 @@
         <div class="row g-3 mb-4">
           <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
-              <div class="metric-label">Offres exportees</div>
+              <div class="metric-label">Offres visibles</div>
               <div class="metric-value text-primary" id="stat-offres">0</div>
-              <div class="metric-note" id="stat-offres-note">Dernier export charge</div>
+              <div class="metric-note" id="stat-offres-note">Aucune offre à afficher</div>
             </div>
           </div>
           <div class="col-12 col-sm-6 col-xl-3">
@@ -1210,14 +1210,14 @@
           </div>
           <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
-              <div class="metric-label">Offres interessantes</div>
+              <div class="metric-label">À retenir</div>
               <div class="metric-value" style="color:var(--green)" id="stat-interessantes">0</div>
-              <div class="metric-note" id="stat-interessantes-note">Priorites du pipeline</div>
+              <div class="metric-note" id="stat-interessantes-note">Rien à prioriser pour le moment</div>
             </div>
           </div>
           <div class="col-12 col-sm-6 col-xl-3">
             <div class="card metric-card p-3">
-              <div class="metric-label">Postulations / relances</div>
+              <div class="metric-label">Candidatures en cours</div>
               <div class="metric-value" style="color:var(--ink)" id="stat-postulations">0</div>
               <div class="metric-note" id="stat-relances-note">0 relance a faire</div>
             </div>
@@ -1227,12 +1227,12 @@
         <div class="card p-3 mb-4" id="setup-status-card">
           <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
             <div>
-              <div class="fw-bold">Prise en main</div>
-              <div class="text-secondary small" id="setup-status-summary">Quelques étapes utiles pour bien démarrer.</div>
+              <div class="fw-bold">Par où commencer ?</div>
+              <div class="text-secondary small" id="setup-status-summary">Les étapes utiles pour bien lancer ta recherche.</div>
             </div>
             <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-primary" type="button" onclick="ouvrirGuideConfiguration()"><i class="bi bi-signpost-split me-1"></i>Guide de demarrage</button>
-              <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Ouvrir Parametres</a>
+              <button class="btn btn-sm btn-primary" type="button" onclick="ouvrirGuideConfiguration()"><i class="bi bi-signpost-split me-1"></i>Voir les étapes</button>
+              <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Ouvrir les réglages</a>
             </div>
           </div>
           <div class="summary-list mt-3" id="setup-status-list"></div>
@@ -1247,11 +1247,11 @@
                   <i class="bi bi-cloud-download"></i>
                 </div>
                 <div>
-                  <div class="fw-bold" id="scan-action-title">Lancer un scan</div>
+                  <div class="fw-bold" id="scan-action-title">Trouver de nouvelles offres</div>
                   <div class="text-secondary small" id="scan-action-subtitle">Recherche de nouvelles offres selon tes critères.</div>
                 </div>
               </div>
-              <button class="btn btn-primary mt-auto btn-recuperer" id="scan-action-button" onclick="lancerStream('recuperer')">Scanner les sources</button>
+              <button class="btn btn-primary mt-auto btn-recuperer" id="scan-action-button" onclick="lancerStream('recuperer')">Lancer la recherche</button>
             </div>
           </div>
           <div class="col-md-6 col-xl-3">
@@ -1261,11 +1261,11 @@
                   <i class="bi bi-envelope-paper"></i>
                 </div>
                 <div>
-                  <div class="fw-bold">Generer les lettres</div>
+                  <div class="fw-bold">Préparer mes lettres</div>
                   <div class="text-secondary small" id="letters-action-subtitle">Prépare les lettres manquantes pour les offres retenues.</div>
                 </div>
               </div>
-              <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Generer</button>
+              <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Préparer</button>
             </div>
           </div>
           <div class="col-md-6 col-xl-3">
@@ -1275,11 +1275,11 @@
                   <i class="bi bi-send-check"></i>
                 </div>
                 <div>
-                  <div class="fw-bold">Lancer l'agent</div>
+                  <div class="fw-bold">Préparer mes candidatures</div>
                   <div class="text-secondary small" id="agent-action-subtitle">Aide à préparer ou envoyer les candidatures à partir des offres retenues.</div>
                 </div>
               </div>
-              <button class="btn btn-dark mt-auto btn-postuler" onclick="lancerStream('postuler')">Postuler</button>
+              <button class="btn btn-dark mt-auto btn-postuler" onclick="lancerStream('postuler')">Ouvrir l assistant</button>
             </div>
           </div>
         </div>
@@ -1289,7 +1289,7 @@
             <div class="card p-3 h-100">
               <div class="d-flex justify-content-between align-items-center mb-3">
                 <div>
-                  <div class="fw-bold">Dernier scan</div>
+                  <div class="fw-bold">Dernière recherche</div>
                   <div class="text-secondary small" id="scan-summary">En attente</div>
                 </div>
                 <button class="btn btn-sm btn-outline-secondary" onclick="chargerTout()" title="Actualiser les donnees">Actualiser</button>
@@ -1300,11 +1300,11 @@
           <div class="col-lg-7">
             <div class="card p-3 h-100">
               <div class="d-flex justify-content-between align-items-center mb-3">
-                <div class="fw-bold">Journal du pipeline</div>
+                <div class="fw-bold">Activité récente</div>
                 <div class="d-flex gap-2 flex-wrap">
                   <button class="btn btn-sm btn-outline-secondary" onclick="copierLog()" title="Copier tout le journal du pipeline"><i class="bi bi-clipboard me-1"></i>Copier</button>
-                  <button class="btn btn-sm btn-outline-danger" onclick="arreter()" title="Arreter le processus en cours"><i class="bi bi-stop-circle me-1"></i>Arreter</button>
-                  <button class="btn btn-sm btn-outline-secondary" onclick="viderLog()" title="Vider le journal affiche">Vider</button>
+                  <button class="btn btn-sm btn-outline-danger" onclick="arreter()" title="Arreter le processus en cours"><i class="bi bi-stop-circle me-1"></i>Stopper</button>
+                  <button class="btn btn-sm btn-outline-secondary" onclick="viderLog()" title="Vider le journal affiche">Effacer</button>
                 </div>
               </div>
               <div class="log-panel" id="log-panel">Pret.</div>
@@ -1317,8 +1317,8 @@
         <div class="card sticky-actions pipeline-toolbar">
           <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
             <div>
-              <div class="pipeline-toolbar-title">Pipeline de candidature</div>
-              <div class="pipeline-toolbar-subtitle" id="pipeline-toolbar-subtitle">Vue Kanban personnelle pour prioriser les offres, suivre les actions et laisser respirer davantage les cartes.</div>
+              <div class="pipeline-toolbar-title">Suivi des offres</div>
+              <div class="pipeline-toolbar-subtitle" id="pipeline-toolbar-subtitle">Retrouve ici les offres à relire, à prioriser et à envoyer.</div>
             </div>
             <div class="badge text-bg-light px-3 py-2" id="pipeline-toolbar-count">0 offre</div>
           </div>
@@ -1332,20 +1332,20 @@
             <div class="col-md-3">
               <select class="form-select" id="pipeline-pertinence" onchange="renderPipeline()">
                 <option value="">Toutes les pertinences</option>
-                <option value="forte">Score fort (75+)</option>
-                <option value="moyenne">Score moyen (50-74)</option>
-                <option value="faible">Score faible (&lt; 50)</option>
+                <option value="forte">Très bon match</option>
+                <option value="moyenne">À regarder</option>
+                <option value="faible">Peu adapté</option>
               </select>
             </div>
             <div class="col-md-3">
               <select class="form-select" id="pipeline-status-filter" onchange="renderPipeline()">
                 <option value="">Tous les statuts</option>
-                <option value="nouvelle">Nouvelle offre</option>
-                <option value="a_analyser">A analyser</option>
-                <option value="interessante">Interessante</option>
-                <option value="lettre_generee">Lettre generee</option>
-                <option value="postule">Postule</option>
-                <option value="refusee">Refusee</option>
+                <option value="nouvelle">Repérée</option>
+                <option value="a_analyser">À relire</option>
+                <option value="interessante">À retenir</option>
+                <option value="lettre_generee">Lettre prête</option>
+                <option value="postule">Candidature envoyée</option>
+                <option value="refusee">Écartée</option>
               </select>
             </div>
           </div>
@@ -1365,23 +1365,23 @@
             <div class="col-md-2">
               <select class="form-select" id="offres-status" onchange="renderOffers()">
                 <option value="">Tous les statuts</option>
-                <option value="nouvelle">Nouvelle offre</option>
-                <option value="a_analyser">A analyser</option>
-                <option value="interessante">Interessante</option>
-                <option value="lettre_generee">Lettre generee</option>
-                <option value="postule">Postule</option>
-                <option value="refusee">Refusee</option>
+                <option value="nouvelle">Repérée</option>
+                <option value="a_analyser">À relire</option>
+                <option value="interessante">À retenir</option>
+                <option value="lettre_generee">Lettre prête</option>
+                <option value="postule">Candidature envoyée</option>
+                <option value="refusee">Écartée</option>
               </select>
             </div>
             <div class="col-md-2">
               <select class="form-select" id="offres-pertinence" onchange="renderOffers()">
                 <option value="">Toutes les pertinences</option>
-                <option value="forte">Score fort</option>
-                <option value="moyenne">Score moyen</option>
-                <option value="faible">Score faible</option>
+                <option value="forte">Très bon match</option>
+                <option value="moyenne">À regarder</option>
+                <option value="faible">Peu adapté</option>
               </select>
             </div>
-            <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" onclick="scorerOffresSansScore(this)">Scorer sans score</button></div>
+            <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" onclick="scorerOffresSansScore(this)">Compléter les scores</button></div>
             <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" onclick="chargerTout()">Actualiser</button></div>
           </div>
         </div>
@@ -1395,7 +1395,7 @@
                   <th class="sortable-header" id="sort-source" onclick="toggleOffersSort('source')">Source</th>
                   <th class="sortable-header table-status-col" id="sort-statut" onclick="toggleOffersSort('statut')">Statut</th>
                   <th class="sortable-header" id="sort-score" onclick="toggleOffersSort('score')">Score</th>
-                  <th class="sortable-header" id="sort-lettre" onclick="toggleOffersSort('lettre')">Lettre</th>
+                  <th class="sortable-header" id="sort-lettre" onclick="toggleOffersSort('lettre')">Lettre prête</th>
                   <th class="sortable-header" id="sort-date" onclick="toggleOffersSort('date')">Date</th>
                   <th></th>
                 </tr>
@@ -1408,8 +1408,8 @@
 
       <div class="tab-pane fade" id="tab-historique">
         <div class="card p-3 mb-3">
-          <div class="fw-bold">Historique personnel</div>
-          <div class="text-secondary small" id="history-panel-subtitle">Les candidatures et notes affichées ici appartiennent à cet espace.</div>
+          <div class="fw-bold">Candidatures envoyées</div>
+          <div class="text-secondary small" id="history-panel-subtitle">Retrouve ici tes candidatures déjà envoyées et leur suivi.</div>
         </div>
         <div class="card p-0 overflow-hidden">
           <div class="table-responsive">
@@ -1433,8 +1433,8 @@
 
       <div class="tab-pane fade" id="tab-relances">
         <div class="card p-3 mb-3">
-          <div class="fw-bold">Relances de cet espace</div>
-          <div class="text-secondary small" id="relances-panel-subtitle">Seules les candidatures de cet espace apparaissent dans cette liste.</div>
+          <div class="fw-bold">Relances à prévoir</div>
+          <div class="text-secondary small" id="relances-panel-subtitle">Cette liste regroupe les relances à envoyer au bon moment.</div>
         </div>
         <div class="card p-0 overflow-hidden">
           <div class="table-responsive">
@@ -1443,7 +1443,7 @@
                 <tr>
                   <th>Poste</th>
                   <th>Entreprise</th>
-                  <th>Postule le</th>
+                  <th>Envoyée le</th>
                   <th>Relance prevue</th>
                   <th>Notes</th>
                   <th></th>
@@ -1458,12 +1458,12 @@
       <div class="tab-pane fade" id="tab-settings">
         <div class="settings-actions mb-3">
           <div>
-            <div class="fw-bold">Configuration du profil</div>
-            <div class="settings-subtitle">Renseigne ici ton profil, ta recherche et les accès utiles.</div>
+            <div class="fw-bold">Mon profil et ma recherche</div>
+            <div class="settings-subtitle">Renseigne ici tout ce qui t aide à trouver et suivre les bonnes offres.</div>
           </div>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-outline-secondary" onclick="chargerSettings(true)">Recharger</button>
-            <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Sauvegarder les parametres</button>
+            <button class="btn btn-outline-secondary" onclick="chargerSettings(true)">Actualiser</button>
+            <button class="btn btn-primary" id="settings-save-btn" onclick="saveSettings()">Enregistrer mes réglages</button>
           </div>
         </div>
 
@@ -1473,7 +1473,7 @@
               <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
                 <div>
                   <div class="fw-bold">Mon profil</div>
-                  <div class="settings-subtitle">Informations reutilisees dans les lettres et l'agent.</div>
+                  <div class="settings-subtitle">Ces informations servent dans les lettres et les candidatures.</div>
                 </div>
               </div>
               <div class="row g-3">
@@ -1528,7 +1528,7 @@
               <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
                 <div>
                   <div class="fw-bold">Ma recherche</div>
-                  <div class="settings-subtitle">Filtres reutilises au scan et au tri des offres.</div>
+                  <div class="settings-subtitle">Ces critères servent pour les recherches et le tri des offres.</div>
                 </div>
               </div>
               <div class="row g-3">
@@ -1536,7 +1536,7 @@
                   <div class="coach-launch">
                     <label class="form-label mb-0">Postes cibles</label>
                     <button class="btn btn-sm btn-outline-primary" type="button" onclick="ouvrirCoachRecherche()">
-                      <i class="bi bi-magic me-1"></i>M'aider avec l'IA
+                      <i class="bi bi-magic me-1"></i>M aider à préciser
                     </button>
                   </div>
                   <div class="tag-editor" id="editor-postes-cibles" data-placeholder="Ajouter un poste cible puis Entrer"></div>
@@ -1596,8 +1596,8 @@
             <div class="card settings-card" id="settings-section-api">
               <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
                 <div>
-                  <div class="fw-bold">Connexions utiles</div>
-                  <div class="settings-subtitle">Certaines fonctions avancées ont besoin d accès externes.</div>
+                  <div class="fw-bold">Fonctions avancées</div>
+                  <div class="settings-subtitle">À compléter seulement si tu veux débloquer plus de possibilités.</div>
                 </div>
               </div>
               <div class="row g-3">
@@ -1679,8 +1679,8 @@
             <div class="card settings-card" id="settings-section-agent">
               <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
                 <div>
-                  <div class="fw-bold">Comportement de l'agent</div>
-                  <div class="settings-subtitle">Regles appliquees pendant les sessions de candidature.</div>
+                  <div class="fw-bold">Envoi automatique</div>
+                  <div class="settings-subtitle">Ces réglages servent si tu utilises l assistant pour candidater.</div>
                 </div>
               </div>
               <div class="row g-3">
@@ -1717,7 +1717,7 @@
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <h5 class="modal-title mb-0" id="analyse-title">Analyse offre</h5>
+            <h5 class="modal-title mb-0" id="analyse-title">Détail de l offre</h5>
             <div class="text-secondary small" id="analyse-company"></div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -1726,37 +1726,37 @@
           <div class="row g-4">
             <div class="col-lg-7">
               <div class="d-flex flex-wrap gap-2 mb-3">
-                <span class="badge-soft status-a_analyser" id="analyse-status-badge">A analyser</span>
+                <span class="badge-soft status-a_analyser" id="analyse-status-badge">À relire</span>
                 <span class="score-pill" id="analyse-score">Pas de score</span>
                 <span class="score-pill" id="analyse-source">Source</span>
                 <span class="score-pill" id="analyse-date">Date</span>
               </div>
-              <div class="fw-bold mb-2">Synthese</div>
+              <div class="fw-bold mb-2">À retenir</div>
               <div class="summary-list mb-3" id="analyse-summary"></div>
               <div class="fw-bold mb-2">Description</div>
               <div class="description-box" id="analyse-description"></div>
             </div>
             <div class="col-lg-5">
               <div class="card p-3 h-100">
-                <div class="fw-bold mb-3">Actions pipeline</div>
+                <div class="fw-bold mb-3">Actions rapides</div>
                 <div class="mb-3">
-                  <label class="form-label small text-secondary">Changer le statut</label>
+                  <label class="form-label small text-secondary">Étape de suivi</label>
                   <select class="form-select" id="analyse-status-select">
-                    <option value="nouvelle">Nouvelle offre</option>
-                    <option value="a_analyser">A analyser</option>
-                    <option value="interessante">Interessante</option>
-                    <option value="lettre_generee">Lettre generee</option>
-                    <option value="postule">Postule</option>
-                    <option value="refusee">Refusee</option>
+                    <option value="nouvelle">Repérée</option>
+                    <option value="a_analyser">À relire</option>
+                    <option value="interessante">À retenir</option>
+                    <option value="lettre_generee">Lettre prête</option>
+                    <option value="postule">Candidature envoyée</option>
+                    <option value="refusee">Écartée</option>
                   </select>
                 </div>
                 <div class="d-grid gap-2">
-                  <button class="btn btn-primary" onclick="sauvegarderStatutAnalyse()">Sauvegarder le statut</button>
-                  <button class="btn btn-outline-secondary" onclick="scorerAnalyse()">Scorer avec IA</button>
-                  <button class="btn btn-outline-success" onclick="ouvrirLettreDepuisAnalyse()">Voir la lettre</button>
-                  <a class="btn btn-outline-dark" id="analyse-annonce-link" href="#" target="_blank" rel="noopener noreferrer">Ouvrir l'annonce</a>
-                  <button class="btn btn-outline-dark" onclick="marquerCommePostule()">Marquer comme postule</button>
-                  <button class="btn btn-outline-danger" onclick="basculerRefusDepuisAnalyse()">Basculer refusee</button>
+                  <button class="btn btn-primary" onclick="sauvegarderStatutAnalyse()">Enregistrer</button>
+                  <button class="btn btn-outline-secondary" onclick="scorerAnalyse()">Recalculer le score</button>
+                  <button class="btn btn-outline-success" onclick="ouvrirLettreDepuisAnalyse()">Ouvrir la lettre</button>
+                  <a class="btn btn-outline-dark" id="analyse-annonce-link" href="#" target="_blank" rel="noopener noreferrer">Voir l annonce</a>
+                  <button class="btn btn-outline-dark" onclick="marquerCommePostule()">Marquer comme envoyée</button>
+                  <button class="btn btn-outline-danger" onclick="basculerRefusDepuisAnalyse()">Ne plus suivre</button>
                 </div>
                 <hr>
                 <div class="small text-secondary">
@@ -1772,12 +1772,12 @@
     </div>
   </div>
 
-  <div class="modal fade" id="modalLettre" tabindex="-1">
+      <div class="modal fade" id="modalLettre" tabindex="-1">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <h5 class="modal-title mb-0" id="lettre-title">Lettre de motivation</h5>
+            <h5 class="modal-title mb-0" id="lettre-title">Lettre pour cette offre</h5>
             <div class="text-secondary small" id="lettre-company"></div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -1786,8 +1786,8 @@
           <div class="d-flex justify-content-between align-items-center mb-2">
             <div class="small text-secondary" id="lettre-meta">Aucune lettre</div>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-outline-secondary" onclick="copierLettre()">Copier</button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="regenererLettre()">Regenerer</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="copierLettre()">Copier le texte</button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="regenererLettre()">Recréer</button>
             </div>
           </div>
           <textarea class="form-control" rows="14" id="lettre-texte" placeholder="Aucune lettre generee pour cette offre."></textarea>
@@ -1805,8 +1805,8 @@
       <div class="modal-content">
         <div class="modal-header">
           <div>
-            <h5 class="modal-title mb-0">Assistant IA de ciblage</h5>
-            <div class="text-secondary small">Une mini conversation pour affiner les postes ciblés et les filtres de recherche.</div>
+            <h5 class="modal-title mb-0">Affiner ma recherche</h5>
+            <div class="text-secondary small">Une petite conversation pour clarifier les métiers, critères et priorités.</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
@@ -1824,7 +1824,7 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline-secondary" data-bs-dismiss="modal">Fermer</button>
-          <button class="btn btn-success" type="button" id="coach-apply-btn" onclick="appliquerSuggestionsCoach()" disabled>Appliquer aux paramètres</button>
+          <button class="btn btn-success" type="button" id="coach-apply-btn" onclick="appliquerSuggestionsCoach()" disabled>Appliquer à ma recherche</button>
         </div>
       </div>
     </div>
@@ -1835,8 +1835,8 @@
       <div class="modal-content">
         <div class="modal-header border-0 pb-0">
           <div>
-            <h5 class="modal-title mb-1">Guide de premier demarrage</h5>
-            <div class="text-secondary small" id="setup-guide-headline">Un parcours simple pour rendre l'application prete a l'emploi.</div>
+            <h5 class="modal-title mb-1">Bien démarrer</h5>
+            <div class="text-secondary small" id="setup-guide-headline">Un parcours simple pour te mettre en route rapidement.</div>
           </div>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
         </div>
@@ -1853,10 +1853,10 @@
           <div class="setup-guide-steps" id="setup-guide-steps"></div>
         </div>
         <div class="modal-footer border-0 pt-0 justify-content-between">
-          <button class="btn btn-outline-secondary" type="button" id="setup-guide-prev-btn" onclick="deplacerGuideConfiguration(-1)">Etape precedente</button>
+          <button class="btn btn-outline-secondary" type="button" id="setup-guide-prev-btn" onclick="deplacerGuideConfiguration(-1)">Étape précédente</button>
           <div class="d-flex gap-2 flex-wrap">
-            <button class="btn btn-outline-primary" type="button" id="setup-guide-open-btn" onclick="ouvrirSectionGuideConfiguration()">Ouvrir cette section</button>
-            <button class="btn btn-primary" type="button" id="setup-guide-next-btn" onclick="deplacerGuideConfiguration(1)">Etape suivante</button>
+            <button class="btn btn-outline-primary" type="button" id="setup-guide-open-btn" onclick="ouvrirSectionGuideConfiguration()">Aller à cette section</button>
+            <button class="btn btn-primary" type="button" id="setup-guide-next-btn" onclick="deplacerGuideConfiguration(1)">Étape suivante</button>
           </div>
         </div>
       </div>
@@ -1868,8 +1868,8 @@
       <div class="modal-content">
         <div class="modal-header border-0">
           <div>
-            <h5 class="modal-title mb-1">Acces protege</h5>
-            <div class="text-secondary small">Entre le token d'acces de l'application pour de verrouiller l'interface.</div>
+            <h5 class="modal-title mb-1">Ouvrir l application</h5>
+            <div class="text-secondary small">Entre le code d accès pour continuer.</div>
           </div>
         </div>
         <div class="modal-body pt-0">
@@ -1894,8 +1894,8 @@
       <div class="modal-content">
         <div class="modal-header border-0">
           <div>
-            <h5 class="modal-title mb-1">Compte personnel</h5>
-            <div class="text-secondary small" id="user-auth-subtitle">Connecte-toi pour garder ton propre espace et tes donnees.</div>
+            <h5 class="modal-title mb-1">Mon compte</h5>
+            <div class="text-secondary small" id="user-auth-subtitle">Connecte-toi pour retrouver ta recherche, tes offres et ton suivi.</div>
           </div>
         </div>
         <div class="modal-body pt-0">
@@ -1907,7 +1907,7 @@
           <div class="small text-secondary mt-2">Chaque compte garde automatiquement son espace, ses paramètres et son suivi.</div>
         </div>
         <div class="modal-footer border-0 justify-content-between">
-          <button class="btn btn-outline-secondary" type="button" id="user-auth-signup-btn" onclick="submitUserSignup()">Creer un compte</button>
+          <button class="btn btn-outline-secondary" type="button" id="user-auth-signup-btn" onclick="submitUserSignup()">Créer mon compte</button>
           <button class="btn btn-primary" type="button" id="user-auth-login-btn" onclick="submitUserLogin()">Se connecter</button>
         </div>
       </div>
@@ -1918,12 +1918,12 @@
   <script>
     const CLOUD_MODE = {{ "true" if cloud_mode else "false" }};
     const STATUS_LABELS = {
-      nouvelle: 'Nouvelle offre',
-      a_analyser: 'A analyser',
-      interessante: 'Interessante',
-      lettre_generee: 'Lettre generee',
-      postule: 'Postule',
-      refusee: 'Refusee'
+      nouvelle: 'Repérée',
+      a_analyser: 'À relire',
+      interessante: 'À retenir',
+      lettre_generee: 'Lettre prête',
+      postule: 'Candidature envoyée',
+      refusee: 'Écartée'
     };
 
     const KANBAN_ORDER = ['nouvelle', 'a_analyser', 'interessante', 'lettre_generee', 'postule', 'refusee'];
@@ -2231,24 +2231,24 @@
       }
       if (userStatusNode) {
         userStatusNode.textContent = userAuthState.enabled
-          ? (userAuthState.authenticated ? `Compte: ${userAuthState.user?.email || 'connecte'}` : 'Connecte-toi pour continuer')
+          ? (userAuthState.authenticated ? `Compte: ${userAuthState.user?.email || 'connecte'}` : 'Connecte-toi pour retrouver ton suivi')
           : '';
       }
       if (userAuthBtn) userAuthBtn.classList.toggle('d-none', !userAuthState.enabled || !!userAuthState.authenticated);
       if (userLogoutBtn) userLogoutBtn.classList.toggle('d-none', !userAuthState.enabled || !userAuthState.authenticated);
-      if (pipelineSubtitle) pipelineSubtitle.textContent = 'Vue Kanban pour trier les offres, suivre les actions et garder une vue claire du parcours.';
-      if (historySubtitle) historySubtitle.textContent = 'Retrouve ici les candidatures déjà envoyées et leur suivi.';
-      if (relancesSubtitle) relancesSubtitle.textContent = 'Les relances à prévoir apparaissent ici au bon moment.';
+      if (pipelineSubtitle) pipelineSubtitle.textContent = 'Retrouve ici les offres à relire, à prioriser et à envoyer.';
+      if (historySubtitle) historySubtitle.textContent = 'Retrouve ici tes candidatures déjà envoyées et leur suivi.';
+      if (relancesSubtitle) relancesSubtitle.textContent = 'Cette liste regroupe les relances à envoyer au bon moment.';
       if (CLOUD_MODE) {
-        if (scanActionTitle) scanActionTitle.textContent = 'Scanner les sources';
+        if (scanActionTitle) scanActionTitle.textContent = 'Trouver de nouvelles offres';
         if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recherche de nouvelles offres selon tes critères.';
-        if (scanActionButton) scanActionButton.textContent = 'Scanner les sources';
+        if (scanActionButton) scanActionButton.textContent = 'Lancer la recherche';
         if (lettersActionSubtitle) lettersActionSubtitle.textContent = 'Prépare les lettres manquantes pour les offres retenues.';
         if (agentActionSubtitle) agentActionSubtitle.textContent = 'Aide à préparer ou envoyer les candidatures à partir des offres retenues.';
       } else {
-        if (scanActionTitle) scanActionTitle.textContent = 'Lancer un scan';
+        if (scanActionTitle) scanActionTitle.textContent = 'Trouver de nouvelles offres';
         if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recherche de nouvelles offres selon tes critères.';
-        if (scanActionButton) scanActionButton.textContent = 'Scanner les sources';
+        if (scanActionButton) scanActionButton.textContent = 'Lancer la recherche';
         if (lettersActionSubtitle) lettersActionSubtitle.textContent = 'Prépare les lettres manquantes pour les offres retenues.';
         if (agentActionSubtitle) agentActionSubtitle.textContent = "Aide à préparer ou envoyer les candidatures à partir des offres retenues.";
       }
@@ -2771,23 +2771,23 @@
       const hasSearchTargets = Array.isArray(search.postes_cibles) && search.postes_cibles.length > 0;
       return [
         {
-          title: 'Completer le profil candidat',
-          shortCopy: 'Prenom, nom, email, lien pro et CV pour debloquer les lettres et l agent.',
-          description: 'Renseigne les informations reutilisees dans les lettres, le suivi et l agent de candidature. L ideal est d avoir au moins un lien pro et un CV deja charge.',
+          title: 'Compléter mon profil',
+          shortCopy: 'Prénom, nom, email, lien pro et CV pour démarrer sereinement.',
+          description: 'Renseigne les informations réutilisées dans les lettres, le suivi et les candidatures. L idéal est d avoir au moins un lien pro et un CV déjà ajoutés.',
           targetId: 'settings-section-profile',
           complete: !Array.isArray(setup.missing_profile) || setup.missing_profile.length === 0,
           hint: Array.isArray(setup.missing_profile) && setup.missing_profile.length ? `Manque : ${setup.missing_profile.join(', ')}` : `Profil pret pour ${profile.prenom || 'le candidat'}.`
         },
         {
-          title: 'Definir la recherche',
-          shortCopy: 'Postes cibles, exclusions, zone geographique et score minimum.',
-          description: 'Precise les postes vises, la zone geographique et les exclusions. Le coach IA peut t aider a clarifier la recherche avec la personne.',
+          title: 'Définir ma recherche',
+          shortCopy: 'Métiers visés, exclusions, zone géographique et niveau de tri.',
+          description: 'Précise les postes visés, la zone géographique et les exclusions. Le coach peut t aider à clarifier tout ça rapidement.',
           targetId: 'settings-section-search',
           complete: hasSearchTargets,
           hint: hasSearchTargets ? `${search.postes_cibles.length} poste(s) cible(s) renseignes.` : 'Ajoute au moins un poste cible pour rendre la recherche reutilisable.'
         },
         {
-          title: 'Choisir les sources d offres',
+          title: 'Choisir où chercher',
           shortCopy: 'Active une ou plusieurs sources pour commencer à recevoir des offres.',
           description: 'Il faut au moins une source active pour lancer une recherche utile. Une seule source suffit déjà pour commencer sereinement.',
           targetId: 'settings-section-api',
@@ -2797,7 +2797,7 @@
             : 'Renseigne au moins une source pour permettre le scan.'
         },
         {
-          title: 'Activer les aides intelligentes',
+          title: 'Activer les aides utiles',
           shortCopy: 'Ces aides servent pour les lettres, le coach et certaines actions assistées.',
           description: 'Tu peux commencer sans tout activer d un coup. Ajoute d abord l aide à l écriture, puis complète le reste si tu en as besoin.',
           targetId: 'settings-section-api',
@@ -2805,9 +2805,9 @@
           hint: !Array.isArray(setup.missing_ai) || setup.missing_ai.length === 0 ? 'Les cles IA principales sont deja en place.' : `Il manque : ${setup.missing_ai.join(', ')}.`
         },
         {
-          title: 'Faire une premiere verification',
-          shortCopy: 'Sauvegarder, lancer un scan, puis verifier le dashboard et le pipeline.',
-          description: 'Quand le profil, la recherche et les sources sont prets, sauvegarde les parametres puis lance un scan. Tu verras rapidement si l application est prete pour un ami.',
+          title: 'Faire un premier test',
+          shortCopy: 'Enregistrer, lancer une recherche, puis vérifier le suivi et les offres.',
+          description: 'Quand le profil, la recherche et les sources sont prêts, enregistre les réglages puis lance une recherche. Tu verras vite si l application est prête à l emploi.',
           targetId: 'setup-status-card',
           complete: !!setup.profile_complete && !!setup.scan_ready && !!setup.letters_ready,
           hint: !!setup.profile_complete && !!setup.scan_ready && !!setup.letters_ready
@@ -2836,10 +2836,10 @@
       document.getElementById('setup-guide-headline').textContent =
         doneCount === steps.length
           ? 'Tout est en place pour utiliser l application dans de bonnes conditions.'
-          : 'Ce parcours aide à bien configurer l application pour démarrer plus facilement.';
-      document.getElementById('setup-guide-current-title').textContent = `Etape ${setupGuideIndex + 1} - ${current.title}`;
+          : 'Suis ces étapes pour rendre l application claire et prête à l emploi.';
+      document.getElementById('setup-guide-current-title').textContent = `Étape ${setupGuideIndex + 1} - ${current.title}`;
       document.getElementById('setup-guide-current-copy').textContent = current.description;
-      document.getElementById('setup-guide-progress-badge').textContent = `${doneCount}/${steps.length} pret`;
+      document.getElementById('setup-guide-progress-badge').textContent = `${doneCount}/${steps.length} prêt`;
       document.getElementById('setup-guide-steps').innerHTML = steps.map((step, index) => `
         <button class="setup-step text-start ${step.complete ? 'is-done' : ''} ${index === setupGuideIndex ? 'is-active' : ''}" type="button" onclick="ouvrirGuideConfiguration(${index})">
           <div class="setup-step-top">
@@ -2855,8 +2855,8 @@
       const openButton = document.getElementById('setup-guide-open-btn');
       prevButton.disabled = setupGuideIndex === 0;
       nextButton.disabled = setupGuideIndex === steps.length - 1;
-      nextButton.textContent = setupGuideIndex === steps.length - 1 ? 'Terminer' : 'Etape suivante';
-      openButton.textContent = current.targetId === 'setup-status-card' ? 'Revenir au dashboard' : 'Ouvrir cette section';
+      nextButton.textContent = setupGuideIndex === steps.length - 1 ? 'Terminer' : 'Étape suivante';
+      openButton.textContent = current.targetId === 'setup-status-card' ? 'Revenir à l accueil' : 'Aller à cette section';
     }
 
     function ouvrirGuideConfiguration(index = 0) {
@@ -3318,15 +3318,19 @@
       const visibleToAnalyzeOffers = statsData.nb_a_analyser_visible ?? statsData.pipeline?.a_analyser ?? 0;
       const sentApplications = statsData.nb_envoyees ?? statsData.nb_postulations ?? 0;
       document.getElementById('stat-offres').textContent = statsData.nb_offres || 0;
-      document.getElementById('stat-offres-note').textContent = `${visibleToAnalyzeOffers} a analyser dans cet espace`;
+      document.getElementById('stat-offres-note').textContent = visibleToAnalyzeOffers
+        ? `${visibleToAnalyzeOffers} offre${visibleToAnalyzeOffers > 1 ? 's' : ''} à relire`
+        : 'Aucune offre en attente';
       document.getElementById('stat-nouvelles').textContent = visibleNewOffers;
       document.getElementById('stat-last-scan').textContent = scan.finished_at
         ? `${sharedScan ? 'Scan partage' : 'Dernier scan'}: ${formatDate(scan.finished_at)}`
         : 'Aucun scan';
       document.getElementById('stat-interessantes').textContent = visibleInterestingOffers;
-      document.getElementById('stat-interessantes-note').textContent = `${visibleToAnalyzeOffers} encore a analyser dans cet espace`;
+      document.getElementById('stat-interessantes-note').textContent = interestingOffers
+        ? `${interestingOffers} offre${interestingOffers > 1 ? 's' : ''} à traiter en priorité`
+        : 'Aucune priorité pour le moment';
       document.getElementById('stat-postulations').textContent = sentApplications;
-      document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance a faire dans cet espace`;
+      document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance${(statsData.nb_relances || 0) > 1 ? 's' : ''} à prévoir`;
       const processStatus = document.getElementById('process-status');
       if (processStatus) processStatus.innerHTML = '';
       document.getElementById('badge-pipeline').textContent = offresData.length;
@@ -3336,9 +3340,9 @@
       document.getElementById('scan-summary').textContent =
         scan.finished_at
           ? sharedScan
-            ? `${statsData.nb_offres || 0} offres visibles pour cette recherche`
-            : `${scan.exported_offers || 0} offres trouvées, ${scan.duplicates_ignored || 0} doublons écartés`
-          : 'Aucun scan enregistre';
+            ? `${statsData.nb_offres || 0} offres correspondent à ta recherche`
+            : `${scan.exported_offers || 0} offres trouvées, ${scan.duplicates_ignored || 0} doublons retirés`
+          : 'Aucune recherche lancée pour le moment';
 
       const setupSummary = document.getElementById('setup-status-summary');
       const setupList = document.getElementById('setup-status-list');
@@ -3354,10 +3358,10 @@
         setupItems.push(`Assistant à configurer : ${setup.missing_ai.join(', ')}`);
       }
       if (!setupItems.length) {
-        setupSummary.textContent = 'Tout l essentiel est prêt pour utiliser l application.';
-        setupList.innerHTML = '<div class="summary-line">Profil, recherche et outils principaux sont renseignés.</div>';
+        setupSummary.textContent = 'Tout est prêt pour utiliser l application.';
+        setupList.innerHTML = '<div class="summary-line">Le profil, la recherche et les outils principaux sont en place.</div>';
       } else {
-        setupSummary.textContent = 'Quelques éléments restent à compléter pour profiter pleinement de l application.';
+        setupSummary.textContent = 'Quelques réglages restent à compléter pour profiter pleinement de l application.';
         setupList.innerHTML = setupItems.map(item => `<div class="summary-line">${esc(item)}</div>`).join('');
       }
       const guideSteps = getSetupGuideSteps();
@@ -3365,7 +3369,7 @@
         <button class="setup-step text-start ${step.complete ? 'is-done' : ''}" type="button" onclick="ouvrirGuideConfiguration(${index})">
           <div class="setup-step-top">
             <span class="setup-step-index">${step.complete ? '<i class="bi bi-check2"></i>' : index + 1}</span>
-            <span class="badge ${step.complete ? 'text-bg-success' : 'text-bg-light'}">${step.complete ? 'Pret' : 'A faire'}</span>
+            <span class="badge ${step.complete ? 'text-bg-success' : 'text-bg-light'}">${step.complete ? 'Prêt' : 'À faire'}</span>
           </div>
           <div class="setup-step-title">${esc(step.title)}</div>
           <div class="setup-step-copy mt-1">${esc(step.shortCopy)}</div>
@@ -3376,7 +3380,7 @@
       const sources = scan.sources_scanned || {};
       const entries = Object.entries(sources);
       if (!entries.length) {
-        sourcesBox.innerHTML = '<div class="summary-line">Aucune source scannee pour le moment.</div>';
+          sourcesBox.innerHTML = '<div class="summary-line">Aucune recherche n a encore été lancée.</div>';
       } else {
         sourcesBox.innerHTML = entries.map(([name, meta]) => `
           <div class="summary-line">
@@ -3398,14 +3402,14 @@
       const data = filteredOffers('pipeline');
       const grid = document.getElementById('kanban-grid');
       const countLabel = document.getElementById('pipeline-toolbar-count');
-      if (countLabel) countLabel.textContent = `${data.length} offre${data.length > 1 ? 's' : ''} dans cet espace`;
+      if (countLabel) countLabel.textContent = `${data.length} offre${data.length > 1 ? 's' : ''} à suivre`;
       const statusNotes = {
-        nouvelle: 'A trier rapidement',
-        a_analyser: 'A qualifier',
-        interessante: 'A prioriser',
-        lettre_generee: 'Pret a envoyer',
-        postule: 'Suivi en cours',
-        refusee: 'Archive'
+        nouvelle: 'À parcourir',
+        a_analyser: 'À relire',
+        interessante: 'À traiter',
+        lettre_generee: 'Prête à personnaliser',
+        postule: 'À suivre',
+        refusee: 'Mise de côté'
       };
       grid.innerHTML = KANBAN_ORDER.map(status => {
         const offers = data.filter(offer => offer.pipeline_status === status);
@@ -3450,9 +3454,9 @@
           </div>
           <div class="offer-card-summary">${esc(shortDescription)}</div>
           <div class="offer-card-actions">
-            <button class="btn btn-sm btn-primary" onclick="ouvrirAnalyse('${esc(offer.pipeline_id)}')">Analyser</button>
-            <button class="btn btn-sm btn-outline-secondary" onclick="ouvrirLettre('${esc(offer.pipeline_id)}')">Lettre</button>
-            <a class="btn btn-sm btn-outline-dark" href="${esc(offer["Lien vers l'annonce"] || '#')}" target="_blank" rel="noopener noreferrer">Annonce</a>
+            <button class="btn btn-sm btn-primary" onclick="ouvrirAnalyse('${esc(offer.pipeline_id)}')">Voir le détail</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="ouvrirLettre('${esc(offer.pipeline_id)}')">Voir la lettre</button>
+            <a class="btn btn-sm btn-outline-dark" href="${esc(offer["Lien vers l'annonce"] || '#')}" target="_blank" rel="noopener noreferrer">Voir l annonce</a>
           </div>
         </article>
       `;
@@ -3483,11 +3487,11 @@
           <td>${esc(String(offer['Date de publication'] || '').slice(0, 10))}</td>
           <td>
             <div class="d-flex gap-2">
-              <button class="btn btn-sm btn-primary" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); ouvrirAnalyse('${esc(offer.pipeline_id)}')" title="Voir l'analyse de l'offre" aria-label="Voir l'analyse de l'offre"><i class="bi bi-clipboard-data"></i></button>
-              <button class="btn btn-sm btn-outline-secondary" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); ouvrirLettre('${esc(offer.pipeline_id)}')" title="Ouvrir la lettre de motivation" aria-label="Ouvrir la lettre de motivation"><i class="bi bi-envelope"></i></button>
-              <button class="btn btn-sm btn-outline-success" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); marquerCommePostuleDepuisOffres('${esc(offer.pipeline_id)}')" title="Marquer comme postule" aria-label="Marquer comme postule"><i class="bi bi-send-check"></i></button>
-              <button class="btn btn-sm btn-outline-dark" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); scorerOffre('${esc(offer.pipeline_id)}', this)" title="Calculer le score de compatibilite" aria-label="Calculer le score de compatibilite"><i class="bi bi-stars"></i></button>
-              <a class="btn btn-sm btn-outline-dark" href="${esc(offer["Lien vers l'annonce"] || '#')}" target="_blank" rel="noopener noreferrer" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true)" title="Ouvrir l'annonce" aria-label="Ouvrir l'annonce"><i class="bi bi-box-arrow-up-right"></i></a>
+              <button class="btn btn-sm btn-primary" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); ouvrirAnalyse('${esc(offer.pipeline_id)}')" title="Voir le détail de l offre" aria-label="Voir le détail de l offre"><i class="bi bi-clipboard-data"></i></button>
+              <button class="btn btn-sm btn-outline-secondary" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); ouvrirLettre('${esc(offer.pipeline_id)}')" title="Voir la lettre liée à l offre" aria-label="Voir la lettre liée à l offre"><i class="bi bi-envelope"></i></button>
+              <button class="btn btn-sm btn-outline-success" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); marquerCommePostuleDepuisOffres('${esc(offer.pipeline_id)}')" title="Marquer comme candidature envoyée" aria-label="Marquer comme candidature envoyée"><i class="bi bi-send-check"></i></button>
+              <button class="btn btn-sm btn-outline-dark" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true); scorerOffre('${esc(offer.pipeline_id)}', this)" title="Mettre à jour le score" aria-label="Mettre à jour le score"><i class="bi bi-stars"></i></button>
+              <a class="btn btn-sm btn-outline-dark" href="${esc(offer["Lien vers l'annonce"] || '#')}" target="_blank" rel="noopener noreferrer" onclick="setSelectedOffer('${esc(offer.pipeline_id)}', true)" title="Voir l annonce complète" aria-label="Voir l annonce complète"><i class="bi bi-box-arrow-up-right"></i></a>
             </div>
           </td>
         </tr>
@@ -3497,7 +3501,7 @@
     function renderHistorique() {
       const tbody = document.getElementById('tbody-historique');
       if (!histoData.length) {
-        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-clock-history"></i>Aucune postulation enregistree.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><i class="bi bi-clock-history"></i>Aucune candidature envoyée pour le moment.</div></td></tr>';
         return;
       }
       tbody.innerHTML = [...histoData].reverse().map(row => `
@@ -3508,7 +3512,7 @@
           <td>${esc(row.date_postulation || '-')}</td>
           <td>${esc(row.date_relance_prevue || '-')}</td>
           <td>${esc(row.notes || '')}</td>
-          <td>${row.url ? `<a class="btn btn-sm btn-outline-dark" href="${esc(row.url)}" target="_blank">Annonce</a>` : ''}</td>
+          <td>${row.url ? `<a class="btn btn-sm btn-outline-dark" href="${esc(row.url)}" target="_blank">Voir l annonce</a>` : ''}</td>
         </tr>
       `).join('');
     }
@@ -3523,7 +3527,7 @@
       const tbody = document.getElementById('tbody-relances');
       document.getElementById('badge-relances').textContent = data.length;
       if (!data.length) {
-        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="bi bi-check2-circle"></i>Aucune relance a faire.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="bi bi-check2-circle"></i>Aucune relance à prévoir pour le moment.</div></td></tr>';
         return;
       }
       tbody.innerHTML = data.map(row => `
@@ -3533,7 +3537,7 @@
           <td>${esc(row.date_postulation || '-')}</td>
           <td>${esc(row.date_relance_prevue || '-')}</td>
           <td>${esc(row.notes || '')}</td>
-          <td>${row.url ? `<a class="btn btn-sm btn-outline-dark" href="${esc(row.url)}" target="_blank">Ouvrir</a>` : ''}</td>
+          <td>${row.url ? `<a class="btn btn-sm btn-outline-dark" href="${esc(row.url)}" target="_blank">Voir l annonce</a>` : ''}</td>
         </tr>
       `).join('');
     }
@@ -3585,10 +3589,10 @@
         return;
       }
       analyseCourante = data;
-      document.getElementById('analyse-title').textContent = data.title || 'Analyse offre';
+      document.getElementById('analyse-title').textContent = data.title || 'Détail de l offre';
       document.getElementById('analyse-company').textContent = data.company || '';
       document.getElementById('analyse-status-badge').className = `badge-soft status-${data.status || 'a_analyser'}`;
-      document.getElementById('analyse-status-badge').textContent = STATUS_LABELS[data.status] || data.status || 'A analyser';
+      document.getElementById('analyse-status-badge').textContent = STATUS_LABELS[data.status] || data.status || 'À relire';
       document.getElementById('analyse-score').textContent = data.score == null ? 'Pas de score' : `${data.score}/10`;
       document.getElementById('analyse-source').textContent = data.source || '-';
       document.getElementById('analyse-date').textContent = String(data.date || '-').slice(0, 10);
