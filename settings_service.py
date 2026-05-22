@@ -402,7 +402,7 @@ def get_settings() -> dict:
 def get_setup_status() -> dict:
     settings = get_settings()
     profile = settings["profile"]
-    api_keys = settings["api_keys"]
+    search = settings["search"]
 
     missing_profile: list[str] = []
     if not profile.get("prenom"):
@@ -416,28 +416,26 @@ def get_setup_status() -> dict:
     if not any(profile.get(key) for key in ("portfolio", "linkedin", "github")):
         missing_profile.append("Lien pro")
 
-    missing_sources: list[str] = []
-    if not any(api_keys.get(key) for key in ("ft_client_id", "adzuna_app_id", "lba_api_key")):
-        missing_sources.append("Au moins une source d'offres")
+    missing_search: list[str] = []
+    has_search_targets = bool((search.get("postes_cibles") or []) or (search.get("mots_cles_positifs") or []))
+    if not has_search_targets:
+        missing_search.append("Au moins un métier ou mot-clé")
 
-    missing_ai: list[str] = []
-    if not api_keys.get("groq_api_key"):
-        missing_ai.append("Groq")
-    if not api_keys.get("gemini_api_key"):
-        missing_ai.append("Gemini")
-
-    ready_for_scan = not missing_sources
-    ready_for_letters = not missing_ai[:1]
-    ready_for_apply = not missing_profile and not missing_ai
+    ready_for_scan = has_search_targets
+    ready_for_letters = True
+    ready_for_apply = not missing_profile and has_search_targets
 
     return {
         "profile_complete": not missing_profile,
+        "search_complete": has_search_targets,
         "scan_ready": ready_for_scan,
         "letters_ready": ready_for_letters,
         "apply_ready": ready_for_apply,
+        "onboarding_complete": not missing_profile and has_search_targets,
         "missing_profile": missing_profile,
-        "missing_sources": missing_sources,
-        "missing_ai": missing_ai,
+        "missing_search": missing_search,
+        "missing_sources": [],
+        "missing_ai": [],
     }
 
 

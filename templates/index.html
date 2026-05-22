@@ -1905,6 +1905,141 @@
     </div>
   </div>
 
+  <div class="modal fade" id="modalOnboarding" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div>
+            <h5 class="modal-title mb-1">Personnalisons ton espace</h5>
+            <div class="text-secondary small" id="onboarding-headline">Réponds à quelques étapes rapides pour arriver sur une plateforme déjà adaptée à ta recherche.</div>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+            <div class="fw-bold" id="onboarding-step-title">Étape 1</div>
+            <span class="badge text-bg-light" id="onboarding-progress-badge">1/4</span>
+          </div>
+
+          <section class="onboarding-step-block" data-step="0">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-prenom">Prénom</label>
+                <input class="form-control" id="onboarding-prenom">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-nom">Nom</label>
+                <input class="form-control" id="onboarding-nom">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-email">Email</label>
+                <input class="form-control" id="onboarding-email" type="email">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-tel">Téléphone</label>
+                <input class="form-control" id="onboarding-tel">
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="onboarding-presentation">Présente-toi en quelques lignes</label>
+                <textarea class="form-control" id="onboarding-presentation" rows="4" placeholder="Ex : Je cherche une alternance à partir de septembre, j aime le travail concret sur le terrain..."></textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="onboarding-step-block d-none" data-step="1">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-linkedin">LinkedIn</label>
+                <input class="form-control" id="onboarding-linkedin" placeholder="https://www.linkedin.com/in/...">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-github">GitHub</label>
+                <input class="form-control" id="onboarding-github" placeholder="https://github.com/...">
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="onboarding-portfolio">Portfolio ou site</label>
+                <input class="form-control" id="onboarding-portfolio">
+              </div>
+              <div class="col-12">
+                <label class="form-label" for="onboarding-cv-path">CV</label>
+                <div class="input-group">
+                  <input class="form-control" id="onboarding-cv-path" placeholder="Choisis ton CV">
+                  <button class="btn btn-outline-secondary" type="button" onclick="document.getElementById('onboarding-cv-file').click()">Choisir un fichier</button>
+                </div>
+                <input type="file" id="onboarding-cv-file" class="d-none" accept=".pdf,.doc,.docx,.txt,.md" onchange="uploadCvFile(this, 'onboarding')">
+                <div class="small text-secondary mt-2" id="onboarding-cv-meta">Ajoute ton CV maintenant si tu l as sous la main.</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="onboarding-step-block d-none" data-step="2">
+            <div class="row g-3">
+              <div class="col-12">
+                <label class="form-label">Quels postes vises-tu ?</label>
+                <div class="tag-editor" id="editor-onboarding-postes-cibles" data-placeholder="Ajouter un métier puis Entrer"></div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Mots-clés utiles</label>
+                <div class="tag-editor" id="editor-onboarding-mots-cles-positifs" data-placeholder="Ajouter un mot-clé puis Entrer"></div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Ce que tu veux éviter</label>
+                <div class="tag-editor" id="editor-onboarding-mots-cles-negatifs" data-placeholder="Ajouter une exclusion puis Entrer"></div>
+              </div>
+              <div class="col-12">
+                <label class="form-label d-block">Types de contrat</label>
+                <div class="d-grid gap-2">
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="onboarding-contract-alternance"><label class="form-check-label" for="onboarding-contract-alternance">Alternance</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="onboarding-contract-stage"><label class="form-check-label" for="onboarding-contract-stage">Stage</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="onboarding-contract-cdd"><label class="form-check-label" for="onboarding-contract-cdd">CDD</label></div>
+                  <div class="form-check"><input class="form-check-input" type="checkbox" id="onboarding-contract-cdi"><label class="form-check-label" for="onboarding-contract-cdi">CDI</label></div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="onboarding-step-block d-none" data-step="3">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label" for="onboarding-zone-mode">Où veux-tu chercher ?</label>
+                <select class="form-select mb-2" id="onboarding-zone-mode">
+                  <option value="idf">Ile-de-France</option>
+                  <option value="lyon">Lyon</option>
+                  <option value="bordeaux">Bordeaux</option>
+                  <option value="remote">Remote</option>
+                  <option value="france">France entiere</option>
+                  <option value="custom">Personnalisee</option>
+                </select>
+                <input class="form-control" id="onboarding-zone-geo" placeholder="Paris, Lyon, France entière...">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label d-flex justify-content-between align-items-center" for="onboarding-rayon-km">
+                  <span>Rayon autour de la ville</span>
+                  <span class="settings-value" id="onboarding-rayon-km-value">30 km</span>
+                </label>
+                <input class="form-range" type="range" min="10" max="100" step="5" id="onboarding-rayon-km" oninput="updateRangeLabel('onboarding-rayon-km', 'onboarding-rayon-km-value', ' km')">
+                <div class="form-check mt-2">
+                  <input class="form-check-input" type="checkbox" id="onboarding-inclure-remote">
+                  <label class="form-check-label" for="onboarding-inclure-remote">Inclure les offres remote</label>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label d-flex justify-content-between align-items-center" for="onboarding-score-min">
+                  <span>Niveau de tri minimum</span>
+                  <span class="settings-value" id="onboarding-score-min-value">0 / 100</span>
+                </label>
+                <input class="form-range" type="range" min="0" max="100" step="5" id="onboarding-score-min" oninput="updateRangeLabel('onboarding-score-min', 'onboarding-score-min-value', ' / 100')">
+              </div>
+            </div>
+          </section>
+        </div>
+        <div class="modal-footer justify-content-between">
+          <button class="btn btn-outline-secondary" type="button" id="onboarding-prev-btn" onclick="moveOnboardingStep(-1)">Étape précédente</button>
+          <button class="btn btn-primary" type="button" id="onboarding-next-btn" onclick="moveOnboardingStep(1)">Étape suivante</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal fade" id="modalSetupGuide" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
       <div class="modal-content">
@@ -2014,6 +2149,7 @@
     let modalLettre = null;
     let modalSearchCoach = null;
     let modalSetupGuide = null;
+    let modalOnboarding = null;
     let modalAccessLock = null;
     let modalUserAuth = null;
     let offersSort = { key: 'date', direction: 'desc' };
@@ -2029,6 +2165,8 @@
     let pendingServerStopOnClose = false;
     let setupGuideIndex = 0;
     let setupGuideAutoshown = false;
+    let onboardingStepIndex = 0;
+    let onboardingOpen = false;
     let accessState = {enabled: false, unlocked: true, workspace: 'principal', authEnabled: false};
     let userAuthState = {enabled: false, authenticated: false, user: null};
     let loadingOverlayTimer = null;
@@ -2113,6 +2251,15 @@
           meta.textContent = 'Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l application.';
         }
       }
+    }
+
+    function refreshOnboardingCvUi() {
+      const meta = document.getElementById('onboarding-cv-meta');
+      const pathInput = document.getElementById('onboarding-cv-path');
+      if (!meta || !pathInput) return;
+      meta.textContent = pathInput.value.trim()
+        ? 'Un CV est déjà ajouté pour ce compte.'
+        : 'Ajoute ton CV maintenant si tu l as sous la main.';
     }
 
     function showToast(title, message, type = 'success') {
@@ -2274,6 +2421,7 @@
       const logoutBtn = document.getElementById('access-logout-btn');
       const workspaceBlock = document.getElementById('access-workspace-block');
       const workspaceHelp = document.getElementById('access-workspace-help');
+      const apiSection = document.getElementById('settings-section-api');
       const stopBtn = document.querySelector('.btn-outline-danger[onclick="fermerServeur()"]');
       const pipelineSubtitle = document.getElementById('pipeline-toolbar-subtitle');
       const historySubtitle = document.getElementById('history-panel-subtitle');
@@ -2289,6 +2437,7 @@
         ? (userAuthState.user?.email || 'ce compte')
         : `l'espace ${workspaceLabel}`;
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
+      if (apiSection) apiSection.classList.toggle('d-none', !!(CLOUD_MODE || userAuthState.enabled));
       if (workspaceBlock) workspaceBlock.classList.toggle('d-none', authModeEnabled);
       if (workspaceHelp && authModeEnabled) workspaceHelp.textContent = 'Le compte personnel definira automatiquement ton espace.';
       if (!accessState.enabled) {
@@ -2417,6 +2566,7 @@
         hideUserAuthModal();
         showToast('Connexion reussie', 'Ton espace personnel est maintenant actif.', 'success');
         await chargerTout();
+        maybeOpenOnboarding();
       } catch (error) {
         showUserAuthModal(error.message || 'Connexion impossible');
       } finally {
@@ -2448,6 +2598,7 @@
           hideUserAuthModal();
           showToast('Compte cree', 'Le compte a ete cree et connecte.', 'success');
           await chargerTout();
+          maybeOpenOnboarding();
           return;
         }
         showToast('Compte cree', data.message || 'Compte créé. Tu peux maintenant te connecter.', 'info');
@@ -2707,7 +2858,14 @@
     }
 
     function setupTagEditors() {
-      ['editor-postes-cibles', 'editor-mots-cles-positifs', 'editor-mots-cles-negatifs'].forEach(id => {
+      [
+        'editor-postes-cibles',
+        'editor-mots-cles-positifs',
+        'editor-mots-cles-negatifs',
+        'editor-onboarding-postes-cibles',
+        'editor-onboarding-mots-cles-positifs',
+        'editor-onboarding-mots-cles-negatifs'
+      ].forEach(id => {
         const root = document.getElementById(id);
         if (root && !root._tags) createTagEditor(root);
       });
@@ -2870,30 +3028,12 @@
           hint: hasSearchTargets ? `${search.postes_cibles.length} poste(s) cible(s) renseignes.` : 'Ajoute au moins un poste cible pour rendre la recherche reutilisable.'
         },
         {
-          title: 'Choisir où chercher',
-          shortCopy: 'Active une ou plusieurs sources pour commencer à recevoir des offres.',
-          description: 'Il faut au moins une source active pour lancer une recherche utile. Une seule source suffit déjà pour commencer sereinement.',
-          targetId: 'settings-section-api',
-          complete: !Array.isArray(setup.missing_sources) || setup.missing_sources.length === 0,
-          hint: !Array.isArray(setup.missing_sources) || setup.missing_sources.length === 0
-            ? 'Une ou plusieurs sources sont deja configurees.'
-            : 'Renseigne au moins une source pour permettre le scan.'
-        },
-        {
-          title: 'Activer les aides utiles',
-          shortCopy: 'Ces aides servent pour les lettres, le coach et certaines actions assistées.',
-          description: 'Tu peux commencer sans tout activer d un coup. Ajoute d abord l aide à l écriture, puis complète le reste si tu en as besoin.',
-          targetId: 'settings-section-api',
-          complete: !Array.isArray(setup.missing_ai) || setup.missing_ai.length === 0,
-          hint: !Array.isArray(setup.missing_ai) || setup.missing_ai.length === 0 ? 'Les cles IA principales sont deja en place.' : `Il manque : ${setup.missing_ai.join(', ')}.`
-        },
-        {
           title: 'Faire un premier test',
           shortCopy: 'Enregistrer, lancer une recherche, puis vérifier le suivi et les offres.',
           description: 'Quand le profil, la recherche et les sources sont prêts, enregistre les réglages puis lance une recherche. Tu verras vite si l application est prête à l emploi.',
           targetId: 'setup-status-card',
-          complete: !!setup.profile_complete && !!setup.scan_ready && !!setup.letters_ready,
-          hint: !!setup.profile_complete && !!setup.scan_ready && !!setup.letters_ready
+          complete: !!setup.profile_complete && !!setup.search_complete,
+          hint: !!setup.profile_complete && !!setup.search_complete
             ? 'Le socle est pret pour un premier test complet.'
             : 'Une fois les points ci-dessus regles, relance un scan pour valider le parcours.'
         }
@@ -2980,8 +3120,6 @@
           document.getElementById('settings-prenom')?.focus();
         } else if (step.targetId === 'settings-section-search') {
           document.getElementById('settings-zone-mode')?.focus();
-        } else if (step.targetId === 'settings-section-api') {
-          document.getElementById('settings-ft-client-id')?.focus();
         } else if (step.targetId === 'settings-section-agent') {
           document.getElementById('settings-confirmation-required')?.focus();
         }
@@ -2990,10 +3128,11 @@
     }
 
     function maybeAutoOpenSetupGuide() {
+      if (onboardingIsNeeded()) return;
       if (setupGuideAutoshown) return;
       const setup = statsData.setup || {};
       const alreadySeen = localStorage.getItem('alternance_setup_guide_seen') === '1';
-      const needsSetup = !setup.profile_complete || !setup.scan_ready || !setup.letters_ready;
+      const needsSetup = !setup.profile_complete || !setup.search_complete;
       if (!needsSetup || alreadySeen) return;
       setupGuideAutoshown = true;
       setTimeout(() => ouvrirGuideConfiguration(0), 350);
@@ -3016,7 +3155,7 @@
         switchToTab('#tab-settings');
         setTimeout(() => {
           clearSetupHighlights();
-          const targetId = action === 'profile' ? 'settings-section-profile' : action === 'api' ? 'settings-section-api' : 'settings-section-profile';
+          const targetId = 'settings-section-profile';
           const target = document.getElementById(targetId);
           if (!target) return;
           target.classList.add('setup-guide-highlight');
@@ -3092,22 +3231,44 @@
           : "Ajoute ton CV pour le réutiliser plus facilement dans l'application.";
         refreshCvPickerUi();
         document.getElementById('settings-presentation').value = profile.presentation || '';
+        document.getElementById('onboarding-prenom').value = profile.prenom || '';
+        document.getElementById('onboarding-nom').value = profile.nom || '';
+        document.getElementById('onboarding-email').value = profile.email || userAuthState.user?.email || '';
+        document.getElementById('onboarding-tel').value = profile.tel || '';
+        document.getElementById('onboarding-portfolio').value = profile.portfolio || '';
+        document.getElementById('onboarding-linkedin').value = profile.linkedin || '';
+        document.getElementById('onboarding-github').value = profile.github || '';
+        document.getElementById('onboarding-cv-path').value = profile.cv_path || '';
+        document.getElementById('onboarding-presentation').value = profile.presentation || '';
+        refreshOnboardingCvUi();
 
         document.getElementById('editor-postes-cibles').setTags(search.postes_cibles || []);
         document.getElementById('editor-mots-cles-positifs').setTags(search.mots_cles_positifs || []);
         document.getElementById('editor-mots-cles-negatifs').setTags(search.mots_cles_negatifs || []);
+        document.getElementById('editor-onboarding-postes-cibles').setTags(search.postes_cibles || []);
+        document.getElementById('editor-onboarding-mots-cles-positifs').setTags(search.mots_cles_positifs || []);
+        document.getElementById('editor-onboarding-mots-cles-negatifs').setTags(search.mots_cles_negatifs || []);
 
         const contracts = new Set(search.types_contrat || []);
         document.getElementById('contract-alternance').checked = contracts.has('alternance');
         document.getElementById('contract-stage').checked = contracts.has('stage');
         document.getElementById('contract-cdd').checked = contracts.has('cdd');
         document.getElementById('contract-cdi').checked = contracts.has('cdi');
+        document.getElementById('onboarding-contract-alternance').checked = contracts.has('alternance');
+        document.getElementById('onboarding-contract-stage').checked = contracts.has('stage');
+        document.getElementById('onboarding-contract-cdd').checked = contracts.has('cdd');
+        document.getElementById('onboarding-contract-cdi').checked = contracts.has('cdi');
 
         document.getElementById('settings-zone-mode').value = search.zone_mode || 'idf';
         document.getElementById('settings-zone-geo').value = search.zone_geo || '';
         document.getElementById('settings-inclure-remote').checked = !!search.inclure_remote;
         document.getElementById('settings-rayon-km').value = search.rayon_km ?? 30;
         document.getElementById('settings-score-min').value = search.score_min ?? 0;
+        document.getElementById('onboarding-zone-mode').value = search.zone_mode || 'idf';
+        document.getElementById('onboarding-zone-geo').value = search.zone_geo || '';
+        document.getElementById('onboarding-inclure-remote').checked = !!search.inclure_remote;
+        document.getElementById('onboarding-rayon-km').value = search.rayon_km ?? 30;
+        document.getElementById('onboarding-score-min').value = search.score_min ?? 0;
 
         document.getElementById('settings-adzuna-app-id').value = apiKeys.adzuna_app_id || '';
         document.getElementById('settings-adzuna-app-key').value = apiKeys.adzuna_app_key || '';
@@ -3125,6 +3286,8 @@
         updateRangeLabel('settings-score-min', 'settings-score-min-value', ' / 100');
         updateRangeLabel('settings-delay-seconds', 'settings-delay-seconds-value', ' s');
         updateRangeLabel('settings-max-candidatures-session', 'settings-max-candidatures-session-value', '');
+        updateRangeLabel('onboarding-rayon-km', 'onboarding-rayon-km-value', ' km');
+        updateRangeLabel('onboarding-score-min', 'onboarding-score-min-value', ' / 100');
 
         [
           'settings-adzuna-app-id',
@@ -3187,6 +3350,39 @@
       };
     }
 
+    function applyOnboardingToSettingsForm() {
+      document.getElementById('settings-prenom').value = document.getElementById('onboarding-prenom').value.trim();
+      document.getElementById('settings-nom').value = document.getElementById('onboarding-nom').value.trim();
+      document.getElementById('settings-email').value = document.getElementById('onboarding-email').value.trim();
+      document.getElementById('settings-tel').value = document.getElementById('onboarding-tel').value.trim();
+      document.getElementById('settings-portfolio').value = document.getElementById('onboarding-portfolio').value.trim();
+      document.getElementById('settings-linkedin').value = document.getElementById('onboarding-linkedin').value.trim();
+      document.getElementById('settings-github').value = document.getElementById('onboarding-github').value.trim();
+      document.getElementById('settings-cv-path').value = document.getElementById('onboarding-cv-path').value.trim();
+      document.getElementById('settings-presentation').value = document.getElementById('onboarding-presentation').value.trim();
+
+      document.getElementById('editor-postes-cibles').setTags(document.getElementById('editor-onboarding-postes-cibles').getTags());
+      document.getElementById('editor-mots-cles-positifs').setTags(document.getElementById('editor-onboarding-mots-cles-positifs').getTags());
+      document.getElementById('editor-mots-cles-negatifs').setTags(document.getElementById('editor-onboarding-mots-cles-negatifs').getTags());
+
+      document.getElementById('contract-alternance').checked = document.getElementById('onboarding-contract-alternance').checked;
+      document.getElementById('contract-stage').checked = document.getElementById('onboarding-contract-stage').checked;
+      document.getElementById('contract-cdd').checked = document.getElementById('onboarding-contract-cdd').checked;
+      document.getElementById('contract-cdi').checked = document.getElementById('onboarding-contract-cdi').checked;
+
+      document.getElementById('settings-zone-mode').value = document.getElementById('onboarding-zone-mode').value;
+      document.getElementById('settings-zone-geo').value = document.getElementById('onboarding-zone-geo').value.trim();
+      document.getElementById('settings-inclure-remote').checked = document.getElementById('onboarding-inclure-remote').checked;
+      document.getElementById('settings-rayon-km').value = document.getElementById('onboarding-rayon-km').value;
+      document.getElementById('settings-score-min').value = document.getElementById('onboarding-score-min').value;
+      updateRangeLabel('settings-rayon-km', 'settings-rayon-km-value', ' km');
+      updateRangeLabel('settings-score-min', 'settings-score-min-value', ' / 100');
+      document.getElementById('settings-cv-meta').textContent = document.getElementById('settings-cv-path').value.trim()
+        ? 'Un CV est déjà associé à ton profil.'
+        : "Ajoute ton CV pour le réutiliser plus facilement dans l'application.";
+      refreshCvPickerUi();
+    }
+
     async function chargerSettings(silent = false) {
       try {
         const response = await fetch(withWorkspaceUrl('/api/settings'));
@@ -3199,6 +3395,58 @@
         if (!silent) appendLog(`Impossible de charger les paramètres : ${error.message}`, 'log-warn');
         return null;
       }
+    }
+
+    function onboardingIsNeeded() {
+      const setup = statsData.setup || {};
+      return !!(userAuthState.enabled && userAuthState.authenticated && !setup.onboarding_complete);
+    }
+
+    function renderOnboardingStep() {
+      const titles = [
+        'Étape 1 - Faisons connaissance',
+        'Étape 2 - Tes liens et ton CV',
+        'Étape 3 - Ce que tu recherches',
+        'Étape 4 - Où et comment trier'
+      ];
+      document.querySelectorAll('.onboarding-step-block').forEach(section => {
+        section.classList.toggle('d-none', Number(section.dataset.step) !== onboardingStepIndex);
+      });
+      document.getElementById('onboarding-step-title').textContent = titles[onboardingStepIndex] || 'Étape';
+      document.getElementById('onboarding-progress-badge').textContent = `${onboardingStepIndex + 1}/4`;
+      document.getElementById('onboarding-prev-btn').disabled = onboardingStepIndex === 0;
+      document.getElementById('onboarding-next-btn').textContent = onboardingStepIndex === 3 ? 'Entrer dans la plateforme' : 'Étape suivante';
+    }
+
+    function openOnboarding() {
+      if (!modalOnboarding) modalOnboarding = new bootstrap.Modal(document.getElementById('modalOnboarding'));
+      onboardingStepIndex = 0;
+      renderOnboardingStep();
+      onboardingOpen = true;
+      modalOnboarding.show();
+    }
+
+    function maybeOpenOnboarding() {
+      if (!onboardingIsNeeded() || onboardingOpen) return;
+      openOnboarding();
+    }
+
+    async function completeOnboarding() {
+      applyOnboardingToSettingsForm();
+      await saveSettings({silent: false});
+      onboardingOpen = false;
+      if (modalOnboarding) modalOnboarding.hide();
+      showToast('Profil prêt', 'Ton espace est maintenant personnalisé selon tes réponses.', 'success');
+      switchToTab('#tab-dashboard');
+    }
+
+    async function moveOnboardingStep(delta) {
+      if (onboardingStepIndex === 3 && delta > 0) {
+        await completeOnboarding();
+        return;
+      }
+      onboardingStepIndex = Math.max(0, Math.min(3, onboardingStepIndex + delta));
+      renderOnboardingStep();
     }
 
     async function chargerHealthStatus() {
@@ -3282,11 +3530,11 @@
       }
     }
 
-    async function uploadCvFile(input) {
+    async function uploadCvFile(input, target = 'settings') {
       const file = input.files && input.files[0];
       if (!file) return;
       const button = document.getElementById('settings-cv-upload-btn');
-      button.disabled = true;
+      if (button) button.disabled = true;
       startAppLoading('Import du CV', 'Le fichier est envoyé puis rattaché au profil.');
       const formData = new FormData();
       formData.append('cv', file);
@@ -3299,6 +3547,11 @@
         if (!data.ok) throw new Error(data.error || 'Import impossible');
         if (data.settings) populateSettings(data.settings);
         document.getElementById('settings-cv-meta').textContent = 'Le CV a bien été ajouté à ton profil.';
+        document.getElementById('onboarding-cv-meta').textContent = 'Le CV a bien été ajouté à ton profil.';
+        if (target === 'onboarding') {
+          document.getElementById('onboarding-cv-path').value = document.getElementById('settings-cv-path').value;
+          refreshOnboardingCvUi();
+        }
         refreshCvPickerUi();
         showToast('CV importé', 'Le CV a bien été ajouté à l’application.', 'success');
       } catch (error) {
@@ -3306,7 +3559,7 @@
       } finally {
         stopAppLoading();
         input.value = '';
-        button.disabled = false;
+        if (button) button.disabled = false;
       }
     }
 
@@ -3464,11 +3717,8 @@
       if (Array.isArray(setup.missing_profile) && setup.missing_profile.length) {
         setupItems.push(`Profil à compléter : ${setup.missing_profile.join(', ')}`);
       }
-      if (Array.isArray(setup.missing_sources) && setup.missing_sources.length) {
-        setupItems.push(`Sources à configurer : ${setup.missing_sources.join(', ')}`);
-      }
-      if (Array.isArray(setup.missing_ai) && setup.missing_ai.length) {
-        setupItems.push(`Assistant à configurer : ${setup.missing_ai.join(', ')}`);
+      if (Array.isArray(setup.missing_search) && setup.missing_search.length) {
+        setupItems.push(`Recherche à préciser : ${setup.missing_search.join(', ')}`);
       }
       if (!setupItems.length) {
         setupSummary.textContent = 'Tout est prêt pour utiliser l application.';
@@ -3688,6 +3938,7 @@
         renderOffers();
         renderHistorique();
         renderRelances();
+        maybeOpenOnboarding();
         setTimeout(() => { chargerHealthStatus(); }, 50);
       } catch (error) {
         document.getElementById('log-panel').textContent = `Erreur de chargement: ${error.message}`;
@@ -4268,6 +4519,9 @@ async function copierLettre() {
       if (coachListening && coachRecognition) coachRecognition.stop();
       updateCoachVoiceUi('');
     });
+    document.getElementById('modalOnboarding').addEventListener('hidden.bs.modal', () => {
+      onboardingOpen = false;
+    });
 
     registerCurrentTab();
     document.addEventListener('click', event => {
@@ -4300,7 +4554,21 @@ async function copierLettre() {
 
     setupTagEditors();
     refreshCvPickerUi();
+    refreshOnboardingCvUi();
     document.getElementById('settings-zone-mode').addEventListener('change', event => applyZoneModeDefaults(event.target.value));
+    document.getElementById('onboarding-zone-mode').addEventListener('change', event => {
+      const defaults = {
+        idf: 'Ile-de-France',
+        lyon: 'Lyon',
+        bordeaux: 'Bordeaux',
+        remote: 'Remote',
+        france: 'France entiere'
+      };
+      const zoneInput = document.getElementById('onboarding-zone-geo');
+      if (event.target.value !== 'custom' && zoneInput && (!zoneInput.value || Object.values(defaults).includes(zoneInput.value))) {
+        zoneInput.value = defaults[event.target.value] || zoneInput.value;
+      }
+    });
     document.querySelectorAll('.api-key-input').forEach(input => {
       input.addEventListener('input', () => {
         setApiKeyStatus(input.id, !!input.value.trim());
