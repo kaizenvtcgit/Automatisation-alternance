@@ -39,7 +39,7 @@ load_dotenv(Path(__file__).parent / ".env")
 from sources import recuperer_toutes_offres_detail
 from sources._common import (
     famille_poste,
-    filtrer_zone_idf,
+    filtrer_offres_selon_recherche,
     is_relevant_offer,
     motion_en_priorite,
     nettoyer_html,
@@ -1628,14 +1628,14 @@ def main(ignorer_historique: bool = False) -> None:
         state["history"].append(state["last_scan"])
         save_scan_state(state)
 
-    offres, nb_hors_idf = filtrer_zone_idf(offres)
-    if nb_hors_idf:
-        print(f"   {nb_hors_idf} exclue(s) : hors Ile-de-France (ou remote non inclus).")
+    offres, nb_hors_zone = filtrer_offres_selon_recherche(offres)
+    if nb_hors_zone:
+        print(f"   {nb_hors_zone} exclue(s) : hors zone de recherche active (ou remote non inclus).")
     print(f"   -> {len(offres)} annonce(s) apres filtre geographique.\n")
 
     if not offres:
-        print("Aucune annonce retenue après filtre géographique.")
-        finaliser_scan(0, "completed_with_no_idf_results")
+        print("Aucune annonce retenue apres filtre geographique de la recherche.")
+        finaliser_scan(0, "completed_with_no_matching_zone_results")
         return
 
     offres_filtrees = filtrer_offres_pertinentes(offres)

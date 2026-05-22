@@ -37,6 +37,20 @@ def dynamic_search_terms() -> dict:
         "types_contrat": [item.lower() for item in _env_list("ALTERNANCE_CONTRACT_TYPES")],
     }
 
+
+def dynamic_search_scope() -> dict:
+    radius_raw = str(os.environ.get("ALTERNANCE_RADIUS_KM", "30") or "30").strip()
+    try:
+        radius_km = max(10, min(100, int(radius_raw)))
+    except ValueError:
+        radius_km = 30
+    return {
+        "zone_mode": str(os.environ.get("ALTERNANCE_ZONE_MODE", "") or "").strip().lower(),
+        "zone_geo": str(os.environ.get("ALTERNANCE_ZONE_GEO", "") or "").strip(),
+        "radius_km": radius_km,
+        "include_remote": INCLURE_OFFRES_REMOTE,
+    }
+
 # ─── Mots-clés positifs ───────────────────────────────────────────────────────
 
 MOTION_KEYWORDS: list[str] = [
@@ -393,6 +407,40 @@ def est_paris_ou_banlieue_idf(offre: dict) -> bool:
 
 def filtrer_zone_idf(offres: list[dict]) -> tuple[list[dict], int]:
     gardes = [o for o in offres if est_paris_ou_banlieue_idf(o)]
+    return gardes, len(offres) - len(gardes)
+
+
+def filtrer_offres_selon_recherche(offres: list[dict]) -> tuple[list[dict], int]:
+    scope = dynamic_search_scope()
+    zone_mode = scope.get("zone_mode", "")
+    zone_geo = _texte_sans_accents(str(scope.get("zone_geo") or ""))
+    include_remote = bool(scope.get("include_remote", True))
+
+    if zone_mode in {"", "idf"}:
+        return filtrer_zone_idf(offres)
+
+    gardes: list[dict] = []
+    for offre in offres:
+        blob = _blob_geographique(offre)
+        is_remote = est_offre_remote(offre)
+
+        if zone_mode == "remote":
+            if is_remote:
+                gardes.append(offre)
+            continue
+
+        if zone_mode == "france":
+            if include_remote or not is_remote:
+                gardes.append(offre)
+            continue
+
+        if zone_geo and zone_geo in blob:
+            gardes.append(offre)
+            continue
+
+        if include_remote and is_remote:
+            gardes.append(offre)
+
     return gardes, len(offres) - len(gardes)
 
 

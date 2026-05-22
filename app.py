@@ -221,6 +221,10 @@ def _current_search_env_overrides() -> dict[str, str]:
         "ALTERNANCE_POSITIVE_KEYWORDS": _pack(search.get("mots_cles_positifs")),
         "ALTERNANCE_NEGATIVE_KEYWORDS": _pack(search.get("mots_cles_negatifs")),
         "ALTERNANCE_CONTRACT_TYPES": _pack(search.get("types_contrat")),
+        "ALTERNANCE_ZONE_MODE": str(search.get("zone_mode") or "").strip(),
+        "ALTERNANCE_ZONE_GEO": str(search.get("zone_geo") or "").strip(),
+        "ALTERNANCE_RADIUS_KM": str(int(search.get("rayon_km") or 30)),
+        "INCLURE_OFFRES_REMOTE": "1" if bool(search.get("inclure_remote", True)) else "0",
     }
 
 
@@ -2450,7 +2454,7 @@ def _stream(cmd: list[str], extra_env: dict | None = None) -> Response:
 
 @app.route("/api/stream/recuperer")
 def stream_recuperer():
-    return _stream([sys.executable, "main.py"])
+    return _stream([sys.executable, "main.py"], extra_env=_current_search_env_overrides())
 
 
 @app.route("/api/scan/start", methods=["POST"])
