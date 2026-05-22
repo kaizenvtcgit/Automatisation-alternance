@@ -3788,6 +3788,96 @@
       return offresData.find(item => item.pipeline_id === id);
     }
 
+    function formatLocalDateTime(date = new Date()) {
+      const pad = value => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+    }
+
+    function formatLocalDateOnly(date = new Date()) {
+      const pad = value => String(value).padStart(2, '0');
+      return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    }
+
+    function buildLocalHistoryRowFromOffer(id) {
+      const offer = offerById(id);
+      if (!offer) return null;
+      const now = new Date();
+      const relance = new Date(now);
+      relance.setDate(relance.getDate() + 7);
+      return {
+        id_adzuna: id,
+        offer_signature: id,
+        url: offer["Lien vers l'annonce"] || '',
+        titre: getOfferTitle(offer),
+        entreprise: offer['Entreprise'] || '',
+        source: offer['Source'] || '',
+        lieu: offer['Ville ou zone'] || '',
+        statut: 'postule',
+        date_postulation: formatLocalDateTime(now),
+        date_relance_prevue: formatLocalDateOnly(relance),
+        notes: ''
+      };
+    }
+
+    function syncStatsFromLocalState() {
+      const pipelineCounts = KANBAN_ORDER.reduce((acc, status) => {
+        acc[status] = offresData.filter(offer => offer.pipeline_status === status).length;
+        return acc;
+      }, {});
+      statsData = {
+        ...(statsData || {}),
+        pipeline: pipelineCounts,
+        nb_offres: offresData.length,
+        nb_a_analyser_visible: pipelineCounts.a_analyser || 0,
+        nb_interessantes_visible: pipelineCounts.interessante || 0,
+        nb_envoyees: histoData.filter(row => row.statut === 'postule').length,
+        nb_postulations: histoData.filter(row => row.statut === 'postule').length,
+        nb_relances: relancesData().length
+      };
+    }
+
+    function refreshUiFromLocalState() {
+      syncStatsFromLocalState();
+      renderOffers();
+      renderPipeline();
+      renderHistorique();
+      renderRelances();
+      renderStats();
+    }
+
+    function applyPostuleLocally(id) {
+      const localRow = buildLocalHistoryRowFromOffer(id);
+      if (!localRow) return;
+      offresData = offresData.map(offer => offer.pipeline_id === id
+        ? {...offer, pipeline_status: 'postule', is_applied: true}
+        : offer
+      );
+      const existingIndex = histoData.findIndex(row =>
+        row.offer_signature === id ||
+        row.id_adzuna === id ||
+        (localRow.url && row.url === localRow.url)
+      );
+      if (existingIndex >= 0) {
+        histoData[existingIndex] = {
+          ...histoData[existingIndex],
+          ...localRow,
+          notes: histoData[existingIndex].notes || localRow.notes
+        };
+      } else {
+        histoData.push(localRow);
+      }
+      if (analyseCourante && analyseCourante.id === id) {
+        analyseCourante = {
+          ...analyseCourante,
+          status: 'postule'
+        };
+        document.getElementById('analyse-status-select').value = 'postule';
+        document.getElementById('analyse-status-badge').className = 'badge-soft status-postule';
+        document.getElementById('analyse-status-badge').textContent = STATUS_LABELS.postule;
+      }
+      refreshUiFromLocalState();
+    }
+
     async function ouvrirLettre(id) {
       const offer = offerById(id);
       if (!offer) return;
@@ -3884,14 +3974,7 @@ async function copierLettre() {
         alert(data.error || 'Erreur historique');
         return;
       }
-      offresData = offresData.map(offer => offer.pipeline_id === id
-        ? {...offer, pipeline_status: 'postule', is_applied: true}
-        : offer
-      );
-      renderOffers();
-      renderPipeline();
-      renderStats();
-      await chargerTout();
+      applyPostuleLocally(id);
     }
 
     async function marquerCommePostule() {
@@ -3901,8 +3984,7 @@ async function copierLettre() {
         alert(data.error || 'Erreur historique');
         return;
       }
-      await chargerTout();
-      await ouvrirAnalyse(analyseCourante.id);
+      applyPostuleLocally(analyseCourante.id);
     }
 
     async function basculerRefusDepuisAnalyse() {
