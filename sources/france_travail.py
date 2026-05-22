@@ -18,17 +18,7 @@ SCOPE = "api_offresdemploiv2 o2dsoffre"
 DEPARTEMENTS_IDF: list[str] = ["75", "77", "78", "91", "92", "93", "94", "95"]
 
 REQUETES: list[str] = [
-    "motion designer",
-    "motion design",
-    "graphiste animation",
-    "after effects",
-    "designer video",
-    "ux designer",
-    "ui designer",
-    "product designer",
-    "web designer",
-    "design numerique",
-    "alternance design",
+    "alternance",
 ]
 
 ACTIVE_DEPARTEMENTS_IDF: list[str] = DEPARTEMENTS_IDF[:2] if CLOUD_MODE else DEPARTEMENTS_IDF

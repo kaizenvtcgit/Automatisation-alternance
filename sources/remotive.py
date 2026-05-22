@@ -14,13 +14,8 @@ RESULT_LIMIT = 50
 CLOUD_MODE   = (os.environ.get("ALTERNANCE_CLOUD_MODE", "0").strip() == "1")
 
 REQUETES: list[str] = [
-    "motion designer apprenticeship",
-    "motion design apprenticeship",
-    "graphic design apprenticeship",
-    "ui ux apprenticeship",
-    "video designer work study",
-    "product designer junior",
-    "ux designer junior",
+    "apprenticeship",
+    "internship",
 ]
 
 ACTIVE_RESULT_LIMIT = 15 if CLOUD_MODE else RESULT_LIMIT

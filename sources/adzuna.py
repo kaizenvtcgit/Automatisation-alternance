@@ -17,16 +17,7 @@ DEFAULT_WHERE = "Paris"
 DEFAULT_DISTANCE_KM = 90
 
 REQUETES: list[str] = [
-    "alternance motion designer",
-    "alternance motion design",
-    "alternance graphiste animation",
-    "alternance after effects",
-    "alternance designer video",
-    "alternance UX designer",
-    "alternance UI designer",
-    "alternance product designer",
-    "alternance web designer",
-    "alternance design numerique",
+    "alternance",
 ]
 
 ACTIVE_RESULTS_PER_PAGE = 15 if CLOUD_MODE else RESULTATS_PAR_PAGE

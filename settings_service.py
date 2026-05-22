@@ -248,12 +248,12 @@ def _write_env_updates(updates: dict[str, str]) -> None:
 def _default_profile_settings() -> dict:
     env = _read_env_map()
     return {
-        "postes_cibles": ["motion designer", "ux designer", "ui designer", "product designer", "web designer"],
+        "postes_cibles": [],
         "mots_cles_positifs": [],
-        "mots_cles_negatifs": ["senior", "commercial", "print"],
+        "mots_cles_negatifs": [],
         "types_contrat": ["alternance"],
-        "zone_geo": "Ile-de-France",
-        "zone_mode": "idf",
+        "zone_geo": "France entière",
+        "zone_mode": "france",
         "rayon_km": 30,
         "score_min": 0,
         "inclure_remote": _parse_bool(env.get("INCLURE_OFFRES_REMOTE", "1"), True),
