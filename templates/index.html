@@ -30,6 +30,7 @@
         linear-gradient(180deg, #f8f4ec 0%, var(--bg) 100%);
       color: var(--text);
       min-height: 100vh;
+      overflow-x: hidden;
     }
 
     .navbar {
@@ -1008,13 +1009,36 @@
     }
 
     @media (max-width: 767px) {
+      body {
+        background:
+          linear-gradient(180deg, rgba(255, 250, 242, 0.98) 0%, rgba(244, 241, 234, 0.98) 100%);
+      }
+
       .page-shell {
         padding-left: 0.75rem;
         padding-right: 0.75rem;
       }
 
+      .navbar .page-shell {
+        display: grid;
+        gap: 0.8rem;
+      }
+
+      .navbar-brand {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.1rem;
+      }
+
       .sticky-actions {
         position: static;
+      }
+
+      .card,
+      .modal-content {
+        border-radius: 22px;
+        box-shadow: 0 12px 28px rgba(74, 58, 40, 0.08);
       }
 
       .metric-value {
@@ -1023,6 +1047,7 @@
 
       .metric-card {
         min-height: 118px;
+        padding: 1rem !important;
       }
 
       .metric-label {
@@ -1030,22 +1055,45 @@
       }
 
       .navbar {
-        padding-top: 0.85rem !important;
-        padding-bottom: 0.85rem !important;
+        padding-top: 0.75rem !important;
+        padding-bottom: 0.9rem !important;
       }
 
-      .navbar-actions > * {
+      .navbar-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.55rem;
         width: 100%;
       }
 
+      .navbar-actions .small {
+        grid-column: 1 / -1;
+        text-align: center;
+        font-size: 0.78rem;
+      }
+
+      .navbar-actions .btn {
+        width: 100%;
+        border-radius: 14px;
+        min-height: 44px;
+        font-weight: 600;
+      }
+
       .nav-tabs {
-        margin-left: -0.1rem;
-        margin-right: -0.1rem;
+        margin: 0 0 1rem;
+        padding: 0.35rem;
+        gap: 0.35rem;
+        border: 1px solid rgba(217, 208, 191, 0.9);
+        border-radius: 18px;
+        background: rgba(255, 250, 242, 0.92);
+        box-shadow: 0 10px 24px rgba(74, 58, 40, 0.06);
       }
 
       .nav-tabs .nav-link {
-        padding: 0.55rem 0.9rem;
-        font-size: 0.94rem;
+        padding: 0.65rem 0.95rem;
+        font-size: 0.93rem;
+        background: rgba(255, 255, 255, 0.78);
+        margin-right: 0;
       }
 
       .pipeline-toolbar,
@@ -1055,13 +1103,17 @@
       }
 
       .kanban-grid {
-        grid-template-columns: repeat(6, minmax(264px, 1fr));
-        gap: 1rem;
+        grid-template-columns: repeat(6, minmax(86vw, 1fr));
+        gap: 0.9rem;
+        padding-bottom: 0.5rem;
+        scroll-snap-type: x proximity;
       }
 
       .kanban-col {
         border-radius: 18px;
-        padding: 0.9rem;
+        padding: 1rem 0.95rem;
+        scroll-snap-align: start;
+        min-height: auto;
       }
 
       .kanban-head {
@@ -1070,11 +1122,13 @@
       }
 
       .offer-card {
-        padding: 0.85rem;
+        padding: 0.95rem;
+        border-radius: 18px;
       }
 
       .offer-title {
         font-size: 0.96rem;
+        line-height: 1.35;
       }
 
       .offer-card-summary {
@@ -1094,6 +1148,15 @@
       .settings-actions > div:last-child {
         flex-direction: column;
         align-items: stretch;
+      }
+
+      .action-card {
+        min-height: auto;
+      }
+
+      .action-card .btn {
+        min-height: 46px;
+        border-radius: 14px;
       }
 
       .setup-guide-steps,
@@ -1118,12 +1181,34 @@
     }
 
     @media (max-width: 575px) {
+      .page-shell {
+        padding-left: 0.55rem;
+        padding-right: 0.55rem;
+      }
+
+      .navbar-brand {
+        font-size: 1.02rem;
+      }
+
       .metric-value {
         font-size: 1.65rem;
       }
 
       .metric-note {
         font-size: 0.8rem;
+      }
+
+      .navbar-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .nav-tabs {
+        border-radius: 16px;
+      }
+
+      .nav-tabs .nav-link {
+        padding: 0.62rem 0.86rem;
+        font-size: 0.9rem;
       }
 
       .summary-line,
@@ -1141,6 +1226,10 @@
 
       .modal-content {
         border-radius: 16px;
+      }
+
+      .kanban-grid {
+        grid-template-columns: repeat(6, minmax(90vw, 1fr));
       }
 
       .modal-header,
