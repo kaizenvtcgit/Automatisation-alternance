@@ -5,6 +5,8 @@ import sys
 
 import requests
 
+from ._common import dynamic_search_terms
+
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 CLIENT_ID     = os.environ.get("FT_CLIENT_ID", "")
@@ -32,8 +34,24 @@ REQUETES: list[str] = [
     "alternance design",
 ]
 
+
+def _queries() -> list[str]:
+    dynamic_roles = dynamic_search_terms().get("postes_cibles", [])
+    if dynamic_roles:
+        queries: list[str] = []
+        for role in dynamic_roles:
+            role_text = str(role).strip()
+            if not role_text:
+                continue
+            lowered = role_text.lower()
+            if any(marker in lowered for marker in ("alternance", "apprentissage", "apprenticeship")):
+                queries.append(role_text)
+            else:
+                queries.append(f"alternance {role_text}")
+        return queries
+    return REQUETES
+
 ACTIVE_DEPARTEMENTS_IDF: list[str] = DEPARTEMENTS_IDF[:2] if CLOUD_MODE else DEPARTEMENTS_IDF
-ACTIVE_REQUETES: list[str] = REQUETES[:2] if CLOUD_MODE else REQUETES
 SEARCH_RANGE = "0-14" if CLOUD_MODE else "0-49"
 SEARCH_TIMEOUT = 10 if CLOUD_MODE else 30
 
@@ -132,7 +150,10 @@ def recuperer() -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     vues: dict[str, dict] = {}
 
-    for requete in ACTIVE_REQUETES:
+    queries = _queries()
+    if CLOUD_MODE:
+        queries = queries[:3]
+    for requete in queries:
         for dept in ACTIVE_DEPARTEMENTS_IDF:
             params = {
                 "motsCles":   requete,

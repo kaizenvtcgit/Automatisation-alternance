@@ -196,6 +196,34 @@ def _supabase_runtime_enabled() -> bool:
     return bool(_cloud_mode_enabled() and (os.environ.get("SUPABASE_URL") or "").strip() and (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip())
 
 
+def _offer_title(row: dict) -> str:
+    for key in ("Intitulé du poste", "IntitulÃ© du poste", "IntitulÃƒÂ© du poste"):
+        value = row.get(key)
+        if value:
+            return str(value)
+    return ""
+
+
+def _current_search_env_overrides() -> dict[str, str]:
+    search = (get_settings().get("search") or {})
+    if not isinstance(search, dict):
+        search = {}
+
+    def _pack(values) -> str:
+        return "|||".join(
+            str(item).strip()
+            for item in (values or [])
+            if str(item).strip()
+        )
+
+    return {
+        "ALTERNANCE_TARGET_ROLES": _pack(search.get("postes_cibles")),
+        "ALTERNANCE_POSITIVE_KEYWORDS": _pack(search.get("mots_cles_positifs")),
+        "ALTERNANCE_NEGATIVE_KEYWORDS": _pack(search.get("mots_cles_negatifs")),
+        "ALTERNANCE_CONTRACT_TYPES": _pack(search.get("types_contrat")),
+    }
+
+
 def _repair_text(value: str) -> str:
     text = str(value or "")
     if any(marker in text for marker in ("Ã", "Â", "â€", "â€™", "â€œ", "â€\x9d", "â€¦")):
@@ -1577,7 +1605,7 @@ def _offer_matches_workspace_search(offer: dict) -> bool:
     if not isinstance(search, dict):
         return True
 
-    title = offer.get("IntitulÃ© du poste", "")
+    title = _offer_title(offer)
     company = offer.get("Entreprise", "")
     location = offer.get("Ville ou zone", "")
     description = offer.get("Description (texte complet)", "")
@@ -2428,7 +2456,12 @@ def stream_recuperer():
 @app.route("/api/scan/start", methods=["POST"])
 def api_scan_start():
     if _cloud_mode_enabled():
-        ok, status, state = _launch_cloud_background_task("recuperer", "Scan des sources", [sys.executable, "main.py"])
+        ok, status, state = _launch_cloud_background_task(
+            "recuperer",
+            "Scan des sources",
+            [sys.executable, "main.py"],
+            _current_search_env_overrides(),
+        )
         return jsonify({"ok": ok, "status": status, "task": state})
     return jsonify({"ok": True, "stream_url": "/api/stream/recuperer"})
 

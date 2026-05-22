@@ -10,6 +10,33 @@ INCLURE_OFFRES_REMOTE: bool = os.environ.get(
     "INCLURE_OFFRES_REMOTE", "1"
 ).strip().lower() not in {"0", "false", "non", "no"}
 
+
+def _env_list(name: str) -> list[str]:
+    raw = str(os.environ.get(name, "") or "").strip()
+    if not raw:
+        return []
+    items = [item.strip() for item in raw.split("|||")]
+    deduped: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        if not item:
+            continue
+        key = item.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(item)
+    return deduped
+
+
+def dynamic_search_terms() -> dict:
+    return {
+        "postes_cibles": _env_list("ALTERNANCE_TARGET_ROLES"),
+        "mots_cles_positifs": _env_list("ALTERNANCE_POSITIVE_KEYWORDS"),
+        "mots_cles_negatifs": _env_list("ALTERNANCE_NEGATIVE_KEYWORDS"),
+        "types_contrat": [item.lower() for item in _env_list("ALTERNANCE_CONTRACT_TYPES")],
+    }
+
 # ─── Mots-clés positifs ───────────────────────────────────────────────────────
 
 MOTION_KEYWORDS: list[str] = [
@@ -268,6 +295,20 @@ def is_relevant_offer(titre: str, description: str, contrat: str = "") -> bool:
     pour les sources qui filtrent déjà par type de contrat (ex. LBA).
     """
     texte_complet = (titre + " " + description + " " + contrat).lower()
+    dynamic = dynamic_search_terms()
+    positive_terms = [*dynamic.get("postes_cibles", []), *dynamic.get("mots_cles_positifs", [])]
+    negative_terms = dynamic.get("mots_cles_negatifs", [])
+    contract_types = dynamic.get("types_contrat", [])
+
+    if negative_terms and any(texte_contient_mot_cle(texte_complet, term) for term in negative_terms):
+        return False
+
+    if positive_terms:
+        if contract_types and "alternance" in contract_types and not est_contrat_alternance(texte_complet):
+            return False
+        if not any(texte_contient_mot_cle(texte_complet, term) for term in positive_terms):
+            return False
+        return not est_offre_exclue(titre, description)
 
     # Doit contenir une mention de contrat alternance
     if not est_contrat_alternance(texte_complet):

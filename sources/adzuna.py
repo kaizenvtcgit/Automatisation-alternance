@@ -6,7 +6,7 @@ import sys
 
 import requests
 
-from ._common import nettoyer_html
+from ._common import dynamic_search_terms, nettoyer_html
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -32,9 +32,25 @@ REQUETES: list[str] = [
     "alternance design numérique",
 ]
 
-ACTIVE_REQUETES: list[str] = REQUETES[:2] if CLOUD_MODE else REQUETES
 ACTIVE_RESULTS_PER_PAGE = 15 if CLOUD_MODE else RESULTATS_PAR_PAGE
 REQUEST_TIMEOUT = 10 if CLOUD_MODE else 30
+
+
+def _queries() -> list[str]:
+    dynamic_roles = dynamic_search_terms().get("postes_cibles", [])
+    if dynamic_roles:
+        queries: list[str] = []
+        for role in dynamic_roles:
+            role_text = str(role).strip()
+            if not role_text:
+                continue
+            lowered = role_text.lower()
+            if any(marker in lowered for marker in ("alternance", "apprentissage", "apprenticeship")):
+                queries.append(role_text)
+            else:
+                queries.append(f"alternance {role_text}")
+        return queries
+    return REQUETES
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────
@@ -73,7 +89,10 @@ def recuperer() -> list[dict]:
 
     vues: dict[str, dict] = {}
 
-    for requete in ACTIVE_REQUETES:
+    queries = _queries()
+    if CLOUD_MODE:
+        queries = queries[:3]
+    for requete in queries:
         params = {
             "app_id":           APP_ID,
             "app_key":          APP_KEY,

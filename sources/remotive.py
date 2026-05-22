@@ -5,7 +5,7 @@ import sys
 
 import requests
 
-from ._common import nettoyer_html
+from ._common import dynamic_search_terms, nettoyer_html
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -23,9 +23,25 @@ REQUETES: list[str] = [
     "ux designer junior",
 ]
 
-ACTIVE_REQUETES: list[str] = REQUETES[:2] if CLOUD_MODE else REQUETES
 ACTIVE_RESULT_LIMIT = 15 if CLOUD_MODE else RESULT_LIMIT
 REQUEST_TIMEOUT = 10 if CLOUD_MODE else 30
+
+
+def _queries() -> list[str]:
+    dynamic_roles = dynamic_search_terms().get("postes_cibles", [])
+    if dynamic_roles:
+        queries: list[str] = []
+        for role in dynamic_roles:
+            role_text = str(role).strip()
+            if not role_text:
+                continue
+            lowered = role_text.lower()
+            if any(marker in lowered for marker in ("alternance", "apprentissage", "apprenticeship")):
+                queries.append(role_text)
+            else:
+                queries.append(f"apprenticeship {role_text}")
+        return queries
+    return REQUETES
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────
@@ -58,7 +74,7 @@ def recuperer() -> list[dict]:
         return []
     vues: dict[str, dict] = {}
 
-    for requete in ACTIVE_REQUETES:
+    for requete in _queries():
         params = {"search": requete, "limit": ACTIVE_RESULT_LIMIT}
         try:
             resp = requests.get(API_URL, params=params, timeout=REQUEST_TIMEOUT)
