@@ -3350,8 +3350,8 @@
         ? `${sharedScan ? 'Scan partage' : 'Dernier scan'}: ${formatDate(scan.finished_at)}`
         : 'Aucun scan';
       document.getElementById('stat-interessantes').textContent = visibleInterestingOffers;
-      document.getElementById('stat-interessantes-note').textContent = interestingOffers
-        ? `${interestingOffers} offre${interestingOffers > 1 ? 's' : ''} à traiter en priorité`
+      document.getElementById('stat-interessantes-note').textContent = visibleInterestingOffers
+        ? `${visibleInterestingOffers} offre${visibleInterestingOffers > 1 ? 's' : ''} à traiter en priorité`
         : 'Aucune priorité pour le moment';
       document.getElementById('stat-postulations').textContent = sentApplications;
       document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance${(statsData.nb_relances || 0) > 1 ? 's' : ''} à prévoir`;
