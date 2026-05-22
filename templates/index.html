@@ -3182,6 +3182,14 @@
       }
     }
 
+    async function chargerHealthStatus() {
+      const data = await fetchJsonSafe('/api/health', {ok: false, health: statsData.health || {}});
+      if (data && data.ok && data.health && typeof data.health === 'object') {
+        statsData.health = data.health;
+        renderHealthStatus();
+      }
+    }
+
     async function saveSettings() {
       const button = document.getElementById('settings-save-btn');
       button.disabled = true;
@@ -3630,24 +3638,34 @@
         if (!accessOk) return;
         const userOk = await ensureUserAuthenticated(true);
         if (!userOk) return;
-        const [stats, offres, histo, lettres, settings] = await Promise.all([
-          fetchJsonSafe('/api/stats', statsData || {}),
-          fetchJsonSafe('/api/offres', offresData || []),
-          fetchJsonSafe('/api/historique', histoData || []),
-          fetchJsonSafe('/api/lettres', lettresData || {}),
-          fetchJsonSafe('/api/settings', {ok: false, settings: settingsData || null})
-        ]);
-        statsData = (stats && typeof stats === 'object' && !Array.isArray(stats)) ? stats : (statsData || {});
-        offresData = Array.isArray(offres) ? offres : (Array.isArray(offresData) ? offresData : []);
-        histoData = Array.isArray(histo) ? histo : (Array.isArray(histoData) ? histoData : []);
-        lettresData = (lettres && typeof lettres === 'object' && !Array.isArray(lettres)) ? lettres : (lettresData || {});
-        if (settings.ok) populateSettings(settings.settings);
+        const bootstrap = await fetchJsonSafe('/api/bootstrap', {ok: false});
+        if (bootstrap && bootstrap.ok) {
+          statsData = (bootstrap.stats && typeof bootstrap.stats === 'object' && !Array.isArray(bootstrap.stats)) ? bootstrap.stats : (statsData || {});
+          offresData = Array.isArray(bootstrap.offres) ? bootstrap.offres : (Array.isArray(offresData) ? offresData : []);
+          histoData = Array.isArray(bootstrap.historique) ? bootstrap.historique : (Array.isArray(histoData) ? histoData : []);
+          lettresData = (bootstrap.lettres && typeof bootstrap.lettres === 'object' && !Array.isArray(bootstrap.lettres)) ? bootstrap.lettres : (lettresData || {});
+          if (bootstrap.settings && typeof bootstrap.settings === 'object') populateSettings(bootstrap.settings);
+        } else {
+          const [stats, offres, histo, lettres, settings] = await Promise.all([
+            fetchJsonSafe('/api/stats', statsData || {}),
+            fetchJsonSafe('/api/offres', offresData || []),
+            fetchJsonSafe('/api/historique', histoData || []),
+            fetchJsonSafe('/api/lettres', lettresData || {}),
+            fetchJsonSafe('/api/settings', {ok: false, settings: settingsData || null})
+          ]);
+          statsData = (stats && typeof stats === 'object' && !Array.isArray(stats)) ? stats : (statsData || {});
+          offresData = Array.isArray(offres) ? offres : (Array.isArray(offresData) ? offresData : []);
+          histoData = Array.isArray(histo) ? histo : (Array.isArray(histoData) ? histoData : []);
+          lettresData = (lettres && typeof lettres === 'object' && !Array.isArray(lettres)) ? lettres : (lettresData || {});
+          if (settings.ok) populateSettings(settings.settings);
+        }
         populateSourcesSelects();
         renderStats();
         renderPipeline();
         renderOffers();
         renderHistorique();
         renderRelances();
+        setTimeout(() => { chargerHealthStatus(); }, 50);
       } catch (error) {
         document.getElementById('log-panel').textContent = `Erreur de chargement: ${error.message}`;
       }

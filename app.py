@@ -537,7 +537,7 @@ def _build_search_coach_context() -> dict:
                 "titre": row.get("Intitulé du poste", row.get("IntitulÃ© du poste", "")),
                 "entreprise": row.get("Entreprise", ""),
                 "score": int(score_value),
-                "raisons": score_info.get("positiveReasons", [])[:3],
+                "raisons": score_info.get("positiveReasons", [])[:2],
             }
         )
     top_offers.sort(key=lambda item: item.get("score", 0), reverse=True)
@@ -549,8 +549,10 @@ def _build_search_coach_context() -> dict:
             "statut": row.get("statut", ""),
             "date": row.get("date_postulation", ""),
         }
-        for row in history[-12:]
+        for row in history[-4:]
     ]
+
+    cv_excerpt = _extract_cv_text(current_profile.get("cv_path", ""), limit=900)
 
     return {
         "profile": {
@@ -558,12 +560,11 @@ def _build_search_coach_context() -> dict:
             "portfolio": current_profile.get("portfolio", ""),
             "linkedin": current_profile.get("linkedin", ""),
             "github": current_profile.get("github", ""),
-            "cv_path": current_profile.get("cv_path", ""),
-            "cv_excerpt": _extract_cv_text(current_profile.get("cv_path", "")),
+            "cv_excerpt": cv_excerpt,
         },
         "current_search": current_search,
         "recent_history": recent_history,
-        "top_scored_offers": top_offers[:8],
+        "top_scored_offers": top_offers[:4],
         "letters_count": len(_lire_lettres()),
         "scores_count": len(scores),
     }
@@ -1995,12 +1996,13 @@ def api_settings_search_coach():
                 }
             )
 
+        compact_context = json.dumps(coach_context, ensure_ascii=False, separators=(",", ":"))
         system_prompt = f"""
 Tu es un coach de recherche d'emploi pour une application locale d'alternance.
 Tu aides la personne a clarifier sa recherche ciblee, surtout pour les postes, mots-cles, exclusions, zone geographique et type de contrat.
 
 Contexte réel déjà présent dans l'application:
-{json.dumps(coach_context, ensure_ascii=False, indent=2)}
+{compact_context}
 
 Objectif:
 - poser des questions utiles, une ou deux a la fois
@@ -2045,7 +2047,7 @@ Regles:
                 }
             )
         else:
-            for item in messages[-12:]:
+            for item in messages[-8:]:
                 if not isinstance(item, dict):
                     continue
                 role = str(item.get("role", "user"))
@@ -2063,8 +2065,8 @@ Regles:
                 resp = client.chat.completions.create(
                     model=modele,
                     messages=chat_messages,
-                    temperature=0.3,
-                    max_tokens=900,
+                    temperature=0.2,
+                    max_tokens=420,
                     response_format={"type": "json_object"},
                 )
                 raw = (resp.choices[0].message.content or "").strip()
@@ -2105,7 +2107,7 @@ def api_stats():
     offers = _filtered_offers()
     histo = _lire_historique()
     last_scan = (_scan_state().get("last_scan") or {})
-    health = build_health_status()
+    include_health = request.args.get("include_health") == "1"
     today = datetime.now().strftime("%Y-%m-%d")
     relances = [
         row
@@ -2136,7 +2138,7 @@ def api_stats():
             "scan_state": last_scan,
             "supabase_sync": _lire_sync_supabase_state(),
             "setup": get_setup_status(),
-            "health": health,
+            "health": build_health_status() if include_health else {},
             "cloud_mode": _cloud_mode_enabled(),
             "shared_scan": _cloud_mode_enabled(),
             "workspace": _current_workspace(),
@@ -2147,6 +2149,20 @@ def api_stats():
 @app.route("/api/dashboard")
 def api_dashboard():
     return api_stats()
+
+
+@app.route("/api/bootstrap")
+def api_bootstrap():
+    return jsonify(
+        {
+            "ok": True,
+            "stats": api_stats().get_json(),
+            "offres": _filtered_offers(),
+            "historique": _lire_historique(),
+            "lettres": _lire_lettres(),
+            "settings": get_settings(),
+        }
+    )
 
 
 @app.route("/api/health")
