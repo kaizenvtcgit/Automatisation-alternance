@@ -1283,32 +1283,25 @@
     <div class="tab-content">
       <div class="tab-pane fade show active" id="tab-dashboard">
         <div class="row g-3 mb-4">
-          <div class="col-12 col-sm-6 col-xl-3">
+          <div class="col-12 col-md-4">
             <div class="card metric-card p-3">
-              <div class="metric-label">Offres visibles</div>
+              <div class="metric-label">Offres à explorer</div>
               <div class="metric-value text-primary" id="stat-offres">0</div>
               <div class="metric-note" id="stat-offres-note">Aucune offre à afficher</div>
             </div>
           </div>
-          <div class="col-12 col-sm-6 col-xl-3">
+          <div class="col-12 col-md-4">
             <div class="card metric-card p-3">
-              <div class="metric-label">Nouvelles offres</div>
-              <div class="metric-value" style="color:var(--blue)" id="stat-nouvelles">0</div>
-              <div class="metric-note" id="stat-last-scan">Aucun scan</div>
-            </div>
-          </div>
-          <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card metric-card p-3">
-              <div class="metric-label">À retenir</div>
-              <div class="metric-value" style="color:var(--green)" id="stat-interessantes">0</div>
-              <div class="metric-note" id="stat-interessantes-note">Rien à prioriser pour le moment</div>
-            </div>
-          </div>
-          <div class="col-12 col-sm-6 col-xl-3">
-            <div class="card metric-card p-3">
-              <div class="metric-label">Candidatures en cours</div>
+              <div class="metric-label">Candidatures envoyées</div>
               <div class="metric-value" style="color:var(--ink)" id="stat-postulations">0</div>
-              <div class="metric-note" id="stat-relances-note">0 relance a faire</div>
+              <div class="metric-note" id="stat-postulations-note">Aucune candidature envoyée pour le moment</div>
+            </div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="card metric-card p-3">
+              <div class="metric-label">Relances à prévoir</div>
+              <div class="metric-value" style="color:var(--green)" id="stat-relances">0</div>
+              <div class="metric-note" id="stat-relances-note">Aucune relance urgente</div>
             </div>
           </div>
         </div>
@@ -3790,26 +3783,28 @@
 
     function renderStats() {
       const scan = statsData.scan_state || {};
-      const setup = statsData.setup || {};
       const sharedScan = !!statsData.shared_scan;
       const visibleNewOffers = statsData.nb_nouvelles_visible ?? scan.new_offers ?? 0;
       const visibleInterestingOffers = statsData.nb_interessantes_visible ?? statsData.pipeline?.interessante ?? 0;
       const visibleToAnalyzeOffers = statsData.nb_a_analyser_visible ?? statsData.pipeline?.a_analyser ?? 0;
       const sentApplications = statsData.nb_envoyees ?? statsData.nb_postulations ?? 0;
+      const dueFollowups = statsData.nb_relances || 0;
       document.getElementById('stat-offres').textContent = statsData.nb_offres || 0;
-      document.getElementById('stat-offres-note').textContent = visibleToAnalyzeOffers
-        ? `${visibleToAnalyzeOffers} offre${visibleToAnalyzeOffers > 1 ? 's' : ''} à relire`
-        : 'Aucune offre en attente';
-      document.getElementById('stat-nouvelles').textContent = visibleNewOffers;
-      document.getElementById('stat-last-scan').textContent = scan.finished_at
-        ? `${sharedScan ? 'Scan partage' : 'Dernier scan'}: ${formatDate(scan.finished_at)}`
-        : 'Aucun scan';
-      document.getElementById('stat-interessantes').textContent = visibleInterestingOffers;
-      document.getElementById('stat-interessantes-note').textContent = visibleInterestingOffers
-        ? `${visibleInterestingOffers} offre${visibleInterestingOffers > 1 ? 's' : ''} à traiter en priorité`
-        : 'Aucune priorité pour le moment';
+      document.getElementById('stat-offres-note').textContent = visibleToAnalyzeOffers || visibleInterestingOffers || visibleNewOffers
+        ? [
+            visibleToAnalyzeOffers ? `${visibleToAnalyzeOffers} à relire` : '',
+            visibleInterestingOffers ? `${visibleInterestingOffers} à prioriser` : '',
+            visibleNewOffers ? `${visibleNewOffers} nouvelles` : '',
+          ].filter(Boolean).join(' · ')
+        : 'Aucune offre pour le moment';
       document.getElementById('stat-postulations').textContent = sentApplications;
-      document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance${(statsData.nb_relances || 0) > 1 ? 's' : ''} à prévoir`;
+      document.getElementById('stat-postulations-note').textContent = sentApplications
+        ? `Suivi actif dans ton espace`
+        : 'Aucune candidature envoyée pour le moment';
+      document.getElementById('stat-relances').textContent = dueFollowups;
+      document.getElementById('stat-relances-note').textContent = dueFollowups
+        ? `${dueFollowups} relance${dueFollowups > 1 ? 's' : ''} à envoyer`
+        : 'Aucune relance urgente';
       const processStatus = document.getElementById('process-status');
       if (processStatus) processStatus.innerHTML = '';
       document.getElementById('badge-pipeline').textContent = offresData.length;
