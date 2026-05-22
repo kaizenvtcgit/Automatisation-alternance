@@ -45,6 +45,7 @@ from sources._common import (
     is_relevant_offer,
     motion_en_priorite,
     nettoyer_html,
+    text_matches_search_scope,
     search_scope_label,
 )
 from storage_service import (
@@ -106,8 +107,8 @@ _PROFIL_CANDIDAT = (
 # ─── Groq ─────────────────────────────────────────────────────────────────────
 
 _MODELES_GROQ = [
-    "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
+    "llama-3.3-70b-versatile",
 ]
 
 SCAN_STATE_VERSION = 1
@@ -160,7 +161,7 @@ STATUS_ALIASES = {
 
 
 def _construire_prompt_lettre(titre: str, entreprise: str, description: str) -> str:
-    return f"""Tu es un expert en candidatures françaises pour des postes en design numérique.
+    return f"""Tu es un expert en candidatures françaises pour des alternances, stages et débuts de carrière.
 
 PROFIL CANDIDAT :
 {_PROFIL_CANDIDAT}
@@ -168,25 +169,24 @@ PROFIL CANDIDAT :
 OFFRE :
 Poste : {titre}
 Entreprise : {entreprise}
-Description : {description[:1200]}
+Description : {description[:700]}
 
 ---
 
-MISSION : Rédige une lettre de motivation personnalisée pour cette offre.
+MISSION : Rédige une lettre de motivation personnalisée, crédible et concrète pour cette offre.
 
-ÉTAPE 1 — Analyse silencieuse (ne pas écrire cette partie) :
-- Identifie les 2-3 missions principales du poste
-- Identifie les compétences clés demandées
-- Identifie le secteur et le ton de l'entreprise
-- Sélectionne les 2-3 arguments du profil candidat les plus pertinents pour CETTE offre
+Analyse silencieuse :
+- Identifie les missions principales
+- Repère les compétences ou qualités clés demandées
+- Sélectionne 2 ou 3 éléments du profil candidat vraiment utiles pour cette offre
 
-ÉTAPE 2 — Rédige la lettre selon ces règles strictes :
+Rédige ensuite la lettre selon ces règles strictes :
 
 STYLE :
 - Professionnel mais naturel et direct
-- Humain, sans phrases génériques ni formules lourdes
+- Fluide, humain, sans phrases génériques ni formules lourdes
 - Sans flatterie excessive
-- Adapter le ton au secteur de l'entreprise
+- Adapté au secteur et au niveau du poste
 
 INTERDITS ABSOLUS :
 - Ne jamais commencer une phrase par "Je" au premier paragraphe
@@ -194,19 +194,18 @@ INTERDITS ABSOLUS :
   "Je me permets de vous adresser", "Je suis vivement intéressé par votre offre"
 - Ne jamais inventer une compétence, expérience, diplôme ou chiffre absent du profil
 
-STRUCTURE (250-350 mots) :
+STRUCTURE (180-260 mots) :
 
 Paragraphe 1 — Accroche directe et personnalisée :
 Pourquoi CETTE offre et CETTE entreprise précisément. Référence au poste ou aux missions.
 Ne pas commencer par "Je".
 
 Paragraphe 2 — Lien profil / besoins de l'entreprise :
-1 ou 2 expériences/projets concrets du candidat si elles existent.
-Ce que le candidat sait faire : concevoir des parcours, créer des interfaces, prototyper, structurer une UX.
+1 ou 2 expériences, projets, qualités ou compétences concrètes du candidat si elles existent.
+Montre en quoi cela peut aider sur ce poste.
 
 Paragraphe 3 — Apport en alternance :
-Sérieux, progression rapide, regard utilisateur, expérience relation client, envie de contribuer
-à un produit réel.
+Sérieux, envie d'apprendre vite, capacité à contribuer utilement à l'équipe dès le départ.
 
 Conclusion :
 Disponibilité pour un échange. Formule simple, pas exagérée.
@@ -242,7 +241,7 @@ def _generer_lettre_groq(titre: str, entreprise: str, description: str) -> str:
             resp = client.chat.completions.create(
                 model=modele,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=800,
+                max_tokens=520,
             )
             return resp.choices[0].message.content.strip()
         except Exception as e:
@@ -597,7 +596,7 @@ def _score_level(score: int) -> str:
     return "faible"
 
 
-def score_offer_fit(offer: dict) -> dict:
+def score_offer_fit(offer: dict, search: dict | None = None) -> dict:
     titre = _extract_offer_field(offer, "titre", "title", "Intitulé du poste", "IntitulÃ© du poste")
     entreprise = _safe_company_name(_extract_offer_field(offer, "entreprise", "company", "Entreprise"))
     description = _extract_offer_field(offer, "description", "Description (texte complet)")
@@ -606,11 +605,20 @@ def score_offer_fit(offer: dict) -> dict:
     source = _extract_offer_field(offer, "source", "Source")
 
     text = _slug_text(" ".join([titre, description, contrat, localisation, entreprise, source]))
+    title_text = _slug_text(titre)
     positive: list[str] = []
     negative: list[str] = []
     warnings: list[str] = []
     detected: set[str] = set()
     score = 0
+    search_terms = active_search_terms(search)
+    search_scope = search if isinstance(search, dict) else dynamic_search_scope()
+    target_terms = list(dict.fromkeys([
+        *search_terms.get("postes_cibles", []),
+        *search_terms.get("mots_cles_positifs", []),
+    ]))
+    negative_terms = list(dict.fromkeys(search_terms.get("mots_cles_negatifs", [])))
+    wanted_contracts = [item for item in search_terms.get("types_contrat", []) if str(item).strip()]
 
     def add(points: int, reason: str, keywords: list[str] | None = None) -> None:
         nonlocal score
@@ -621,6 +629,78 @@ def score_offer_fit(offer: dict) -> dict:
             negative.append(reason)
         for keyword in keywords or []:
             detected.add(keyword)
+
+    if target_terms or wanted_contracts or negative_terms:
+        contract_markers = {
+            "alternance": ["alternance", "apprentissage", "contrat de professionnalisation", "contrat pro", "apprenticeship", "work study"],
+            "stage": ["stage", "stagiaire", "internship", "intern"],
+            "cdd": ["cdd", "contrat a duree determinee", "fixed term"],
+            "cdi": ["cdi", "contrat a duree indeterminee", "permanent"],
+        }
+
+        if wanted_contracts:
+            contract_hits: list[str] = []
+            for contract_type in wanted_contracts:
+                contract_hits.extend(_contains_any(text, contract_markers.get(contract_type, [contract_type])))
+            if contract_hits:
+                add(22, "Type de contrat compatible avec ta recherche", list(dict.fromkeys(contract_hits))[:4])
+            else:
+                add(-35, "Type de contrat non conforme a ta recherche")
+                warnings.append("Le contrat détecté ne correspond pas aux types demandés")
+        else:
+            alternance_hits = _contains_any(text, contract_markers["alternance"])
+            if alternance_hits:
+                add(16, "Offre en alternance ou apprentissage", alternance_hits[:3])
+
+        if negative_terms:
+            negative_hits = _contains_any(text, negative_terms)
+            if negative_hits:
+                add(-40, "Mots-clés exclus détectés dans l'offre", list(dict.fromkeys(negative_hits))[:5])
+                warnings.append("Présence de mots-clés explicitement exclus")
+
+        title_hits = _contains_any(title_text, target_terms)
+        body_hits = _contains_any(text, target_terms)
+        if title_hits:
+            add(min(38, 18 + len(set(title_hits)) * 6), "Intitulé très proche des métiers ciblés", list(dict.fromkeys(title_hits))[:5])
+        elif body_hits:
+            add(min(30, 10 + len(set(body_hits)) * 4), "Contenu aligné avec ta recherche", list(dict.fromkeys(body_hits))[:5])
+        elif target_terms:
+            add(-32, "Peu de correspondance avec les métiers et mots-clés ciblés")
+            warnings.append("Aucun métier cible détecté dans l'offre")
+
+        if text_matches_search_scope(" ".join([localisation, description]), search_scope):
+            add(10, f"Localisation compatible avec ta zone ({search_scope_label(search_scope)})")
+        else:
+            add(-24, "Localisation hors zone de recherche")
+            warnings.append("Localisation peu compatible avec la zone active")
+
+        remote_hits = _contains_any(text, ["hybride", "teletravail", "remote", "distanc", "partiel"])
+        if search_scope.get("include_remote") and remote_hits:
+            add(4, "Mode remote ou hybride détecté", remote_hits[:2])
+
+        skill_hits = _contains_any(text, [
+            "habilitation", "maintenance", "installation", "depannage", "chantier", "reseau",
+            "figma", "webflow", "html", "css", "prototype", "wireframe", "mobile"
+        ])
+        if skill_hits:
+            add(min(12, len(set(skill_hits)) * 3), "Compétences ou livrables concrets détectés", list(dict.fromkeys(skill_hits))[:4])
+
+        senior_hits = _contains_any(text, ["senior", "lead", "head of", "manager", "confirme"])
+        if senior_hits:
+            add(-18, "Niveau d'expérience potentiellement trop élevé", senior_hits[:2])
+            warnings.append("Poste potentiellement senior")
+
+        score = max(0, min(100, score))
+        return {
+            "signature": build_offer_signature(offer),
+            "score": score,
+            "level": _score_level(score),
+            "positiveReasons": positive[:8],
+            "negativeReasons": negative[:8],
+            "detectedKeywords": sorted(detected),
+            "warnings": warnings[:6],
+            "date": datetime.now().strftime("%Y-%m-%d"),
+        }
 
     alternance_hits = _contains_any(text, ["alternance", "apprentissage", "contrat de professionnalisation", "contrat pro"])
     if alternance_hits:

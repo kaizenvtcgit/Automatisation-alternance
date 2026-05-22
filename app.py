@@ -2349,7 +2349,7 @@ def api_lettre_regen():
             resp = client.chat.completions.create(
                 model=modele,
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=800,
+                max_tokens=520,
             )
             lettre = resp.choices[0].message.content.strip()
             if _supabase_runtime_enabled():
@@ -2594,6 +2594,7 @@ def api_offres_scorer():
         return jsonify({"ok": False, "error": "id manquant"}), 400
 
     from main import score_offer_fit
+    search_settings = (get_settings() or {}).get("search", {})
 
     evaluation = score_offer_fit(
         {
@@ -2606,7 +2607,8 @@ def api_offres_scorer():
             "lieu": data.get("lieu", ""),
             "description": description,
             "contrat": data.get("contrat", ""),
-        }
+        },
+        search=search_settings,
     )
     evaluation["signature"] = offre_id
     _save_scores_merged({offre_id: evaluation})
@@ -2626,6 +2628,7 @@ def api_offres_scorer_batch():
     score_updates: dict[str, dict] = {}
     updated = 0
     processed_ids: list[str] = []
+    search_settings = (get_settings() or {}).get("search", {})
 
     for offer in offers:
         if not isinstance(offer, dict):
@@ -2644,7 +2647,8 @@ def api_offres_scorer_batch():
                 "lieu": offer.get("lieu", ""),
                 "description": offer.get("description", ""),
                 "contrat": offer.get("contrat", ""),
-            }
+            },
+            search=search_settings,
         )
         evaluation["signature"] = offre_id
         score_updates[offre_id] = evaluation
