@@ -919,76 +919,33 @@
       margin: 1rem;
     }
 
-    .app-loading-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 1400;
-      display: flex;
+    .app-inline-loading {
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
-      padding: 1rem;
-      background: rgba(244, 241, 234, 0.58);
-      backdrop-filter: blur(8px);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.22s ease;
+      gap: 0.5rem;
+      margin-left: 0.7rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.2;
+      white-space: nowrap;
+      animation: fadeUp 0.18s ease;
+      vertical-align: middle;
     }
 
-    .app-loading-overlay.is-visible {
-      opacity: 1;
-      pointer-events: auto;
-    }
-
-    .app-loading-card {
-      width: min(92vw, 360px);
-      padding: 1.2rem 1.2rem 1rem;
-      border-radius: 22px;
-      background: rgba(255, 250, 242, 0.96);
-      border: 1px solid rgba(217, 208, 191, 0.9);
-      box-shadow: 0 22px 48px rgba(39, 48, 70, 0.14);
-      text-align: center;
-    }
-
-    .app-loading-orbit {
-      width: 70px;
-      height: 70px;
-      margin: 0 auto 1rem;
-      position: relative;
-    }
-
-    .app-loading-orbit::before,
-    .app-loading-orbit::after {
-      content: "";
-      position: absolute;
-      border-radius: 999px;
-      inset: 0;
-    }
-
-    .app-loading-orbit::before {
-      border: 2px solid rgba(31, 94, 255, 0.16);
-    }
-
-    .app-loading-orbit::after {
+    .app-inline-loading-spinner {
       width: 14px;
       height: 14px;
-      background: linear-gradient(135deg, var(--blue), var(--rose));
-      top: -5px;
-      left: calc(50% - 7px);
-      box-shadow: 0 0 0 6px rgba(31, 94, 255, 0.08);
-      animation: loadingOrbit 1.05s linear infinite;
-      transform-origin: 7px 40px;
+      border-radius: 999px;
+      border: 2px solid rgba(31, 94, 255, 0.18);
+      border-top-color: var(--blue);
+      animation: loadingOrbit 0.75s linear infinite;
+      flex: 0 0 auto;
     }
 
-    .app-loading-title {
-      font-weight: 800;
-      color: var(--ink);
-      margin-bottom: 0.35rem;
-    }
-
-    .app-loading-copy {
-      color: var(--muted);
-      font-size: 0.92rem;
-      line-height: 1.55;
+    .app-inline-loading-copy {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: min(42vw, 280px);
     }
 
     @keyframes fadeUp {
@@ -1223,13 +1180,6 @@
   </nav>
 
   <div class="toast-shell" id="toast-shell"></div>
-  <div class="app-loading-overlay" id="app-loading-overlay" aria-hidden="true">
-    <div class="app-loading-card">
-      <div class="app-loading-orbit" aria-hidden="true"></div>
-      <div class="app-loading-title" id="app-loading-title">Patiente un instant</div>
-      <div class="app-loading-copy" id="app-loading-copy">L'application traite la demande.</div>
-    </div>
-  </div>
 
   <div class="container-fluid page-shell py-4">
     <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
@@ -2053,6 +2003,9 @@
     let userAuthState = {enabled: false, authenticated: false, user: null};
     let loadingOverlayTimer = null;
     let loadingOverlayDepth = 0;
+    let lastActionTrigger = null;
+    let inlineLoadingAnchor = null;
+    let inlineLoadingNode = null;
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -2148,20 +2101,50 @@
       instance.show();
     }
 
-    function startAppLoading(title = 'Patiente un instant', copy = 'L application traite la demande.') {
+    function resolveLoadingAnchor(target = null) {
+      const candidate = target || lastActionTrigger || document.activeElement;
+      if (!candidate || !(candidate instanceof Element)) return null;
+      return candidate.closest('button, .btn, a.btn, [role="button"]');
+    }
+
+    function removeInlineLoading() {
+      if (inlineLoadingNode) {
+        inlineLoadingNode.remove();
+        inlineLoadingNode = null;
+      }
+      if (inlineLoadingAnchor) {
+        inlineLoadingAnchor.removeAttribute('aria-busy');
+        inlineLoadingAnchor = null;
+      }
+    }
+
+    function showInlineLoading(message, target = null) {
+      const anchor = resolveLoadingAnchor(target);
+      removeInlineLoading();
+      if (!anchor || !anchor.parentNode) return;
+      const helper = document.createElement('span');
+      helper.className = 'app-inline-loading';
+      helper.setAttribute('role', 'status');
+      helper.setAttribute('aria-live', 'polite');
+      helper.innerHTML = `
+        <span class="app-inline-loading-spinner" aria-hidden="true"></span>
+        <span class="app-inline-loading-copy">${esc(message || 'Chargement en cours')}</span>
+      `;
+      anchor.insertAdjacentElement('afterend', helper);
+      anchor.setAttribute('aria-busy', 'true');
+      inlineLoadingAnchor = anchor;
+      inlineLoadingNode = helper;
+    }
+
+    function startAppLoading(title = 'Patiente un instant', copy = 'L application traite la demande.', target = null) {
       loadingOverlayDepth += 1;
-      const overlay = document.getElementById('app-loading-overlay');
-      const titleNode = document.getElementById('app-loading-title');
-      const copyNode = document.getElementById('app-loading-copy');
-      if (titleNode) titleNode.textContent = title;
-      if (copyNode) copyNode.textContent = copy;
       clearTimeout(loadingOverlayTimer);
+      const loadingMessage = copy || title;
       loadingOverlayTimer = setTimeout(() => {
-        if (loadingOverlayDepth > 0 && overlay) {
-          overlay.classList.add('is-visible');
-          overlay.setAttribute('aria-hidden', 'false');
+        if (loadingOverlayDepth > 0) {
+          showInlineLoading(loadingMessage, target);
         }
-      }, 160);
+      }, 140);
     }
 
     function stopAppLoading(force = false) {
@@ -2169,11 +2152,7 @@
       else loadingOverlayDepth = Math.max(0, loadingOverlayDepth - 1);
       if (loadingOverlayDepth > 0) return;
       clearTimeout(loadingOverlayTimer);
-      const overlay = document.getElementById('app-loading-overlay');
-      if (overlay) {
-        overlay.classList.remove('is-visible');
-        overlay.setAttribute('aria-hidden', 'true');
-      }
+      removeInlineLoading();
     }
 
     function updateCoachVoiceUi(message = '') {
@@ -4247,6 +4226,12 @@ async function copierLettre() {
     });
 
     registerCurrentTab();
+    document.addEventListener('click', event => {
+      const trigger = event.target instanceof Element
+        ? event.target.closest('button, .btn, a.btn, [role="button"]')
+        : null;
+      if (trigger) lastActionTrigger = trigger;
+    }, true);
     window.addEventListener('beforeunload', event => {
       if (CLOUD_MODE) return;
       if (!isLastKnownTab()) return;
