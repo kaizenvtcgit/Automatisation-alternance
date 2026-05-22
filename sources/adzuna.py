@@ -34,7 +34,7 @@ def _location_params() -> dict[str, str | int]:
     zone_geo = str(scope.get("zone_geo") or "").strip()
     radius_km = int(scope.get("radius_km") or DEFAULT_DISTANCE_KM)
 
-    if zone_mode in ("", "idf"):
+    if zone_mode == "idf":
         return {"where": DEFAULT_WHERE, "distance": DEFAULT_DISTANCE_KM}
     if zone_mode in ("france", "remote"):
         return {"where": "France"}
@@ -73,6 +73,9 @@ def recuperer() -> list[dict]:
 
     vues: dict[str, dict] = {}
     queries = _queries()
+    if not queries:
+        print("[Adzuna] Aucun poste cible defini - source ignoree.", file=sys.stderr)
+        return []
     if CLOUD_MODE:
         queries = queries[:3]
     location_params = _location_params()

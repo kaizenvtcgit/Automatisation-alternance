@@ -155,6 +155,20 @@ def _csv_query(row: dict) -> str:
     return row.get("Requête qui a trouvé l'annonce", row.get("RequÃªte qui a trouvÃ© l'annonce", ""))
 
 
+def _csv_family(row: dict) -> str:
+    return row.get(
+        "Famille detectee",
+        row.get("Famille dÃ©tectÃ©e (motion / UXâ€¦)", row.get("Famille dÃƒÂ©tectÃƒÂ©e (motion / UXÃ¢â‚¬Â¦)", "")),
+    )
+
+
+def _csv_query(row: dict) -> str:
+    return row.get(
+        "Requete source",
+        row.get("RequÃªte qui a trouvÃ© l'annonce", row.get("RequÃƒÂªte qui a trouvÃƒÂ© l'annonce", "")),
+    )
+
+
 def _build_offer_lookup(
     csv_rows: list[dict],
     scan_state: dict,

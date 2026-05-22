@@ -54,9 +54,13 @@ def recuperer() -> list[dict]:
     if CLOUD_MODE:
         print("[Remotive] Mode cloud leger actif — source bonus ignoree.")
         return []
+    queries = _queries()
+    if not queries:
+        print("[Remotive] Aucun poste cible defini - source ignoree.", file=sys.stderr)
+        return []
     vues: dict[str, dict] = {}
 
-    for requete in _queries():
+    for requete in queries:
         params = {"search": requete, "limit": ACTIVE_RESULT_LIMIT}
         try:
             resp = requests.get(API_URL, params=params, timeout=REQUEST_TIMEOUT)

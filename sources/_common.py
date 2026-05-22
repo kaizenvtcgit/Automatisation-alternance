@@ -151,7 +151,7 @@ def build_search_queries(
 
     seeds = roles or positives
     if not seeds:
-        return fallback
+        return []
 
     queries: list[str] = []
     extras = positives[:2]
@@ -206,7 +206,7 @@ def scope_zone_terms(scope: dict | None = None) -> list[str]:
 def search_scope_coordinates(scope: dict | None = None) -> dict[str, float | int] | None:
     current_scope = scope if isinstance(scope, dict) else dynamic_search_scope()
     zone_mode = str(current_scope.get("zone_mode") or "").strip().lower()
-    if zone_mode in {"france", "remote"}:
+    if zone_mode in {"", "france", "remote"}:
         return None
 
     preset = ZONE_PRESETS.get(zone_mode)
@@ -239,7 +239,7 @@ def search_scope_label(scope: dict | None = None) -> str:
         return zone_geo
     if zone_mode in ZONE_PRESETS:
         return zone_mode.upper()
-    return "IDF"
+    return "France entiere"
 
 # ─── Mots-clés positifs ───────────────────────────────────────────────────────
 
@@ -443,11 +443,11 @@ def text_matches_search_scope(text: str, scope: dict | None = None) -> bool:
 
     if zone_mode == "remote":
         return is_remote
-    if zone_mode == "france":
+    if zone_mode in {"", "france"}:
         return include_remote or not is_remote
 
     terms = scope_zone_terms(current_scope)
-    if zone_mode in {"", "idf"} and not terms:
+    if zone_mode == "idf" and not terms:
         terms = scope_zone_terms({"zone_mode": "idf", "zone_geo": "", "include_remote": include_remote})
 
     if any(term and term in blob for term in terms):
@@ -488,25 +488,26 @@ def offer_matches_search_settings(
 
 
 def famille_poste(titre: str, description: str) -> str:
-    text = (titre + " " + description).lower()
-    m = texte_motion_design(text)
-    d = texte_design_ux_ui(text)
-    if m and d:
-        return "Motion design + UX / UI & design"
-    if m:
-        return "Motion design (prioritaire)"
-    if d:
-        return "UX / UI & design graphique"
+    text = f"{titre} {description}"
+    active = active_search_terms()
+    preferred_terms = [*active.get("postes_cibles", []), *active.get("mots_cles_positifs", [])]
+    for term in preferred_terms:
+        if texte_contient_mot_cle(text, term):
+            return term
     return "—"
 
 
 def motion_en_priorite(titre: str, description: str) -> bool:
-    return texte_motion_design((titre + " " + description).lower())
+    text = f"{titre} {description}"
+    active = active_search_terms()
+    for term in active.get("postes_cibles", []):
+        if texte_contient_mot_cle(text, term):
+            return True
+    return False
 
 
 def est_offre_exclue(titre: str, description: str) -> bool:
     titre_norm = titre.lower()
-    desc_norm = description.lower()
 
     # Exclusion sur le titre : emplois clairement hors-sujet
     for kw in _TITRES_EXCLUS:
@@ -516,29 +517,6 @@ def est_offre_exclue(titre: str, description: str) -> bool:
     # Exclusion senior dans le titre
     for kw in _TITRES_SENIORS:
         if kw in titre_norm:
-            return True
-
-    # Exclusion print-only : présent dans description ET aucun mot-clé digital
-    has_print = any(kw in desc_norm for kw in _DESC_PRINT_PUR)
-    if has_print:
-        has_digital = texte_motion_design(desc_norm) or texte_design_ux_ui(desc_norm)
-        if not has_digital:
-            return True
-
-    communication_markers = [
-        "communication",
-        "marketing",
-        "community",
-        "reseaux sociaux",
-        "social media",
-        "brand content",
-        "contenu editorial",
-    ]
-    if any(marker in titre_norm for marker in communication_markers):
-        title_has_strong_design = texte_motion_design(titre_norm) or any(
-            texte_contient_mot_cle(titre_norm, kw) for kw in DESIGN_CORE_TITLE_KEYWORDS
-        )
-        if not title_has_strong_design:
             return True
 
     return False
@@ -566,33 +544,12 @@ def is_relevant_offer(titre: str, description: str, contrat: str = "") -> bool:
             return False
         return not est_offre_exclue(titre, description)
 
-    # Doit contenir une mention de contrat alternance
+    # Sans criteres utilisateur explicites, on reste volontairement neutre :
+    # alternance + pas d'exclusion forte.
     if not est_contrat_alternance(texte_complet):
         return False
 
-    # Doit contenir au moins un mot-clé design ou motion
-    if not (texte_motion_design(texte_complet) or texte_design_ux_ui(texte_complet)):
-        return False
-
-    titre_norm = titre.lower()
-    desc_norm = description.lower()
-
-    strong_title_signal = texte_motion_design(titre_norm) or any(
-        texte_contient_mot_cle(titre_norm, kw) for kw in DESIGN_CORE_TITLE_KEYWORDS
-    )
-    strong_description_signal = any(
-        texte_contient_mot_cle(desc_norm, kw) for kw in DESIGN_CORE_DESCRIPTION_KEYWORDS
-    )
-
-    # On ne garde pas les offres qui n'ont qu'un signal design trop vague.
-    if not (strong_title_signal or strong_description_signal):
-        return False
-
-    # Exclusion des offres hors-sujet
-    if est_offre_exclue(titre, description):
-        return False
-
-    return True
+    return not est_offre_exclue(titre, description)
 
 
 # ─── Filtrage géographique ────────────────────────────────────────────────────

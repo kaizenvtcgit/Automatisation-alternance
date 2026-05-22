@@ -33,10 +33,11 @@ LBA_ROLE_MARKERS = (
 
 
 def _search_compatible_with_lba() -> bool:
-    roles = dynamic_search_terms().get("postes_cibles", [])
-    if not roles:
-        return True
-    blob = " | ".join(str(role or "").lower() for role in roles)
+    search = dynamic_search_terms()
+    search_terms = [*search.get("postes_cibles", []), *search.get("mots_cles_positifs", [])]
+    if not search_terms:
+        return False
+    blob = " | ".join(str(role or "").lower() for role in search_terms)
     return any(marker in blob for marker in LBA_ROLE_MARKERS)
 
 
@@ -134,7 +135,7 @@ def recuperer() -> list[dict]:
     """Recupere les offres La Bonne Alternance via l'API v3."""
     if not _search_compatible_with_lba():
         print(
-            "[La Bonne Alternance] Recherche active hors perimetre design/motion - source ignoree pour eviter des resultats hors cible.",
+            "[La Bonne Alternance] Source ignoree : cette API specialisee ne correspond pas a la recherche active.",
             file=sys.stderr,
         )
         return []

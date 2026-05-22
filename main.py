@@ -43,10 +43,9 @@ from sources._common import (
     famille_poste,
     filtrer_offres_selon_recherche,
     is_relevant_offer,
-    motion_en_priorite,
     nettoyer_html,
-    text_matches_search_scope,
     search_scope_label,
+    text_matches_search_scope,
 )
 from storage_service import (
     BASE_DIR as STORAGE_BASE_DIR,
@@ -81,8 +80,8 @@ COLONNES_CSV = [
     "Lien vers l'annonce",
     "Date de publication",
     "Catégorie",
-    "Famille détectée (motion / UX…)",
-    "Requête qui a trouvé l'annonce",
+    "Famille detectee",
+    "Requete source",
     "Description (texte complet)",
 ]
 
@@ -709,23 +708,19 @@ def score_offer_fit(offer: dict, search: dict | None = None) -> dict:
         add(-28, "Contrat d'alternance non clair")
         warnings.append("Contrat non identifie comme alternance")
 
-    idf_hits = _contains_any(text, ["paris", "ile de france", "boulogne", "nanterre", "montreuil", "saint denis", "val de marne", "hauts de seine"])
-    if idf_hits:
-        add(10, "Localisation compatible Paris / Ile-de-France", idf_hits[:2])
+    scope_hits = text_matches_search_scope(" ".join([localisation, description]), dynamic_search_scope())
+    if scope_hits:
+        add(10, f"Localisation compatible avec la zone active ({search_scope_label(dynamic_search_scope())})")
     remote_hits = _contains_any(text, ["hybride", "teletravail", "remote", "distanc", "partiel"])
     if remote_hits:
         add(5, "Mode hybride ou teletravail partiel", remote_hits[:2])
 
-    design_hits = _contains_any(text, [
-        "ux", "ui", "ux ui", "product design", "product designer", "web design", "web designer",
-        "design numerique", "designer d interface", "design system", "motion design", "motion designer",
-        "interface", "parcours utilisateur", "experience utilisateur", "user research", "recherche utilisateur"
-    ])
-    if design_hits:
-        add(min(30, 8 + len(set(design_hits)) * 3), "Missions design proches du profil cible", list(dict.fromkeys(design_hits))[:5])
+    generic_hits = _contains_any(text, target_terms or [])
+    if generic_hits:
+        add(min(30, 8 + len(set(generic_hits)) * 3), "Missions proches de la recherche cible", list(dict.fromkeys(generic_hits))[:5])
     else:
-        add(-18, "Mission design peu visible")
-        warnings.append("Peu de signaux UX/UI ou design produit")
+        add(-18, "Mission peu alignée avec la recherche")
+        warnings.append("Peu de signaux directement lies a la recherche active")
 
     tool_hits = _contains_any(text, [
         "figma", "webflow", "html css", "html", "css", "prototype", "prototypage",
@@ -734,16 +729,13 @@ def score_offer_fit(offer: dict, search: dict | None = None) -> dict:
     if tool_hits:
         add(min(22, len(set(tool_hits)) * 4), "Outils et livrables alignes avec tes competences", list(dict.fromkeys(tool_hits))[:5])
 
-    product_hits = _contains_any(text, ["produit", "saas", "startup", "app", "application", "interface", "dashboard", "parcours utilisateur"])
+    product_hits = _contains_any(text, ["projet", "mission", "outil", "terrain", "atelier", "chantier", "client", "application"])
     if product_hits:
-        add(min(12, len(set(product_hits)) * 2), "Contexte produit digital pertinent", list(dict.fromkeys(product_hits))[:4])
+        add(min(12, len(set(product_hits)) * 2), "Contexte de mission concret", list(dict.fromkeys(product_hits))[:4])
 
-    relation_hits = _contains_any(text, ["utilisateur", "besoin", "test utilisateur", "experience", "parcours"])
+    relation_hits = _contains_any(text, ["autonomie", "equipe", "client", "qualite", "securite", "organisation"])
     if relation_hits:
-        add(6, "Approche orientee experience utilisateur", list(dict.fromkeys(relation_hits))[:3])
-
-    if "impulsion" in text or "musique" in text or "creative" in text:
-        add(3, "Univers creatif potentiellement valorisable", ["creative"] if "creative" in text else [])
+        add(6, "Indices de mise en pratique utiles", list(dict.fromkeys(relation_hits))[:3])
 
     if _contains_any(text, ["senior", "lead", "head of", "manager", "confirme"]):
         add(-30, "Niveau d'experience trop eleve")
@@ -756,21 +748,21 @@ def score_offer_fit(offer: dict, search: dict | None = None) -> dict:
         add(-18, "Stage non alternance")
     if _contains_any(text, ["commercial", "vente", "business developer", "prospection"]):
         add(-28, "Orientation commerciale trop forte")
-    if _contains_any(text, ["assistant administratif", "administratif", "back office"]) and not design_hits:
+    if _contains_any(text, ["assistant administratif", "administratif", "back office"]) and not generic_hits:
         add(-26, "Profil administratif hors cible")
-    if _contains_any(text, ["community manager", "social media manager"]) and not design_hits:
-        add(-20, "Communication reseaux sociaux sans design produit")
-    if _contains_any(text, ["marketing", "communication"]) and not design_hits:
-        add(-14, "Marketing / communication peu design")
-    if _contains_any(text, ["print", "imprimerie", "serigraphie", "catalogue"]) and not _contains_any(text, ["digital", "web", "ui", "ux", "figma"]):
-        add(-18, "Graphisme print uniquement")
-    if _contains_any(text, ["developpeur", "developer", "integration", "integrateur"]) and not _contains_any(text, ["ux", "ui", "design", "figma", "front end creatif"]):
-        add(-16, "Role trop technique sans composante design claire")
+    if _contains_any(text, ["community manager", "social media manager"]) and not generic_hits:
+        add(-20, "Mission reseaux sociaux hors cible")
+    if _contains_any(text, ["marketing", "communication"]) and not generic_hits:
+        add(-14, "Mission marketing / communication hors cible")
+    if _contains_any(text, ["print", "imprimerie", "serigraphie", "catalogue"]) and not generic_hits:
+        add(-18, "Mission specialisee peu reliee a la recherche")
+    if _contains_any(text, ["developpeur", "developer", "integration", "integrateur"]) and not generic_hits:
+        add(-16, "Role trop technique par rapport a la recherche")
 
-    if not idf_hits and not remote_hits:
-        warnings.append("Localisation peu claire pour Paris / IDF")
+    if not scope_hits and not remote_hits:
+        warnings.append("Localisation peu claire pour la zone active")
     if not tool_hits:
-        warnings.append("Peu d'outils design explicites")
+        warnings.append("Peu d'outils ou de taches explicites")
 
     score = max(0, min(100, score))
     return {
@@ -1402,8 +1394,8 @@ def _ligne_csv(offre: dict) -> dict:
         "Lien vers l'annonce":           offre["url"],
         "Date de publication":           offre["date_pub"],
         "Catégorie":                     offre["categorie"],
-        "Famille détectée (motion / UX…)": fam,
-        "Requête qui a trouvé l'annonce": offre.get("requete_source", ""),
+        "Famille detectee": fam,
+        "Requete source": offre.get("requete_source", ""),
         "Description (texte complet)":   offre["description"],
     }
 
@@ -1471,7 +1463,7 @@ Je me permets de vous adresser ma candidature pour l'alternance « {titre} ».
 
 [Paragraphe 2 — Lien avec CETTE entreprise : projet, valeurs, secteur.]
 
-[Paragraphe 3 — Compétences motion design / UX-UI / Figma — selon l'annonce.]
+[Paragraphe 3 — Compétences, outils ou qualités utiles pour cette annonce.]
 
 Je serais ravi d'échanger avec vous sur ce poste.
 
@@ -1528,10 +1520,7 @@ def filtrer_offres_pertinentes(offres: list[dict]) -> list[dict]:
 
 
 def trier_offres_par_priorite(offres: list[dict]) -> None:
-    offres.sort(key=lambda o: (
-        0 if motion_en_priorite(o["titre"], o["description"]) else 1,
-        o["titre"].lower(),
-    ))
+    offres.sort(key=lambda o: o["titre"].lower())
 
 
 def build_pipeline_diagnostic() -> dict:
@@ -1652,7 +1641,7 @@ def main(ignorer_historique: bool = False) -> None:
     scan_started_at = _utc_now()
     active_terms = active_search_terms()
     active_scope = dynamic_search_scope()
-    postes = ", ".join(active_terms.get("postes_cibles", [])[:5]) or "profil par defaut"
+    postes = ", ".join(active_terms.get("postes_cibles", [])[:5]) or "aucun poste cible defini"
     positifs = ", ".join(active_terms.get("mots_cles_positifs", [])[:5]) or "aucun"
     negatifs = ", ".join(active_terms.get("mots_cles_negatifs", [])[:5]) or "aucun"
     contrats = ", ".join(active_terms.get("types_contrat", [])[:4]) or "alternance"
@@ -1756,9 +1745,9 @@ def main(ignorer_historique: bool = False) -> None:
         from sources._common import dynamic_search_terms
 
         dynamic = dynamic_search_terms()
-        cible = ", ".join(dynamic.get("postes_cibles", [])[:4]) or "ta recherche active"
+        cible = ", ".join(dynamic.get("postes_cibles", [])[:4]) or "les criteres de recherche actifs"
         print(
-            f"{len(offres)} offre(s) en zone active, aucune ne passe le filtre métier "
+            f"{len(offres)} offre(s) en zone active, aucune ne correspond aux criteres de recherche "
             f"pour {cible}."
         )
         finaliser_scan(0, "completed_no_matching_offers")

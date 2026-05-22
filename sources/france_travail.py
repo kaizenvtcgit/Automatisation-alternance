@@ -33,7 +33,7 @@ def _queries() -> list[str]:
 def _search_departements() -> list[str | None]:
     scope = dynamic_search_scope()
     zone_mode = str(scope.get("zone_mode") or "").strip().lower()
-    if zone_mode in ("", "idf"):
+    if zone_mode == "idf":
         return ACTIVE_DEPARTEMENTS_IDF
     return [None]
 
@@ -109,6 +109,11 @@ def _vers_offre(item: dict, requete: str) -> dict:
 
 def recuperer() -> list[dict]:
     """Recupere les offres France Travail."""
+    queries = _queries()
+    if not queries:
+        print("[France Travail] Aucun poste cible defini - source ignoree.", file=sys.stderr)
+        return []
+
     token, statut = _get_token()
 
     if statut == "non_configure":
@@ -131,7 +136,6 @@ def recuperer() -> list[dict]:
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
     vues: dict[str, dict] = {}
 
-    queries = _queries()
     if CLOUD_MODE:
         queries = queries[:3]
 
