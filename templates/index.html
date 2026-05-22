@@ -1160,9 +1160,9 @@
       </div>
       <div class="navbar-actions">
         <div id="access-status" class="small text-secondary"></div>
-        <div id="workspace-status" class="small text-secondary"></div>
+        <div id="workspace-status" class="small text-secondary d-none"></div>
         <div id="user-status" class="small text-secondary"></div>
-        <div id="process-status" class="small text-secondary"></div>
+        <div id="process-status" class="small text-secondary d-none"></div>
         <button class="btn btn-sm btn-outline-secondary d-none" id="user-auth-btn" onclick="ouvrirAuthUtilisateur()">
           <i class="bi bi-person-circle me-1"></i>Compte
         </button>
@@ -1227,8 +1227,8 @@
         <div class="card p-3 mb-4" id="setup-status-card">
           <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
             <div>
-              <div class="fw-bold">Configuration initiale</div>
-              <div class="text-secondary small" id="setup-status-summary">Verification de la configuration en cours.</div>
+              <div class="fw-bold">Prise en main</div>
+              <div class="text-secondary small" id="setup-status-summary">Quelques étapes utiles pour bien démarrer.</div>
             </div>
             <div class="d-flex gap-2 flex-wrap">
               <button class="btn btn-sm btn-primary" type="button" onclick="ouvrirGuideConfiguration()"><i class="bi bi-signpost-split me-1"></i>Guide de demarrage</button>
@@ -1237,23 +1237,6 @@
           </div>
           <div class="summary-list mt-3" id="setup-status-list"></div>
           <div class="setup-guide-steps mt-3" id="setup-guide-preview"></div>
-        </div>
-
-        <div class="card p-3 mb-4" id="health-status-card">
-          <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-3">
-            <div>
-              <div class="fw-bold">Sante du projet</div>
-              <div class="text-secondary small" id="health-status-summary">Verification de l'environnement en cours.</div>
-            </div>
-            <div class="d-flex gap-2 flex-wrap">
-              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="chargerTout()">Rafraichir</button>
-              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="telechargerDiagnosticComplet()">Diagnostic complet</button>
-              <button class="btn btn-sm btn-outline-secondary" type="button" onclick="telechargerConfigExemple()">Config exemple</button>
-              <a class="btn btn-sm btn-outline-secondary" href="#tab-settings" data-bs-toggle="tab">Verifier les parametres</a>
-            </div>
-          </div>
-          <div class="health-overview mb-3" id="health-overview"></div>
-          <div class="health-check-list" id="health-check-list"></div>
         </div>
 
         <div class="row g-3 mb-4">
@@ -1265,7 +1248,7 @@
                 </div>
                 <div>
                   <div class="fw-bold" id="scan-action-title">Lancer un scan</div>
-                  <div class="text-secondary small" id="scan-action-subtitle">Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.</div>
+                  <div class="text-secondary small" id="scan-action-subtitle">Recherche de nouvelles offres selon tes critères.</div>
                 </div>
               </div>
               <button class="btn btn-primary mt-auto btn-recuperer" id="scan-action-button" onclick="lancerStream('recuperer')">Scanner les sources</button>
@@ -1279,7 +1262,7 @@
                 </div>
                 <div>
                   <div class="fw-bold">Generer les lettres</div>
-                  <div class="text-secondary small" id="letters-action-subtitle">Utilise Groq pour rediger les lettres manquantes et met a jour le pipeline.</div>
+                  <div class="text-secondary small" id="letters-action-subtitle">Prépare les lettres manquantes pour les offres retenues.</div>
                 </div>
               </div>
               <button class="btn btn-success mt-auto btn-lettres" onclick="lancerStream('generer-lettres')">Generer</button>
@@ -1293,24 +1276,10 @@
                 </div>
                 <div>
                   <div class="fw-bold">Lancer l'agent</div>
-                  <div class="text-secondary small" id="agent-action-subtitle">Ouvre le navigateur et tente les candidatures automatiques a partir des lettres generees.</div>
+                  <div class="text-secondary small" id="agent-action-subtitle">Aide à préparer ou envoyer les candidatures à partir des offres retenues.</div>
                 </div>
               </div>
               <button class="btn btn-dark mt-auto btn-postuler" onclick="lancerStream('postuler')">Postuler</button>
-            </div>
-          </div>
-          <div class="col-md-6 col-xl-3">
-            <div class="card action-card p-3 d-flex flex-column">
-              <div class="d-flex gap-3 mb-3">
-                <div class="action-icon" style="background:rgba(178,122,23,0.14);color:var(--amber)">
-                  <i class="bi bi-database-up"></i>
-                </div>
-                <div>
-                  <div class="fw-bold">Synchroniser Supabase</div>
-                  <div class="text-secondary small" id="supabase-sync-summary">Envoie le miroir distant sans changer la source locale principale.</div>
-                </div>
-              </div>
-              <button class="btn btn-outline-warning mt-auto btn-sync-supabase" onclick="lancerStream('sync-supabase')">Synchroniser</button>
             </div>
           </div>
         </div>
@@ -1339,20 +1308,6 @@
                 </div>
               </div>
               <div class="log-panel" id="log-panel">Pret.</div>
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="card p-3">
-              <div class="d-flex justify-content-between align-items-center mb-3">
-                <div>
-                  <div class="fw-bold">Historique sync Supabase</div>
-                  <div class="text-secondary small">Dernieres synchronisations du miroir distant.</div>
-                </div>
-                <button class="btn btn-sm btn-outline-secondary" onclick="triggerSupabaseSync(false)">Lancer maintenant</button>
-              </div>
-              <div id="supabase-sync-history" class="summary-list">
-                <div class="summary-line">Aucune synchronisation distante enregistree.</div>
-              </div>
             </div>
           </div>
         </div>
@@ -1504,7 +1459,7 @@
         <div class="settings-actions mb-3">
           <div>
             <div class="fw-bold">Configuration du profil</div>
-            <div class="settings-subtitle">Les reglages sont sauvegardes dans `.env` et `export/profil_recherche.json`.</div>
+            <div class="settings-subtitle">Renseigne ici ton profil, ta recherche et les accès utiles.</div>
           </div>
           <div class="d-flex gap-2 flex-wrap">
             <button class="btn btn-outline-secondary" onclick="chargerSettings(true)">Recharger</button>
@@ -1558,7 +1513,7 @@
                     <button class="btn btn-outline-primary" type="button" id="settings-cv-upload-btn" onclick="document.getElementById('settings-cv-file').click()">Importer</button>
                   </div>
                   <input type="file" id="settings-cv-file" class="d-none" accept=".pdf,.doc,.docx,.txt,.md" onchange="uploadCvFile(this)">
-                  <div class="small text-secondary mt-2" id="settings-cv-meta">Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l'application.</div>
+                  <div class="small text-secondary mt-2" id="settings-cv-meta">Ajoute ton CV pour le réutiliser plus facilement dans l'application.</div>
                 </div>
                 <div class="col-12">
                   <label class="form-label" for="settings-presentation">Presentation courte</label>
@@ -1641,13 +1596,13 @@
             <div class="card settings-card" id="settings-section-api">
               <div class="d-flex justify-content-between align-items-start mb-3 gap-3">
                 <div>
-                  <div class="fw-bold">Cles API</div>
-                  <div class="settings-subtitle">Les valeurs restent masquees par defaut.</div>
+                  <div class="fw-bold">Connexions utiles</div>
+                  <div class="settings-subtitle">Certaines fonctions avancées ont besoin d accès externes.</div>
                 </div>
               </div>
               <div class="row g-3">
                 <div class="col-12">
-                  <label class="form-label" for="settings-adzuna-app-id">ADZUNA_APP_ID</label>
+                  <label class="form-label" for="settings-adzuna-app-id">Adzuna - identifiant</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-adzuna-app-id" type="password">
                     <div class="api-key-actions">
@@ -1657,7 +1612,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="settings-adzuna-app-key">ADZUNA_APP_KEY</label>
+                  <label class="form-label" for="settings-adzuna-app-key">Adzuna - clé</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-adzuna-app-key" type="password">
                     <div class="api-key-actions">
@@ -1667,7 +1622,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="settings-ft-client-id">FT_CLIENT_ID</label>
+                  <label class="form-label" for="settings-ft-client-id">France Travail - identifiant</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-ft-client-id" type="password">
                     <div class="api-key-actions">
@@ -1677,7 +1632,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="settings-ft-client-secret">FT_CLIENT_SECRET</label>
+                  <label class="form-label" for="settings-ft-client-secret">France Travail - clé secrète</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-ft-client-secret" type="password">
                     <div class="api-key-actions">
@@ -1687,7 +1642,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="settings-lba-api-key">LBA_API_KEY</label>
+                  <label class="form-label" for="settings-lba-api-key">La Bonne Alternance - clé</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-lba-api-key" type="password">
                     <div class="api-key-actions">
@@ -1697,7 +1652,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="settings-groq-api-key">GROQ_API_KEY</label>
+                  <label class="form-label" for="settings-groq-api-key">Assistant d écriture</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-groq-api-key" type="password">
                     <div class="api-key-actions">
@@ -1707,7 +1662,7 @@
                   </div>
                 </div>
                 <div class="col-12">
-                  <label class="form-label" for="settings-gemini-api-key">GEMINI_API_KEY</label>
+                  <label class="form-label" for="settings-gemini-api-key">Assistant navigateur</label>
                   <div class="api-key-row">
                     <input class="form-control api-key-input" id="settings-gemini-api-key" type="password">
                     <div class="api-key-actions">
@@ -1919,11 +1874,11 @@
         </div>
         <div class="modal-body pt-0">
           <div id="access-workspace-block">
-            <label class="form-label" for="access-workspace-input">Espace personnel</label>
+            <label class="form-label" for="access-workspace-input">Profil personnel</label>
             <input class="form-control mb-3" id="access-workspace-input" type="text" placeholder="ex: julie, paul, test-ux">
-            <div class="small text-secondary mb-3" id="access-workspace-help">Chaque espace garde ses propres parametres sur le meme lien.</div>
+            <div class="small text-secondary mb-3" id="access-workspace-help">Chaque profil garde ses propres réglages sur le même lien.</div>
           </div>
-          <label class="form-label" for="access-token-input">Token APP_SECRET</label>
+          <label class="form-label" for="access-token-input">Code d accès</label>
           <input class="form-control" id="access-token-input" type="password" placeholder="Saisir le token">
           <div class="small text-danger mt-2 d-none" id="access-token-error"></div>
         </div>
@@ -2266,41 +2221,36 @@
         return;
       }
       if (accessState.unlocked) {
-        statusNode.innerHTML = '<span class="pulse"></span>Acces protege actif';
-        workspaceNode.textContent = authModeEnabled
-          ? (userAuthState.authenticated ? 'Compte personnel actif' : 'Compte personnel a connecter')
-          : `Espace: ${workspaceLabel}`;
+        statusNode.textContent = 'Acces securise';
+        workspaceNode.textContent = '';
         logoutBtn.classList.remove('d-none');
       } else {
         statusNode.textContent = 'Interface verrouillee';
-        workspaceNode.textContent = authModeEnabled ? 'Compte personnel requis' : `Espace: ${workspaceLabel}`;
+        workspaceNode.textContent = '';
         logoutBtn.classList.add('d-none');
       }
       if (userStatusNode) {
         userStatusNode.textContent = userAuthState.enabled
-          ? (userAuthState.authenticated ? `Compte: ${userAuthState.user?.email || 'connecte'}` : 'Compte requis')
+          ? (userAuthState.authenticated ? `Compte: ${userAuthState.user?.email || 'connecte'}` : 'Connecte-toi pour continuer')
           : '';
       }
       if (userAuthBtn) userAuthBtn.classList.toggle('d-none', !userAuthState.enabled || !!userAuthState.authenticated);
       if (userLogoutBtn) userLogoutBtn.classList.toggle('d-none', !userAuthState.enabled || !userAuthState.authenticated);
-      if (pipelineSubtitle) pipelineSubtitle.textContent = `Vue Kanban personnelle liée à ${scopeLabel} pour prioriser les offres et suivre les actions.`;
-      if (historySubtitle) historySubtitle.textContent = `Les candidatures, statuts et notes affichés ici appartiennent à ${scopeLabel}.`;
-      if (relancesSubtitle) relancesSubtitle.textContent = `Seules les relances liées à ${scopeLabel} apparaissent dans cette liste.`;
+      if (pipelineSubtitle) pipelineSubtitle.textContent = 'Vue Kanban pour trier les offres, suivre les actions et garder une vue claire du parcours.';
+      if (historySubtitle) historySubtitle.textContent = 'Retrouve ici les candidatures déjà envoyées et leur suivi.';
+      if (relancesSubtitle) relancesSubtitle.textContent = 'Les relances à prévoir apparaissent ici au bon moment.';
       if (CLOUD_MODE) {
-        const sharedScan = authModeEnabled ? true : workspaceLabel !== 'principal';
-        if (scanActionTitle) scanActionTitle.textContent = sharedScan ? 'Lancer un scan partage' : 'Lancer un scan';
-        if (scanActionSubtitle) scanActionSubtitle.textContent = sharedScan
-          ? `Met a jour la base source partagee. Les resultats visibles resteront filtres pour ${scopeLabel}.`
-          : 'Recupere les offres, dedoublonne la source partagee et met a jour les donnees visibles.';
-        if (scanActionButton) scanActionButton.textContent = sharedScan ? 'Scanner la source partagee' : 'Scanner les sources';
-        if (lettersActionSubtitle) lettersActionSubtitle.textContent = `Genere les lettres et alimente le suivi personnel de ${scopeLabel}.`;
-        if (agentActionSubtitle) agentActionSubtitle.textContent = `Tente les candidatures automatiques a partir des lettres et du suivi de ${scopeLabel}.`;
+        if (scanActionTitle) scanActionTitle.textContent = 'Scanner les sources';
+        if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recherche de nouvelles offres selon tes critères.';
+        if (scanActionButton) scanActionButton.textContent = 'Scanner les sources';
+        if (lettersActionSubtitle) lettersActionSubtitle.textContent = 'Prépare les lettres manquantes pour les offres retenues.';
+        if (agentActionSubtitle) agentActionSubtitle.textContent = 'Aide à préparer ou envoyer les candidatures à partir des offres retenues.';
       } else {
         if (scanActionTitle) scanActionTitle.textContent = 'Lancer un scan';
-        if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recupere les offres, dedoublonne, met a jour `scan_state.json` et exporte le CSV.';
+        if (scanActionSubtitle) scanActionSubtitle.textContent = 'Recherche de nouvelles offres selon tes critères.';
         if (scanActionButton) scanActionButton.textContent = 'Scanner les sources';
-        if (lettersActionSubtitle) lettersActionSubtitle.textContent = 'Utilise Groq pour rediger les lettres manquantes et met a jour le pipeline.';
-        if (agentActionSubtitle) agentActionSubtitle.textContent = "Ouvre le navigateur et tente les candidatures automatiques a partir des lettres generees.";
+        if (lettersActionSubtitle) lettersActionSubtitle.textContent = 'Prépare les lettres manquantes pour les offres retenues.';
+        if (agentActionSubtitle) agentActionSubtitle.textContent = "Aide à préparer ou envoyer les candidatures à partir des offres retenues.";
       }
     }
 
@@ -2837,9 +2787,9 @@
           hint: hasSearchTargets ? `${search.postes_cibles.length} poste(s) cible(s) renseignes.` : 'Ajoute au moins un poste cible pour rendre la recherche reutilisable.'
         },
         {
-          title: 'Activer les sources d offres',
-          shortCopy: 'France Travail, Adzuna ou La Bonne Alternance suffisent pour commencer.',
-          description: 'Il faut au moins une source active pour lancer un scan utile. France Travail suffit deja tres bien pour un premier usage partage.',
+          title: 'Choisir les sources d offres',
+          shortCopy: 'Active une ou plusieurs sources pour commencer à recevoir des offres.',
+          description: 'Il faut au moins une source active pour lancer une recherche utile. Une seule source suffit déjà pour commencer sereinement.',
           targetId: 'settings-section-api',
           complete: !Array.isArray(setup.missing_sources) || setup.missing_sources.length === 0,
           hint: !Array.isArray(setup.missing_sources) || setup.missing_sources.length === 0
@@ -2847,9 +2797,9 @@
             : 'Renseigne au moins une source pour permettre le scan.'
         },
         {
-          title: 'Brancher les briques IA',
-          shortCopy: 'Groq pour les lettres et Gemini pour l agent de candidature.',
-          description: 'Groq sert pour les lettres et le coach. Gemini sert surtout a l agent navigateur. Tu peux commencer avec Groq seul, puis ajouter Gemini juste apres.',
+          title: 'Activer les aides intelligentes',
+          shortCopy: 'Ces aides servent pour les lettres, le coach et certaines actions assistées.',
+          description: 'Tu peux commencer sans tout activer d un coup. Ajoute d abord l aide à l écriture, puis complète le reste si tu en as besoin.',
           targetId: 'settings-section-api',
           complete: !Array.isArray(setup.missing_ai) || setup.missing_ai.length === 0,
           hint: !Array.isArray(setup.missing_ai) || setup.missing_ai.length === 0 ? 'Les cles IA principales sont deja en place.' : `Il manque : ${setup.missing_ai.join(', ')}.`
@@ -2885,8 +2835,8 @@
       const doneCount = steps.filter(step => step.complete).length;
       document.getElementById('setup-guide-headline').textContent =
         doneCount === steps.length
-          ? 'Tout le socle principal est pret pour partager le projet plus sereinement.'
-          : 'Ce parcours aide un nouvel utilisateur a rendre l application exploitable sans bricolage.';
+          ? 'Tout est en place pour utiliser l application dans de bonnes conditions.'
+          : 'Ce parcours aide à bien configurer l application pour démarrer plus facilement.';
       document.getElementById('setup-guide-current-title').textContent = `Etape ${setupGuideIndex + 1} - ${current.title}`;
       document.getElementById('setup-guide-current-copy').textContent = current.description;
       document.getElementById('setup-guide-progress-badge').textContent = `${doneCount}/${steps.length} pret`;
@@ -2967,7 +2917,7 @@
     }
 
     function openInstallerPack() {
-      showToast('Installer local', 'Double-clique sur installer_partage_local.bat si une dependance manque sur cette machine.', 'warn');
+      showToast('Installation', 'Utilise l installateur du projet si ton ordinateur demande une mise en place complémentaire.', 'warn');
     }
 
     function telechargerDiagnosticComplet() {
@@ -3006,6 +2956,7 @@
       const summary = document.getElementById('health-status-summary');
       const overview = document.getElementById('health-overview');
       const list = document.getElementById('health-check-list');
+      if (!summary || !overview || !list) return;
       summary.textContent = health.summary || 'Aucun diagnostic disponible pour le moment.';
       overview.innerHTML = [
         {label: 'OK', value: counts.ok ?? 0},
@@ -3052,8 +3003,8 @@
       document.getElementById('settings-github').value = profile.github || '';
       document.getElementById('settings-cv-path').value = profile.cv_path || '';
       document.getElementById('settings-cv-meta').textContent = profile.cv_path
-        ? `CV actuel : ${profile.cv_path}`
-        : "Tu peux soit renseigner un chemin local, soit importer un fichier directement dans l'application.";
+        ? 'Un CV est déjà associé à ton profil.'
+        : "Ajoute ton CV pour le réutiliser plus facilement dans l'application.";
       refreshCvPickerUi();
       document.getElementById('settings-presentation').value = profile.presentation || '';
 
@@ -3156,7 +3107,7 @@
         if (!silent) appendLog('Parametres recharges', 'log-ok');
         return data.settings;
       } catch (error) {
-        if (!silent) appendLog(`Erreur parametres: ${error.message}`, 'log-warn');
+        if (!silent) appendLog(`Impossible de charger les paramètres : ${error.message}`, 'log-warn');
         return null;
       }
     }
@@ -3182,14 +3133,14 @@
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Sauvegarde impossible');
         populateSettings(data.settings);
-        appendLog('Parametres sauvegardes', 'log-ok');
+        appendLog('Paramètres enregistrés.', 'log-ok');
         showToast('Parametres enregistres', 'Les nouveaux reglages ont bien ete sauvegardes.', 'success');
         const stats = await fetchJsonSafe('/api/stats', statsData || {});
         statsData = (stats && typeof stats === 'object' && !Array.isArray(stats)) ? stats : (statsData || {});
         renderStats();
         renderSetupGuideModal();
       } catch (error) {
-        appendLog(`Erreur sauvegarde parametres: ${error.message}`, 'log-err');
+        appendLog(`Impossible d enregistrer les paramètres : ${error.message}`, 'log-err');
         showToast('Sauvegarde impossible', error.message, 'error');
       } finally {
         stopAppLoading();
@@ -3234,7 +3185,7 @@
         const data = await response.json();
         if (!data.ok) throw new Error(data.error || 'Import impossible');
         if (data.settings) populateSettings(data.settings);
-        document.getElementById('settings-cv-meta').textContent = `CV importé : ${data.filename}`;
+        document.getElementById('settings-cv-meta').textContent = 'Le CV a bien été ajouté à ton profil.';
         refreshCvPickerUi();
         showToast('CV importé', 'Le CV a bien été ajouté à l’application.', 'success');
       } catch (error) {
@@ -3270,7 +3221,7 @@
         }
         return data;
       } catch (error) {
-        appendLog(`Chargement temporairement indisponible pour ${url}: ${error.message}`, 'log-warn');
+        appendLog(`Certaines informations mettent plus de temps que prévu à se charger : ${error.message}`, 'log-warn');
         return fallbackValue;
       }
     }
@@ -3360,7 +3311,6 @@
 
     function renderStats() {
       const scan = statsData.scan_state || {};
-      const sync = statsData.supabase_sync || {};
       const setup = statsData.setup || {};
       const sharedScan = !!statsData.shared_scan;
       const visibleNewOffers = statsData.nb_nouvelles_visible ?? scan.new_offers ?? 0;
@@ -3377,15 +3327,8 @@
       document.getElementById('stat-interessantes-note').textContent = `${visibleToAnalyzeOffers} encore a analyser dans cet espace`;
       document.getElementById('stat-postulations').textContent = sentApplications;
       document.getElementById('stat-relances-note').textContent = `${statsData.nb_relances || 0} relance a faire dans cet espace`;
-      document.getElementById('supabase-sync-summary').textContent =
-        sync.status === 'completed'
-          ? `Derniere sync: ${formatDate(sync.last_success_at)}`
-          : sync.status === 'failed'
-            ? `Derniere sync en erreur: ${formatDate(sync.last_attempt_at)}`
-            : sync.status === 'running'
-              ? 'Synchronisation en cours...'
-              : 'Aucune synchronisation distante enregistree';
-      document.getElementById('process-status').innerHTML = statsData.process_actif ? '<span class="pulse"></span>Processus en cours' : '';
+      const processStatus = document.getElementById('process-status');
+      if (processStatus) processStatus.innerHTML = '';
       document.getElementById('badge-pipeline').textContent = offresData.length;
       document.getElementById('badge-offres').textContent = offresData.length;
       document.getElementById('badge-histo').textContent = histoData.length;
@@ -3393,8 +3336,8 @@
       document.getElementById('scan-summary').textContent =
         scan.finished_at
           ? sharedScan
-            ? `${statsData.nb_offres || 0} offres visibles dans cet espace, ${scan.exported_offers || 0} dans le scan partage`
-            : `${scan.exported_offers || 0} offres exportees, ${scan.duplicates_ignored || 0} doublons ignores`
+            ? `${statsData.nb_offres || 0} offres visibles pour cette recherche`
+            : `${scan.exported_offers || 0} offres trouvées, ${scan.duplicates_ignored || 0} doublons écartés`
           : 'Aucun scan enregistre';
 
       const setupSummary = document.getElementById('setup-status-summary');
@@ -3402,19 +3345,19 @@
       const setupPreview = document.getElementById('setup-guide-preview');
       const setupItems = [];
       if (Array.isArray(setup.missing_profile) && setup.missing_profile.length) {
-        setupItems.push(`Profil a completer : ${setup.missing_profile.join(', ')}`);
+        setupItems.push(`Profil à compléter : ${setup.missing_profile.join(', ')}`);
       }
       if (Array.isArray(setup.missing_sources) && setup.missing_sources.length) {
-        setupItems.push(`Sources a configurer : ${setup.missing_sources.join(', ')}`);
+        setupItems.push(`Sources à configurer : ${setup.missing_sources.join(', ')}`);
       }
       if (Array.isArray(setup.missing_ai) && setup.missing_ai.length) {
-        setupItems.push(`IA a configurer : ${setup.missing_ai.join(', ')}`);
+        setupItems.push(`Assistant à configurer : ${setup.missing_ai.join(', ')}`);
       }
       if (!setupItems.length) {
-        setupSummary.textContent = 'Configuration principale completee. Le projet est plus facile a partager avec un nouvel utilisateur.';
-        setupList.innerHTML = '<div class="summary-line">Profil, sources et IA sont renseignes.</div>';
+        setupSummary.textContent = 'Tout l essentiel est prêt pour utiliser l application.';
+        setupList.innerHTML = '<div class="summary-line">Profil, recherche et outils principaux sont renseignés.</div>';
       } else {
-        setupSummary.textContent = 'Quelques elements restent a configurer avant un partage plus confortable.';
+        setupSummary.textContent = 'Quelques éléments restent à compléter pour profiter pleinement de l application.';
         setupList.innerHTML = setupItems.map(item => `<div class="summary-line">${esc(item)}</div>`).join('');
       }
       const guideSteps = getSetupGuideSteps();
@@ -3446,22 +3389,6 @@
         `).join('');
       }
 
-      const syncHistoryBox = document.getElementById('supabase-sync-history');
-      const syncHistory = Array.isArray(sync.history) ? sync.history.slice().reverse() : [];
-      if (!syncHistory.length) {
-        syncHistoryBox.innerHTML = '<div class="summary-line">Aucune synchronisation distante enregistree.</div>';
-      } else {
-        syncHistoryBox.innerHTML = syncHistory.slice(0, 6).map(item => `
-          <div class="summary-line">
-            <div class="fw-semibold">${item.status === 'completed' ? 'Synchronisation reussie' : 'Synchronisation en erreur'}</div>
-            <div class="small text-secondary">
-              ${item.at ? formatDate(item.at) : 'Date inconnue'}
-              ${item.table_counts?.offers ? ` - ${item.table_counts.offers} offres` : ''}
-              ${item.error ? ` - ${esc(item.error)}` : ''}
-            </div>
-          </div>
-        `).join('');
-      }
       renderHealthStatus();
       renderSetupGuideModal();
       maybeAutoOpenSetupGuide();
@@ -4004,7 +3931,7 @@ async function copierLettre() {
     }
 
     async function triggerSupabaseSync(silent = true, reason = 'manual') {
-      if (!silent) startAppLoading('Synchronisation Supabase', 'Le miroir distant est en cours de mise à jour.');
+      if (!silent) startAppLoading('Mise à jour des données', 'Les changements récents sont en cours d enregistrement.');
       try {
         const response = await fetch(withWorkspaceUrl('/api/supabase/sync'), {
           method: 'POST',
@@ -4014,15 +3941,15 @@ async function copierLettre() {
         const data = await response.json();
         if (!silent) {
           if (data.ok) {
-            appendLog('Synchronisation Supabase lancee en arriere-plan.', 'log-ok');
+            appendLog('Mise à jour des données lancée.', 'log-ok');
           } else if (data.status === 'already_running') {
-            appendLog('Une synchronisation Supabase est deja en cours.', 'log-warn');
+            appendLog('Une mise à jour est déjà en cours.', 'log-warn');
           } else if (data.status === 'process_busy') {
-            appendLog('Synchronisation Supabase reportee : un autre processus est en cours.', 'log-warn');
+            appendLog('La mise à jour attend la fin de l action en cours.', 'log-warn');
           } else if (data.status === 'not_configured') {
-            appendLog('Synchronisation Supabase impossible : configuration manquante.', 'log-warn');
+            appendLog('La mise à jour n a pas pu être lancée pour le moment.', 'log-warn');
           } else {
-            appendLog('Synchronisation Supabase non lancee.', 'log-warn');
+            appendLog('La mise à jour n a pas été lancée.', 'log-warn');
           }
         }
         await chargerTout();
@@ -4047,7 +3974,7 @@ async function copierLettre() {
         recuperer: ['Scan des sources', 'Les offres sont en cours de récupération et de dédoublonnage.'],
         'generer-lettres': ['Generation des lettres', 'Les lettres de motivation sont en cours de préparation.'],
         postuler: ['Lancement de l agent', 'L agent de candidature se prépare et peut prendre quelques secondes.'],
-        'sync-supabase': ['Synchronisation Supabase', 'Le miroir distant est en cours de mise à jour.'],
+        'sync-supabase': ['Mise à jour des données', 'Les changements récents sont en cours d enregistrement.'],
       };
       const loadingLabel = loadingLabels[type] || ['Traitement en cours', 'L action demandée est en cours.'];
       startAppLoading(loadingLabel[0], loadingLabel[1]);
@@ -4125,10 +4052,10 @@ async function copierLettre() {
     async function lancerCloudTask(type) {
       stopCloudTaskPolling();
       const loadingLabels = {
-        recuperer: ['Scan des sources', 'Le scan est lancé en arrière-plan sur le serveur cloud.'],
-        'generer-lettres': ['Generation des lettres', 'La génération est lancée en arrière-plan sur le serveur cloud.'],
-        postuler: ['Lancement de l agent', 'L agent est lancé en arrière-plan sur le serveur cloud.'],
-        'sync-supabase': ['Synchronisation Supabase', 'La synchronisation est lancée en arrière-plan.'],
+        recuperer: ['Scan des sources', 'La recherche est lancée et peut prendre quelques instants.'],
+        'generer-lettres': ['Generation des lettres', 'Les lettres sont en cours de préparation.'],
+        postuler: ['Lancement de l agent', 'La préparation des candidatures est en cours.'],
+        'sync-supabase': ['Mise à jour des données', 'Les changements récents sont en cours d enregistrement.'],
       };
       const loadingLabel = loadingLabels[type] || ['Traitement en cours', 'Le traitement est lancé en arrière-plan.'];
       document.getElementById('log-panel').textContent = `Lancement ${type}...`;
