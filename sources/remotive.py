@@ -5,7 +5,7 @@ import sys
 
 import requests
 
-from ._common import dynamic_search_terms, nettoyer_html
+from ._common import build_search_queries, nettoyer_html
 
 # ─── Configuration ────────────────────────────────────────────────────────────
 
@@ -28,20 +28,7 @@ REQUEST_TIMEOUT = 10 if CLOUD_MODE else 30
 
 
 def _queries() -> list[str]:
-    dynamic_roles = dynamic_search_terms().get("postes_cibles", [])
-    if dynamic_roles:
-        queries: list[str] = []
-        for role in dynamic_roles:
-            role_text = str(role).strip()
-            if not role_text:
-                continue
-            lowered = role_text.lower()
-            if any(marker in lowered for marker in ("alternance", "apprentissage", "apprenticeship")):
-                queries.append(role_text)
-            else:
-                queries.append(f"apprenticeship {role_text}")
-        return queries
-    return REQUETES
+    return build_search_queries(REQUETES, locale="en")
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────

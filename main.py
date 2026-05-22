@@ -38,11 +38,14 @@ load_dotenv(Path(__file__).parent / ".env")
 # Importer toutes les sources
 from sources import recuperer_toutes_offres_detail
 from sources._common import (
+    active_search_terms,
+    dynamic_search_scope,
     famille_poste,
     filtrer_offres_selon_recherche,
     is_relevant_offer,
     motion_en_priorite,
     nettoyer_html,
+    search_scope_label,
 )
 from storage_service import (
     BASE_DIR as STORAGE_BASE_DIR,
@@ -73,6 +76,7 @@ COLONNES_CSV = [
     "Intitulé du poste",
     "Entreprise",
     "Ville ou zone",
+    "Type de contrat",
     "Lien vers l'annonce",
     "Date de publication",
     "Catégorie",
@@ -1314,6 +1318,7 @@ def _ligne_csv(offre: dict) -> dict:
         "Intitulé du poste":             offre["titre"],
         "Entreprise":                    offre["entreprise"],
         "Ville ou zone":                 offre["lieu"],
+        "Type de contrat":               offre.get("contrat", ""),
         "Lien vers l'annonce":           offre["url"],
         "Date de publication":           offre["date_pub"],
         "Catégorie":                     offre["categorie"],
@@ -1565,6 +1570,19 @@ def tester_france_travail() -> None:
 def main(ignorer_historique: bool = False) -> None:
     state = refresh_scan_state_from_exports()
     scan_started_at = _utc_now()
+    active_terms = active_search_terms()
+    active_scope = dynamic_search_scope()
+    postes = ", ".join(active_terms.get("postes_cibles", [])[:5]) or "profil par defaut"
+    positifs = ", ".join(active_terms.get("mots_cles_positifs", [])[:5]) or "aucun"
+    negatifs = ", ".join(active_terms.get("mots_cles_negatifs", [])[:5]) or "aucun"
+    contrats = ", ".join(active_terms.get("types_contrat", [])[:4]) or "alternance"
+    zone_label = search_scope_label(active_scope)
+    remote_label = "oui" if bool(active_scope.get("include_remote", True)) else "non"
+    print(f"Recherche active : postes={postes}")
+    print(f"  + mots-cles : {positifs}")
+    print(f"  - exclusions : {negatifs}")
+    print(f"  contrats : {contrats}")
+    print(f"  zone : {zone_label} | rayon : {active_scope.get('radius_km', 30)} km | remote : {remote_label}")
     detail = recuperer_toutes_offres_detail()
     offres = detail["offres"]
     n_brut = len(offres)

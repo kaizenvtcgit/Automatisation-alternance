@@ -1605,6 +1605,8 @@ def _offer_matches_workspace_search(offer: dict, search: dict | None = None) -> 
     if not _supabase_runtime_enabled():
         return True
 
+    from sources._common import offer_matches_search_settings
+
     search = search if isinstance(search, dict) else (get_settings().get("search") or {})
     if not isinstance(search, dict):
         return True
@@ -1614,52 +1616,7 @@ def _offer_matches_workspace_search(offer: dict, search: dict | None = None) -> 
     location = offer.get("Ville ou zone", "")
     description = offer.get("Description (texte complet)", "")
     contract = offer.get("Type de contrat", "")
-    haystack = " ".join([title, company, location, description, contract])
-
-    negative_terms = [str(item).strip() for item in (search.get("mots_cles_negatifs") or []) if str(item).strip()]
-    if any(_text_contains_keyword(haystack, term) for term in negative_terms):
-        return False
-
-    contract_types = [str(item).strip().lower() for item in (search.get("types_contrat") or []) if str(item).strip()]
-    contract_norm = _normalized_text(contract)
-    if contract_types:
-        alternance_markers = ("alternance", "apprentissage", "apprenticeship", "contrat pro", "professionnalisation")
-        contract_ok = False
-        for wanted in contract_types:
-            if wanted == "alternance":
-                if any(marker in contract_norm for marker in alternance_markers):
-                    contract_ok = True
-                    break
-            elif _text_contains_keyword(contract_norm, wanted):
-                contract_ok = True
-                break
-        if not contract_ok:
-            return False
-
-    positive_terms = [
-        *[str(item).strip() for item in (search.get("postes_cibles") or []) if str(item).strip()],
-        *[str(item).strip() for item in (search.get("mots_cles_positifs") or []) if str(item).strip()],
-    ]
-    if positive_terms and not any(_text_contains_keyword(haystack, term) for term in positive_terms):
-        return False
-
-    zone_mode = str(search.get("zone_mode") or "").strip().lower()
-    zone_geo = str(search.get("zone_geo") or "").strip()
-    include_remote = bool(search.get("inclure_remote", True))
-    location_blob = " ".join([location, description])
-    is_remote = any(_text_contains_keyword(location_blob, marker) for marker in ("remote", "teletravail", "hybride", "hybrid", "work from home"))
-    if zone_mode == "remote":
-        return is_remote
-    if zone_geo and zone_mode not in {"remote", "france", ""}:
-        if _text_contains_keyword(location_blob, zone_geo):
-            return True
-        if include_remote and is_remote:
-            return True
-        return False
-    if not include_remote and is_remote:
-        return False
-
-    return True
+    return offer_matches_search_settings(title, company, location, description, contract, search)
 
 
 def _filtered_offers() -> list[dict]:
