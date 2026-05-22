@@ -10,6 +10,8 @@ import sys
 
 import requests
 
+from ._common import dynamic_search_terms
+
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 API_KEY  = os.environ.get("LBA_API_KEY", "")
@@ -29,6 +31,26 @@ RADIUS_KM = 60
 # E1211 : Scénarisation multimédia
 ROME_CODES = "E1205,E1207,E1210,E1211"
 REQUEST_TIMEOUT = 12 if CLOUD_MODE else 30
+
+LBA_ROLE_MARKERS = (
+    "motion",
+    "ux",
+    "ui",
+    "designer",
+    "design",
+    "graphiste",
+    "web designer",
+    "product designer",
+    "digital",
+)
+
+
+def _search_compatible_with_lba() -> bool:
+    roles = dynamic_search_terms().get("postes_cibles", [])
+    if not roles:
+        return True
+    blob = " | ".join(str(role or "").lower() for role in roles)
+    return any(marker in blob for marker in LBA_ROLE_MARKERS)
 
 
 # ─── Normalisation ────────────────────────────────────────────────────────────
@@ -114,6 +136,13 @@ def recuperer() -> list[dict]:
     Récupère les offres La Bonne Alternance via l'API v3.
     Nécessite LBA_API_KEY dans .env (gratuit sur https://api.apprentissage.beta.gouv.fr).
     """
+    if not _search_compatible_with_lba():
+        print(
+            "[La Bonne Alternance] Recherche active hors périmètre design/motion — source ignorée pour éviter des résultats hors cible.",
+            file=sys.stderr,
+        )
+        return []
+
     if not API_KEY:
         print(
             "[La Bonne Alternance] ⚠ LBA_API_KEY non configurée — source ignorée.\n"

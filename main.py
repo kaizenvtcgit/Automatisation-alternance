@@ -1655,9 +1655,13 @@ def main(ignorer_historique: bool = False) -> None:
         return
 
     if not offres_filtrees:
+        from sources._common import dynamic_search_terms
+
+        dynamic = dynamic_search_terms()
+        cible = ", ".join(dynamic.get("postes_cibles", [])[:4]) or "ta recherche active"
         print(
-            f"{len(offres)} offre(s) en IDF, aucune ne passe le filtre métier "
-            "(alternance + design/motion)."
+            f"{len(offres)} offre(s) en zone active, aucune ne passe le filtre métier "
+            f"pour {cible}."
         )
         finaliser_scan(0, "completed_no_matching_offers")
         return
