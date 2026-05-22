@@ -418,6 +418,7 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
+      justify-content: center;
     }
 
     .onboarding-topbar {
@@ -448,6 +449,12 @@
       padding: 26px;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
       min-height: 100%;
+      display: flex;
+      align-items: center;
+    }
+
+    .onboarding-step-block {
+      width: 100%;
     }
 
     .onboarding-step-surface .form-label {
@@ -2161,7 +2168,7 @@
   </div>
 
   <div class="modal fade" id="modalOnboarding" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable onboarding-dialog">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable onboarding-dialog">
       <div class="modal-content onboarding-content">
         <div class="onboarding-shell">
           <aside class="onboarding-aside">
@@ -2408,11 +2415,11 @@
             </div>
           </div>
         </div>
-        <div class="modal-body pt-0">
+        <div class="modal-body pt-0" autocomplete="off">
           <label class="form-label" for="user-auth-email">Email</label>
-          <input class="form-control mb-3" id="user-auth-email" type="email" placeholder="prenom@exemple.com" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+          <input class="form-control mb-3" id="user-auth-email" name="alternance_auto_email" type="email" placeholder="prenom@exemple.com" autocomplete="username" autocapitalize="off" autocorrect="off" spellcheck="false">
           <label class="form-label" for="user-auth-password">Mot de passe</label>
-          <input class="form-control mb-3" id="user-auth-password" type="password" placeholder="Au moins 8 caracteres" autocomplete="new-password">
+          <input class="form-control mb-3" id="user-auth-password" name="alternance_auto_password" type="password" placeholder="Au moins 8 caracteres" autocomplete="current-password">
           <div class="small text-danger d-none" id="user-auth-error"></div>
           <div class="small text-secondary mt-2">Chaque compte garde automatiquement son espace, ses paramètres et son suivi.</div>
         </div>
@@ -2506,6 +2513,8 @@
     let settingsAutoSavePending = false;
     let settingsAutoSaveDirty = false;
     let userAuthMode = 'login';
+    let authStatusRequestSeq = 0;
+    let authLogoutHold = false;
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -2886,9 +2895,18 @@
     }
 
     async function fetchUserAuthStatus() {
+      if (authLogoutHold) {
+        userAuthState = {enabled: true, authenticated: false, user: null};
+        renderAccessState();
+        return userAuthState;
+      }
+      const requestSeq = ++authStatusRequestSeq;
       try {
         const response = await fetch(withWorkspaceUrl('/api/user/status'));
         const data = await response.json();
+        if (requestSeq !== authStatusRequestSeq || authLogoutHold) {
+          return userAuthState;
+        }
         userAuthState = {
           enabled: !!data.enabled,
           authenticated: !!data.authenticated,
@@ -2930,6 +2948,7 @@
         return;
       }
       button.disabled = true;
+      authLogoutHold = false;
       try {
         const response = await fetch(withWorkspaceUrl('/api/user/login'), {
           method: 'POST',
@@ -2963,6 +2982,7 @@
         return;
       }
       button.disabled = true;
+      authLogoutHold = false;
       try {
         const response = await fetch(withWorkspaceUrl('/api/user/signup'), {
           method: 'POST',
@@ -2995,6 +3015,8 @@
       try {
         await fetch(withWorkspaceUrl('/api/user/logout'), {method: 'POST'});
       } catch (_) {}
+      authLogoutHold = true;
+      authStatusRequestSeq += 1;
       accessState.workspace = 'principal';
       setStoredWorkspace('principal');
       userAuthState = {enabled: userAuthState.enabled, authenticated: false, user: null};
