@@ -30,6 +30,7 @@ from settings_service import (
     get_settings,
     get_setup_status,
     get_workspace_slug,
+    invalidate_settings_cache,
     save_settings,
     set_workspace_slug,
 )
@@ -148,6 +149,27 @@ def _supabase_auth_request(path: str, payload: dict | None = None, *, method: st
     data = response.json() if response.content else {}
     if not response.ok:
         message = data.get("msg") or data.get("error_description") or data.get("error") or f"Erreur Supabase Auth ({response.status_code})"
+        raise RuntimeError(str(message))
+    return data if isinstance(data, dict) else {}
+
+
+def _supabase_admin_request(path: str, payload: dict | None = None, *, method: str = "POST") -> dict:
+    base = str(os.environ.get("SUPABASE_URL") or "").rstrip("/")
+    service_role = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
+    response = requests.request(
+        method.upper(),
+        f"{base}{path}",
+        headers={
+            "apikey": service_role,
+            "Authorization": f"Bearer {service_role}",
+            "Content-Type": "application/json",
+        },
+        data=json.dumps(payload or {}, ensure_ascii=False) if payload is not None else None,
+        timeout=20,
+    )
+    data = response.json() if response.content else {}
+    if not response.ok:
+        message = data.get("msg") or data.get("error_description") or data.get("error") or f"Erreur Supabase Admin ({response.status_code})"
         raise RuntimeError(str(message))
     return data if isinstance(data, dict) else {}
 
@@ -840,6 +862,22 @@ def _supabase_fetch(table: str, *, select: str = "*", order: str | None = None, 
     response.raise_for_status()
     payload = response.json()
     return payload if isinstance(payload, list) else []
+
+
+def _supabase_delete_rows(table: str, *, filters: dict[str, str] | None = None) -> None:
+    base = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+    response = requests.delete(
+        f"{base}/rest/v1/{table}",
+        params=filters or {},
+        headers={
+            **_supabase_headers(),
+            "Prefer": "return=minimal",
+        },
+        timeout=20,
+    )
+    response.raise_for_status()
+    _invalidate_supabase_runtime_cache()
+    invalidate_settings_cache()
 
 
 def _format_dt(value: str | None, with_time: bool = True) -> str:
@@ -1839,6 +1877,47 @@ def api_user_logout():
                 pass
     _clear_auth_session()
     return jsonify({"ok": True, "enabled": _supabase_auth_enabled(), "authenticated": False})
+
+
+@app.route("/api/user/delete", methods=["POST"])
+def api_user_delete():
+    if not _supabase_auth_enabled():
+        return jsonify({"ok": False, "error": "Authentification Supabase non active"}), HTTPStatus.BAD_REQUEST
+    user = _auth_user_payload()
+    if not user or not str(user.get("id") or "").strip():
+        return jsonify({"ok": False, "error": "Connexion requise"}), HTTPStatus.UNAUTHORIZED
+    data = request.get_json(silent=True) or {}
+    confirm_email = str(data.get("confirm_email") or "").strip().lower()
+    user_id = str(user.get("id") or "").strip()
+    user_email = str(user.get("email") or "").strip().lower()
+    if not confirm_email or confirm_email != user_email:
+        return jsonify({"ok": False, "error": "Confirme ton email pour supprimer le compte"}), HTTPStatus.BAD_REQUEST
+
+    cleanup_errors: list[str] = []
+    try:
+        _supabase_admin_request(f"/auth/v1/admin/users/{user_id}", method="DELETE")
+    except Exception as err:
+        return jsonify({"ok": False, "error": str(err)}), HTTPStatus.BAD_REQUEST
+
+    if _supabase_runtime_enabled():
+        user_scope_filters = {"owner_user_id": f"eq.{user_id}"}
+        for table in ("app_settings", "search_profiles", "applications_history", "offer_letters", "offer_scores", "refused_offers"):
+            try:
+                _supabase_delete_rows(table, filters=user_scope_filters)
+            except Exception as err:
+                cleanup_errors.append(f"{table}: {err}")
+
+    _clear_auth_session()
+    session.pop("workspace_slug", None)
+    _invalidate_supabase_runtime_cache()
+    invalidate_settings_cache()
+    return jsonify(
+        {
+            "ok": True,
+            "deleted": True,
+            "cleanup_warnings": cleanup_errors,
+        }
+    )
 
 
 @app.route("/api/auth/unlock", methods=["POST"])

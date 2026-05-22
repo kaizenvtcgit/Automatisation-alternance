@@ -1782,6 +1782,18 @@
               </div>
             </div>
           </div>
+
+          <div class="col-12 d-none" id="settings-account-danger">
+            <div class="card settings-card border-danger-subtle">
+              <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap">
+                <div>
+                  <div class="fw-bold text-danger">Supprimer mon compte</div>
+                  <div class="settings-subtitle">Cette action efface ton compte et ton suivi personnel. Elle est définitive.</div>
+                </div>
+                <button class="btn btn-outline-danger" type="button" onclick="ouvrirSuppressionCompte()">Supprimer mon compte</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2124,6 +2136,29 @@
     </div>
   </div>
 
+  <div class="modal fade" id="modalDeleteAccount" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header border-0">
+          <div>
+            <h5 class="modal-title mb-1 text-danger">Supprimer mon compte</h5>
+            <div class="text-secondary small" id="delete-account-copy">Confirme ton email pour supprimer définitivement ce compte et son suivi.</div>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+        </div>
+        <div class="modal-body pt-0">
+          <label class="form-label" for="delete-account-confirm-email">Email du compte</label>
+          <input class="form-control" id="delete-account-confirm-email" type="email" placeholder="prenom@exemple.com">
+          <div class="small text-danger mt-2 d-none" id="delete-account-error"></div>
+        </div>
+        <div class="modal-footer border-0 justify-content-between">
+          <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Annuler</button>
+          <button class="btn btn-danger" type="button" id="delete-account-confirm-btn" onclick="submitDeleteAccount()">Supprimer définitivement</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     const CLOUD_MODE = {{ "true" if cloud_mode else "false" }};
@@ -2152,6 +2187,7 @@
     let modalOnboarding = null;
     let modalAccessLock = null;
     let modalUserAuth = null;
+    let modalDeleteAccount = null;
     let offersSort = { key: 'date', direction: 'desc' };
     let selectedOfferId = '';
     let coachMessages = [];
@@ -2422,6 +2458,7 @@
       const workspaceBlock = document.getElementById('access-workspace-block');
       const workspaceHelp = document.getElementById('access-workspace-help');
       const apiSection = document.getElementById('settings-section-api');
+      const accountDangerSection = document.getElementById('settings-account-danger');
       const stopBtn = document.querySelector('.btn-outline-danger[onclick="fermerServeur()"]');
       const pipelineSubtitle = document.getElementById('pipeline-toolbar-subtitle');
       const historySubtitle = document.getElementById('history-panel-subtitle');
@@ -2438,6 +2475,7 @@
         : `l'espace ${workspaceLabel}`;
       if (stopBtn) stopBtn.classList.toggle('d-none', !!CLOUD_MODE);
       if (apiSection) apiSection.classList.toggle('d-none', !!(CLOUD_MODE || userAuthState.enabled));
+      if (accountDangerSection) accountDangerSection.classList.toggle('d-none', !(userAuthState.enabled && userAuthState.authenticated));
       if (workspaceBlock) workspaceBlock.classList.toggle('d-none', authModeEnabled);
       if (workspaceHelp && authModeEnabled) workspaceHelp.textContent = 'Le compte personnel definira automatiquement ton espace.';
       if (!accessState.enabled) {
@@ -2498,6 +2536,37 @@
       errorNode.textContent = '';
       errorNode.classList.add('d-none');
       document.getElementById('user-auth-password').value = '';
+    }
+
+    function ouvrirSuppressionCompte() {
+      if (!userAuthState.enabled || !userAuthState.authenticated) {
+        showToast('Connexion requise', 'Connecte-toi avant de gérer ton compte.', 'warn');
+        return;
+      }
+      if (!modalDeleteAccount) modalDeleteAccount = new bootstrap.Modal(document.getElementById('modalDeleteAccount'));
+      const email = userAuthState.user?.email || '';
+      const errorNode = document.getElementById('delete-account-error');
+      const input = document.getElementById('delete-account-confirm-email');
+      const copy = document.getElementById('delete-account-copy');
+      if (copy) copy.textContent = `Confirme ${email || 'ton email'} pour supprimer définitivement ce compte et son suivi.`;
+      if (input) input.value = '';
+      if (errorNode) {
+        errorNode.textContent = '';
+        errorNode.classList.add('d-none');
+      }
+      modalDeleteAccount.show();
+      setTimeout(() => input?.focus(), 120);
+    }
+
+    function fermerSuppressionCompte() {
+      if (modalDeleteAccount) modalDeleteAccount.hide();
+      const errorNode = document.getElementById('delete-account-error');
+      if (errorNode) {
+        errorNode.textContent = '';
+        errorNode.classList.add('d-none');
+      }
+      const input = document.getElementById('delete-account-confirm-email');
+      if (input) input.value = '';
     }
 
     function ouvrirAuthUtilisateur() {
@@ -2619,6 +2688,50 @@
       userAuthState = {enabled: userAuthState.enabled, authenticated: false, user: null};
       renderAccessState();
       showUserAuthModal();
+    }
+
+    async function submitDeleteAccount() {
+      const email = String(userAuthState.user?.email || '').trim().toLowerCase();
+      const input = document.getElementById('delete-account-confirm-email');
+      const errorNode = document.getElementById('delete-account-error');
+      const button = document.getElementById('delete-account-confirm-btn');
+      const confirmEmail = String(input?.value || '').trim().toLowerCase();
+      if (!email || !confirmEmail || confirmEmail !== email) {
+        if (errorNode) {
+          errorNode.textContent = 'Entre exactement l email du compte pour confirmer.';
+          errorNode.classList.remove('d-none');
+        }
+        return;
+      }
+      button.disabled = true;
+      try {
+        const response = await fetch(withWorkspaceUrl('/api/user/delete'), {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({confirm_email: confirmEmail})
+        });
+        const data = await response.json();
+        if (!data.ok) throw new Error(data.error || 'Suppression impossible');
+        fermerSuppressionCompte();
+        accessState.workspace = 'principal';
+        setStoredWorkspace('principal');
+        userAuthState = {enabled: true, authenticated: false, user: null};
+        offresData = [];
+        histoData = [];
+        lettresData = {};
+        statsData = {};
+        settingsData = null;
+        renderAccessState();
+        showToast('Compte supprimé', 'Ton compte a bien été supprimé.', 'success');
+        setTimeout(() => window.location.href = '/', 250);
+      } catch (error) {
+        if (errorNode) {
+          errorNode.textContent = error.message || 'Suppression impossible';
+          errorNode.classList.remove('d-none');
+        }
+      } finally {
+        button.disabled = false;
+      }
     }
 
     function getStoredWorkspace() {

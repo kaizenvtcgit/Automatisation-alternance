@@ -15,6 +15,11 @@ ENV_PATH = BASE_DIR / ".env"
 _SUPABASE_SETTINGS_CACHE: dict[str, object] = {"ts": 0.0, "payload": None}
 
 
+def invalidate_settings_cache() -> None:
+    _SUPABASE_SETTINGS_CACHE["ts"] = 0.0
+    _SUPABASE_SETTINGS_CACHE["payload"] = None
+
+
 def _parse_bool(value, default: bool = False) -> bool:
     if isinstance(value, bool):
         return value
@@ -555,8 +560,7 @@ def save_settings(payload: dict) -> dict:
             data=json.dumps(search_profiles_payload, ensure_ascii=False),
             timeout=15,
         ).raise_for_status()
-        _SUPABASE_SETTINGS_CACHE["ts"] = 0.0
-        _SUPABASE_SETTINGS_CACHE["payload"] = None
+        invalidate_settings_cache()
     else:
         _write_env_updates(env_updates)
         write_json_atomic(PROFILE_PATH, profile_payload)
