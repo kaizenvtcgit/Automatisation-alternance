@@ -307,6 +307,203 @@
       padding: 18px 18px 16px;
     }
 
+    .onboarding-dialog {
+      max-width: 1120px;
+    }
+
+    .onboarding-content {
+      overflow: hidden;
+    }
+
+    .onboarding-shell {
+      display: grid;
+      grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
+      min-height: 72vh;
+    }
+
+    .onboarding-aside {
+      padding: 30px 28px;
+      background:
+        radial-gradient(circle at top left, rgba(31,94,255,0.16), transparent 42%),
+        linear-gradient(180deg, rgba(255,255,255,0.92), rgba(247,242,232,0.96));
+      border-right: 1px solid rgba(217,208,191,0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .onboarding-eyebrow {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: var(--blue);
+      font-weight: 700;
+    }
+
+    .onboarding-title {
+      font-size: clamp(1.6rem, 2vw, 2.2rem);
+      line-height: 1.08;
+      font-weight: 800;
+      color: var(--ink);
+      margin: 10px 0 12px;
+    }
+
+    .onboarding-copy {
+      color: var(--muted);
+      line-height: 1.65;
+      font-size: 0.96rem;
+      max-width: 28ch;
+    }
+
+    .onboarding-steps {
+      display: grid;
+      gap: 12px;
+    }
+
+    .onboarding-step-chip {
+      border: 1px solid rgba(217,208,191,0.9);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.72);
+      padding: 14px 15px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+
+    .onboarding-step-chip.is-active {
+      border-color: rgba(31,94,255,0.32);
+      box-shadow: 0 14px 28px rgba(31,94,255,0.10);
+      transform: translateY(-1px);
+    }
+
+    .onboarding-step-chip.is-done {
+      border-color: rgba(34,122,73,0.24);
+      background: rgba(245,252,247,0.92);
+    }
+
+    .onboarding-step-badge {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(31,94,255,0.12);
+      color: var(--blue);
+      font-weight: 800;
+      flex: 0 0 auto;
+    }
+
+    .onboarding-step-chip.is-done .onboarding-step-badge {
+      background: rgba(34,122,73,0.14);
+      color: var(--green);
+    }
+
+    .onboarding-step-name {
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 2px;
+    }
+
+    .onboarding-step-help {
+      color: var(--muted);
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+
+    .onboarding-main {
+      padding: 30px 34px 28px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,250,242,0.98));
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .onboarding-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+    }
+
+    .onboarding-current-title {
+      font-weight: 800;
+      color: var(--ink);
+      font-size: 1.25rem;
+    }
+
+    .onboarding-current-copy {
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 58ch;
+    }
+
+    .onboarding-step-surface {
+      border: 1px solid rgba(217,208,191,0.78);
+      border-radius: 24px;
+      background: rgba(255,255,255,0.82);
+      padding: 26px;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);
+      min-height: 100%;
+    }
+
+    .onboarding-step-surface .form-label {
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 0.45rem;
+    }
+
+    .onboarding-step-surface .form-control,
+    .onboarding-step-surface .form-select,
+    .onboarding-step-surface .form-range,
+    .onboarding-step-surface .tag-editor {
+      background: rgba(255,255,255,0.88);
+    }
+
+    .onboarding-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+
+    .onboarding-footer-meta {
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .auth-mode-switch {
+      display: inline-flex;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(39,48,70,0.06);
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .auth-mode-switch .btn {
+      border-radius: 999px;
+      border: 0;
+      padding-inline: 14px;
+    }
+
+    .auth-mode-switch .btn.active {
+      background: var(--panel-strong);
+      color: var(--ink);
+      box-shadow: 0 6px 16px rgba(39,48,70,0.10);
+    }
+
+    .auth-submit-stack {
+      display: grid;
+      gap: 8px;
+      width: 100%;
+    }
+
     .health-overview {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
@@ -1006,6 +1203,28 @@
       .sticky-actions {
         top: 66px;
       }
+
+      .onboarding-shell {
+        grid-template-columns: 1fr;
+      }
+
+      .onboarding-aside {
+        border-right: 0;
+        border-bottom: 1px solid rgba(217,208,191,0.85);
+        padding: 24px 22px 18px;
+      }
+
+      .onboarding-copy {
+        max-width: none;
+      }
+
+      .onboarding-steps {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .onboarding-main {
+        padding: 24px 22px 22px;
+      }
     }
 
     @media (max-width: 767px) {
@@ -1157,6 +1376,37 @@
       .action-card .btn {
         min-height: 46px;
         border-radius: 14px;
+      }
+
+      .onboarding-dialog {
+        max-width: none;
+      }
+
+      .onboarding-aside,
+      .onboarding-main {
+        padding: 20px 18px;
+      }
+
+      .onboarding-steps {
+        grid-template-columns: 1fr;
+      }
+
+      .onboarding-step-surface {
+        padding: 18px;
+        border-radius: 20px;
+      }
+
+      .onboarding-topbar {
+        margin-bottom: 14px;
+      }
+
+      .auth-mode-switch {
+        width: 100%;
+        justify-content: stretch;
+      }
+
+      .auth-mode-switch .btn {
+        flex: 1 1 0;
       }
 
       .setup-guide-steps,
@@ -1911,20 +2161,56 @@
   </div>
 
   <div class="modal fade" id="modalOnboarding" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header">
-          <div>
-            <h5 class="modal-title mb-1">Personnalisons ton espace</h5>
-            <div class="text-secondary small" id="onboarding-headline">Réponds à quelques étapes rapides pour arriver sur une plateforme déjà adaptée à ta recherche.</div>
-          </div>
-        </div>
-        <div class="modal-body">
-          <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-            <div class="fw-bold" id="onboarding-step-title">Étape 1</div>
-            <span class="badge text-bg-light" id="onboarding-progress-badge">1/4</span>
-          </div>
+    <div class="modal-dialog modal-xl modal-dialog-scrollable onboarding-dialog">
+      <div class="modal-content onboarding-content">
+        <div class="onboarding-shell">
+          <aside class="onboarding-aside">
+            <div>
+              <div class="onboarding-eyebrow">Bienvenue</div>
+              <div class="onboarding-title">Construisons un espace qui te ressemble</div>
+              <div class="onboarding-copy" id="onboarding-headline">Réponds à quelques étapes rapides pour arriver sur une plateforme déjà adaptée à ta recherche.</div>
+            </div>
+            <div class="onboarding-steps">
+              <div class="onboarding-step-chip is-active" data-onboarding-chip="0">
+                <span class="onboarding-step-badge">1</span>
+                <div>
+                  <div class="onboarding-step-name">Ton profil</div>
+                  <div class="onboarding-step-help">Les bases pour personnaliser ton espace.</div>
+                </div>
+              </div>
+              <div class="onboarding-step-chip" data-onboarding-chip="1">
+                <span class="onboarding-step-badge">2</span>
+                <div>
+                  <div class="onboarding-step-name">Tes liens et ton CV</div>
+                  <div class="onboarding-step-help">Pour préparer plus vite tes candidatures.</div>
+                </div>
+              </div>
+              <div class="onboarding-step-chip" data-onboarding-chip="2">
+                <span class="onboarding-step-badge">3</span>
+                <div>
+                  <div class="onboarding-step-name">Ce que tu recherches</div>
+                  <div class="onboarding-step-help">Les postes, mots-clés et contrats qui comptent pour toi.</div>
+                </div>
+              </div>
+              <div class="onboarding-step-chip" data-onboarding-chip="3">
+                <span class="onboarding-step-badge">4</span>
+                <div>
+                  <div class="onboarding-step-name">La bonne zone</div>
+                  <div class="onboarding-step-help">Pour ne voir que les offres vraiment utiles.</div>
+                </div>
+              </div>
+            </div>
+          </aside>
+          <div class="onboarding-main">
+            <div class="onboarding-topbar">
+              <div>
+                <div class="onboarding-current-title" id="onboarding-step-title">Étape 1</div>
+                <div class="onboarding-current-copy" id="onboarding-step-copy">Quelques infos simples pour t accueillir avec les bons repères.</div>
+              </div>
+              <span class="badge text-bg-light" id="onboarding-progress-badge">1/4</span>
+            </div>
 
+            <div class="onboarding-step-surface">
           <section class="onboarding-step-block" data-step="0">
             <div class="row g-3">
               <div class="col-md-6">
@@ -2036,10 +2322,15 @@
               </div>
             </div>
           </section>
-        </div>
-        <div class="modal-footer justify-content-between">
-          <button class="btn btn-outline-secondary" type="button" id="onboarding-prev-btn" onclick="moveOnboardingStep(-1)">Étape précédente</button>
-          <button class="btn btn-primary" type="button" id="onboarding-next-btn" onclick="moveOnboardingStep(1)">Étape suivante</button>
+            </div>
+            <div class="onboarding-footer">
+              <div class="onboarding-footer-meta">Tu peux compléter l essentiel maintenant et ajuster le reste plus tard dans ton profil.</div>
+              <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-outline-secondary" type="button" id="onboarding-prev-btn" onclick="moveOnboardingStep(-1)">Étape précédente</button>
+                <button class="btn btn-primary" type="button" id="onboarding-next-btn" onclick="moveOnboardingStep(1)">Étape suivante</button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -2110,20 +2401,26 @@
         <div class="modal-header border-0">
           <div>
             <h5 class="modal-title mb-1">Mon compte</h5>
-            <div class="text-secondary small" id="user-auth-subtitle">Tu as déjà un compte ? Connecte-toi. Sinon, crée-en un en quelques secondes.</div>
+            <div class="text-secondary small" id="user-auth-subtitle">Choisis d abord ce que tu veux faire, puis remplis simplement tes identifiants.</div>
+            <div class="auth-mode-switch" role="tablist" aria-label="Choix du mode de connexion">
+              <button class="btn btn-sm btn-outline-secondary active" type="button" id="user-auth-mode-login" onclick="setUserAuthMode('login')">Se connecter</button>
+              <button class="btn btn-sm btn-outline-secondary" type="button" id="user-auth-mode-signup" onclick="setUserAuthMode('signup')">Créer un compte</button>
+            </div>
           </div>
         </div>
         <div class="modal-body pt-0">
           <label class="form-label" for="user-auth-email">Email</label>
-          <input class="form-control mb-3" id="user-auth-email" type="email" placeholder="prenom@exemple.com">
+          <input class="form-control mb-3" id="user-auth-email" type="email" placeholder="prenom@exemple.com" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
           <label class="form-label" for="user-auth-password">Mot de passe</label>
-          <input class="form-control mb-3" id="user-auth-password" type="password" placeholder="Au moins 8 caracteres">
+          <input class="form-control mb-3" id="user-auth-password" type="password" placeholder="Au moins 8 caracteres" autocomplete="new-password">
           <div class="small text-danger d-none" id="user-auth-error"></div>
           <div class="small text-secondary mt-2">Chaque compte garde automatiquement son espace, ses paramètres et son suivi.</div>
         </div>
-        <div class="modal-footer border-0 justify-content-between">
-          <button class="btn btn-outline-secondary" type="button" id="user-auth-signup-btn" onclick="submitUserSignup()">Première visite ? Créer mon compte</button>
-          <button class="btn btn-primary" type="button" id="user-auth-login-btn" onclick="submitUserLogin()">J ai déjà un compte</button>
+        <div class="modal-footer border-0">
+          <div class="auth-submit-stack">
+            <button class="btn btn-primary" type="button" id="user-auth-primary-btn" onclick="submitActiveUserAuth()">Continuer</button>
+            <div class="small text-secondary text-center" id="user-auth-footer-copy">Tu as déjà un compte ? Connecte-toi pour retrouver ton espace.</div>
+          </div>
         </div>
       </div>
     </div>
@@ -2208,6 +2505,7 @@
     let settingsAutoSaveTimer = null;
     let settingsAutoSavePending = false;
     let settingsAutoSaveDirty = false;
+    let userAuthMode = 'login';
 
     const esc = value => String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -2514,13 +2812,33 @@
       }
     }
 
-    function showUserAuthModal(errorMessage = '') {
+    function setUserAuthMode(mode) {
+      userAuthMode = mode === 'signup' ? 'signup' : 'login';
+      const loginBtn = document.getElementById('user-auth-mode-login');
+      const signupBtn = document.getElementById('user-auth-mode-signup');
+      const primaryBtn = document.getElementById('user-auth-primary-btn');
+      const subtitle = document.getElementById('user-auth-subtitle');
+      const footerCopy = document.getElementById('user-auth-footer-copy');
+      const passwordInput = document.getElementById('user-auth-password');
+      if (loginBtn) loginBtn.classList.toggle('active', userAuthMode === 'login');
+      if (signupBtn) signupBtn.classList.toggle('active', userAuthMode === 'signup');
+      if (primaryBtn) primaryBtn.textContent = userAuthMode === 'signup' ? 'Créer mon compte' : 'Me connecter';
+      if (subtitle) subtitle.textContent = userAuthMode === 'signup'
+        ? 'Crée ton compte pour garder ton profil, tes offres et ton suivi.'
+        : 'Connecte-toi pour retrouver ton espace et reprendre là où tu t étais arrêté.';
+      if (footerCopy) footerCopy.textContent = userAuthMode === 'signup'
+        ? 'Tu as déjà un compte ? Passe simplement en mode connexion.'
+        : 'Pas encore de compte ? Passe en création et démarre en quelques secondes.';
+      if (passwordInput) passwordInput.setAttribute('autocomplete', userAuthMode === 'signup' ? 'new-password' : 'current-password');
+    }
+
+    function showUserAuthModal(errorMessage = '', preferredMode = '') {
       if (!modalUserAuth) modalUserAuth = new bootstrap.Modal(document.getElementById('modalUserAuth'));
       const errorNode = document.getElementById('user-auth-error');
       errorNode.textContent = errorMessage || '';
       errorNode.classList.toggle('d-none', !errorMessage);
+      if (preferredMode) setUserAuthMode(preferredMode);
       modalUserAuth.show();
-      setTimeout(() => document.getElementById('user-auth-email')?.focus(), 120);
     }
 
     function hideUserAuthModal() {
@@ -2528,6 +2846,7 @@
       const errorNode = document.getElementById('user-auth-error');
       errorNode.textContent = '';
       errorNode.classList.add('d-none');
+      document.getElementById('user-auth-email').value = '';
       document.getElementById('user-auth-password').value = '';
     }
 
@@ -2563,7 +2882,7 @@
     }
 
     function ouvrirAuthUtilisateur() {
-      showUserAuthModal();
+      showUserAuthModal('', 'login');
     }
 
     async function fetchUserAuthStatus() {
@@ -2605,9 +2924,9 @@
 
     async function submitUserLogin() {
       const payload = collectUserAuthPayload();
-      const button = document.getElementById('user-auth-login-btn');
+      const button = document.getElementById('user-auth-primary-btn');
       if (!payload.email || !payload.password) {
-        showUserAuthModal('Email et mot de passe requis.');
+        showUserAuthModal('Email et mot de passe requis.', 'login');
         return;
       }
       button.disabled = true;
@@ -2630,7 +2949,7 @@
         await chargerTout();
         maybeOpenOnboarding();
       } catch (error) {
-        showUserAuthModal(error.message || 'Connexion impossible');
+        showUserAuthModal(error.message || 'Connexion impossible', 'login');
       } finally {
         button.disabled = false;
       }
@@ -2638,9 +2957,9 @@
 
     async function submitUserSignup() {
       const payload = collectUserAuthPayload();
-      const button = document.getElementById('user-auth-signup-btn');
+      const button = document.getElementById('user-auth-primary-btn');
       if (!payload.email || !payload.password) {
-        showUserAuthModal('Email et mot de passe requis.');
+        showUserAuthModal('Email et mot de passe requis.', 'signup');
         return;
       }
       button.disabled = true;
@@ -2664,9 +2983,9 @@
           return;
         }
         showToast('Compte cree', data.message || 'Compte créé. Tu peux maintenant te connecter.', 'info');
-        showUserAuthModal(data.message || 'Compte créé. Tu peux maintenant te connecter.');
+        showUserAuthModal(data.message || 'Compte créé. Tu peux maintenant te connecter.', 'login');
       } catch (error) {
-        showUserAuthModal(error.message || 'Creation du compte impossible');
+        showUserAuthModal(error.message || 'Creation du compte impossible', 'signup');
       } finally {
         button.disabled = false;
       }
@@ -2679,8 +2998,19 @@
       accessState.workspace = 'principal';
       setStoredWorkspace('principal');
       userAuthState = {enabled: userAuthState.enabled, authenticated: false, user: null};
+      document.getElementById('user-auth-email').value = '';
+      document.getElementById('user-auth-password').value = '';
+      setUserAuthMode('login');
       renderAccessState();
-      showUserAuthModal();
+      showUserAuthModal('', 'login');
+    }
+
+    async function submitActiveUserAuth() {
+      if (userAuthMode === 'signup') {
+        await submitUserSignup();
+        return;
+      }
+      await submitUserLogin();
     }
 
     async function submitDeleteAccount() {
@@ -3515,10 +3845,22 @@
         'Étape 3 - Ce que tu recherches',
         'Étape 4 - Où et comment trier'
       ];
+      const copies = [
+        'Quelques informations simples pour t accueillir avec les bons repères dès le départ.',
+        'Ajoute les liens et documents qui t aideront à aller plus vite ensuite.',
+        'Dis-nous ce que tu vises vraiment pour éviter les offres hors sujet.',
+        'Précise la zone et le niveau de tri pour ne garder que l utile.'
+      ];
       document.querySelectorAll('.onboarding-step-block').forEach(section => {
         section.classList.toggle('d-none', Number(section.dataset.step) !== onboardingStepIndex);
       });
+      document.querySelectorAll('[data-onboarding-chip]').forEach(chip => {
+        const step = Number(chip.dataset.onboardingChip);
+        chip.classList.toggle('is-active', step === onboardingStepIndex);
+        chip.classList.toggle('is-done', step < onboardingStepIndex);
+      });
       document.getElementById('onboarding-step-title').textContent = titles[onboardingStepIndex] || 'Étape';
+      document.getElementById('onboarding-step-copy').textContent = copies[onboardingStepIndex] || '';
       document.getElementById('onboarding-progress-badge').textContent = `${onboardingStepIndex + 1}/4`;
       document.getElementById('onboarding-prev-btn').disabled = onboardingStepIndex === 0;
       document.getElementById('onboarding-next-btn').textContent = onboardingStepIndex === 3 ? 'Entrer dans la plateforme' : 'Étape suivante';
@@ -4699,9 +5041,9 @@ async function copierLettre() {
     document.getElementById('user-auth-password').addEventListener('keydown', event => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        submitUserLogin();
       }
     });
+    setUserAuthMode('login');
     loadSelectedOfferId();
     ensureAccessUnlocked(true).then(async ok => {
       if (!ok) return;
