@@ -221,8 +221,8 @@ def nettoyer_html(texte: str) -> str:
 
 
 def texte_contient_mot_cle(texte: str, mot_cle: str) -> bool:
-    t = texte.lower()
-    mc = mot_cle.lower()
+    t = _texte_sans_accents(texte)
+    mc = _texte_sans_accents(mot_cle)
     if mc in _MOTS_LIMITE_MOT or len(mc) <= 3:
         return re.search(rf"\b{re.escape(mc)}\b", t) is not None
     return mc in t
@@ -241,8 +241,8 @@ def texte_design_central(texte: str) -> bool:
 
 
 def est_contrat_alternance(texte: str) -> bool:
-    t = texte.lower()
-    return any(m in t for m in CONTRAT_MARKERS)
+    t = _texte_sans_accents(texte)
+    return any(_texte_sans_accents(m) in t for m in CONTRAT_MARKERS)
 
 
 def famille_poste(titre: str, description: str) -> str:
