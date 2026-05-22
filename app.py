@@ -1601,11 +1601,11 @@ def _build_offer_payload(row: dict, scan_state: dict, lettres: dict, scores: dic
     return payload
 
 
-def _offer_matches_workspace_search(offer: dict) -> bool:
+def _offer_matches_workspace_search(offer: dict, search: dict | None = None) -> bool:
     if not _supabase_runtime_enabled():
         return True
 
-    search = (get_settings().get("search") or {})
+    search = search if isinstance(search, dict) else (get_settings().get("search") or {})
     if not isinstance(search, dict):
         return True
 
@@ -1667,6 +1667,7 @@ def _filtered_offers() -> list[dict]:
     scan_state, lettres, scores, histo, refus_ids = _pipeline_context()
     histo_map = _historique_key_map(histo)
     last_scan_new_keys = set((scan_state.get("last_scan") or {}).get("new_offer_keys", []) or [])
+    search = (get_settings().get("search") or {}) if _supabase_runtime_enabled() else {}
     offers = [
         _build_offer_payload(row, scan_state, lettres, scores, histo_map, refus_ids, last_scan_new_keys)
         for row in rows
@@ -1678,11 +1679,11 @@ def _filtered_offers() -> list[dict]:
     pertinence = (request.args.get("pertinence") or "").strip().lower()
     score_min = request.args.get("score_min", type=int)
     if score_min is None and _supabase_runtime_enabled():
-        score_min = int((get_settings().get("search") or {}).get("score_min") or 0)
+        score_min = int((search if isinstance(search, dict) else {}).get("score_min") or 0)
 
     filtered = []
     for row in offers:
-        if not _offer_matches_workspace_search(row):
+        if not _offer_matches_workspace_search(row, search):
             continue
         haystack = " ".join(
             [
@@ -2092,7 +2093,8 @@ Regles:
 
         client = Groq(api_key=api_key)
         last_error = None
-        for modele in _MODELES_GROQ:
+        coach_models = sorted(_MODELES_GROQ, key=lambda item: 0 if "8b" in item.lower() or "instant" in item.lower() else 1)
+        for modele in coach_models:
             try:
                 resp = client.chat.completions.create(
                     model=modele,
@@ -2132,14 +2134,12 @@ Regles:
         return jsonify(_coach_fallback_payload({}, False, str(exc)))
 
 
-@app.route("/api/stats")
-def api_stats():
+def _stats_payload(offers: list[dict] | None = None, histo: list[dict] | None = None, last_scan: dict | None = None, include_health: bool = False) -> dict:
     from main import normalize_status
 
-    offers = _filtered_offers()
-    histo = _lire_historique()
-    last_scan = (_scan_state().get("last_scan") or {})
-    include_health = request.args.get("include_health") == "1"
+    offers = offers if isinstance(offers, list) else _filtered_offers()
+    histo = histo if isinstance(histo, list) else _lire_historique()
+    last_scan = last_scan if isinstance(last_scan, dict) else (_scan_state().get("last_scan") or {})
     today = datetime.now().strftime("%Y-%m-%d")
     relances = [
         row
@@ -2154,28 +2154,32 @@ def api_stats():
     nb_interessantes_visible = pipeline_counts.get("interessante", 0)
     nb_a_analyser_visible = pipeline_counts.get("a_analyser", 0)
     nb_postulations_envoyees = sum(1 for row in histo if normalize_status(row.get("statut")) == "postule")
-    return jsonify(
-        {
-            "nb_offres": len(offers),
-            "nb_postulations": len(histo),
-            "nb_envoyees": nb_postulations_envoyees,
-            "nb_relances": len(relances),
-            "nb_lettres": sum(1 for offer in offers if offer.get("letter_generated")),
-            "nb_nouvelles_visible": nb_nouvelles_visible,
-            "nb_interessantes_visible": nb_interessantes_visible,
-            "nb_a_analyser_visible": nb_a_analyser_visible,
-            "nb_nouvelles_scan_global": int(last_scan.get("new_offers", 0) or 0),
-            "process_actif": _proc_actif is not None and _proc_actif.poll() is None,
-            "pipeline": pipeline_counts,
-            "scan_state": last_scan,
-            "supabase_sync": _lire_sync_supabase_state(),
-            "setup": get_setup_status(),
-            "health": build_health_status() if include_health else {},
-            "cloud_mode": _cloud_mode_enabled(),
-            "shared_scan": _cloud_mode_enabled(),
-            "workspace": _current_workspace(),
-        }
-    )
+    return {
+        "nb_offres": len(offers),
+        "nb_postulations": len(histo),
+        "nb_envoyees": nb_postulations_envoyees,
+        "nb_relances": len(relances),
+        "nb_lettres": sum(1 for offer in offers if offer.get("letter_generated")),
+        "nb_nouvelles_visible": nb_nouvelles_visible,
+        "nb_interessantes_visible": nb_interessantes_visible,
+        "nb_a_analyser_visible": nb_a_analyser_visible,
+        "nb_nouvelles_scan_global": int(last_scan.get("new_offers", 0) or 0),
+        "process_actif": _proc_actif is not None and _proc_actif.poll() is None,
+        "pipeline": pipeline_counts,
+        "scan_state": last_scan,
+        "supabase_sync": _lire_sync_supabase_state(),
+        "setup": get_setup_status(),
+        "health": build_health_status() if include_health else {},
+        "cloud_mode": _cloud_mode_enabled(),
+        "shared_scan": _cloud_mode_enabled(),
+        "workspace": _current_workspace(),
+    }
+
+
+@app.route("/api/stats")
+def api_stats():
+    include_health = request.args.get("include_health") == "1"
+    return jsonify(_stats_payload(include_health=include_health))
 
 
 @app.route("/api/dashboard")
@@ -2185,12 +2189,15 @@ def api_dashboard():
 
 @app.route("/api/bootstrap")
 def api_bootstrap():
+    offers = _filtered_offers()
+    histo = _lire_historique()
+    last_scan = (_scan_state().get("last_scan") or {})
     return jsonify(
         {
             "ok": True,
-            "stats": api_stats().get_json(),
-            "offres": _filtered_offers(),
-            "historique": _lire_historique(),
+            "stats": _stats_payload(offers=offers, histo=histo, last_scan=last_scan, include_health=False),
+            "offres": offers,
+            "historique": histo,
             "lettres": _lire_lettres(),
             "settings": get_settings(),
         }
