@@ -18,6 +18,7 @@ import webbrowser
 from datetime import datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
+import threading
 from threading import Lock, Thread
 from urllib.request import urlopen
 
@@ -64,6 +65,93 @@ _supabase_runtime_cache: dict[str, object] = {"ts": 0.0, "payload": None}
 _cloud_task_lock = Lock()
 CLOUD_TASK_STATE_PATH = BASE_DIR / "export" / "cloud_task_state.json"
 CLOUD_TASK_LOG_PATH = BASE_DIR / "export" / "cloud_task.log"
+# Verrou inter-process pour l'agent Playwright (évite 2 agents simultanés sur gunicorn multi-workers)
+AGENT_LOCK_PATH = BASE_DIR / "agent.lock"
+
+# ─── Scheduler automatique ────────────────────────────────────────────────────
+_scheduler_lock = Lock()
+_scheduler_timer: threading.Timer | None = None
+_scheduler_state: dict = {
+    "enabled": False,
+    "interval_hours": 0,
+    "next_run_at": None,
+    "last_run_at": None,
+    "last_run_status": None,
+}
+
+
+def _scheduler_interval_hours() -> int:
+    """Lit SCAN_AUTO_INTERVAL_HOURS depuis l'env (0 = désactivé)."""
+    try:
+        return max(0, int(str(os.environ.get("SCAN_AUTO_INTERVAL_HOURS", "0") or "0").strip()))
+    except ValueError:
+        return 0
+
+
+def _scheduler_run_scan() -> None:
+    """Exécute un scan en arrière-plan puis reprogramme le prochain timer."""
+    global _scheduler_state
+    now_iso = datetime.now().isoformat(timespec="seconds")
+    with _scheduler_lock:
+        _scheduler_state["last_run_at"] = now_iso
+        _scheduler_state["last_run_status"] = "running"
+
+    try:
+        env = {**os.environ.copy(), **_current_search_env_overrides()}
+        result = subprocess.run(
+            [sys.executable, str(BASE_DIR / "main.py")],
+            env=env,
+            timeout=3600,
+            capture_output=True,
+        )
+        status = "ok" if result.returncode == 0 else "error"
+    except Exception:
+        status = "error"
+
+    _maybe_launch_supabase_sync("scheduler")
+    with _scheduler_lock:
+        _scheduler_state["last_run_status"] = status
+    # Reprogrammer le prochain passage
+    _scheduler_schedule_next()
+
+
+def _scheduler_schedule_next() -> None:
+    """Arme le prochain timer si le scheduler est actif."""
+    global _scheduler_timer, _scheduler_state
+    interval = _scheduler_state.get("interval_hours", 0)
+    if not _scheduler_state.get("enabled") or not interval:
+        return
+    delay_seconds = interval * 3600
+    next_run = (datetime.now() + timedelta(hours=interval)).isoformat(timespec="seconds")
+    with _scheduler_lock:
+        if _scheduler_timer is not None:
+            _scheduler_timer.cancel()
+        _scheduler_timer = threading.Timer(delay_seconds, _scheduler_run_scan)
+        _scheduler_timer.daemon = True
+        _scheduler_timer.start()
+        _scheduler_state["next_run_at"] = next_run
+
+
+def _scheduler_stop() -> None:
+    """Annule le timer en cours et marque le scheduler arrêté."""
+    global _scheduler_timer, _scheduler_state
+    with _scheduler_lock:
+        if _scheduler_timer is not None:
+            _scheduler_timer.cancel()
+            _scheduler_timer = None
+        _scheduler_state["enabled"] = False
+        _scheduler_state["next_run_at"] = None
+
+
+# Démarrage automatique si SCAN_AUTO_INTERVAL_HOURS est défini au lancement
+def _scheduler_autostart() -> None:
+    interval = _scheduler_interval_hours()
+    if interval > 0 and not _cloud_mode_enabled():
+        global _scheduler_state
+        with _scheduler_lock:
+            _scheduler_state["enabled"] = True
+            _scheduler_state["interval_hours"] = interval
+        _scheduler_schedule_next()
 
 
 def _invalidate_supabase_runtime_cache() -> None:
@@ -1470,6 +1558,11 @@ def _launch_supabase_sync_background(reason: str = "") -> tuple[bool, str]:
 def _maybe_launch_supabase_sync(reason: str = "") -> tuple[bool, str]:
     if not _supabase_auto_sync_enabled():
         return False, "disabled"
+    # En mode cloud (Render), le filesystem est éphémère :
+    # les fichiers JSON locaux n'existent pas → le subprocess sync_to_supabase.py
+    # n'a rien à lire. La sync cloud se fait directement via _upsert_supabase_rows().
+    if _cloud_mode_enabled():
+        return False, "skipped_cloud_mode"
     return _launch_supabase_sync_background(reason)
 
 
@@ -2562,6 +2655,22 @@ def api_cloud_task_state():
 
 @app.route("/api/stream/postuler")
 def stream_postuler():
+    # Verrou inter-process : empêche 2 agents Playwright simultanés sur gunicorn multi-workers
+    if AGENT_LOCK_PATH.exists():
+        try:
+            pid = int(AGENT_LOCK_PATH.read_text(encoding="utf-8").strip())
+            os.kill(pid, 0)  # lève ProcessLookupError si le PID n'existe plus
+            return jsonify({"ok": False, "error": "Agent déjà actif dans une autre session."}), 409
+        except (ProcessLookupError, ValueError, OSError):
+            AGENT_LOCK_PATH.unlink(missing_ok=True)
+    AGENT_LOCK_PATH.write_text(str(os.getpid()), encoding="utf-8")
+
+    def _cleanup_agent_lock():
+        AGENT_LOCK_PATH.unlink(missing_ok=True)
+
+    import atexit as _atexit
+    _atexit.register(_cleanup_agent_lock)
+
     return _stream(
         [sys.executable, "main.py", "postuler", "--auto"],
         extra_env={"ALTERNANCE_WEB_MODE": "1"},
@@ -2914,12 +3023,202 @@ def api_serveur_fermer():
         os._exit(0)
 
     Thread(target=_shutdown_app, daemon=True).start()
-    return jsonify({"ok": True, "message": "Serveur en cours d'arret"})
+    return jsonify({"ok": True, "message": "Serveur en cours d\'arret"})
 
 
 @app.route("/healthz")
 def healthz():
     return jsonify({"ok": True, "cloud_mode": _cloud_mode_enabled()}), HTTPStatus.OK
+
+
+# ─── Scheduler – routes ───────────────────────────────────────────────────────
+
+@app.route("/api/scheduler/status")
+def api_scheduler_status():
+    with _scheduler_lock:
+        state = dict(_scheduler_state)
+    return jsonify({"ok": True, "scheduler": state})
+
+
+@app.route("/api/scheduler/start", methods=["POST"])
+def api_scheduler_start():
+    if _cloud_mode_enabled():
+        return jsonify({"ok": False, "error": "Scheduler non disponible en mode cloud"}), HTTPStatus.BAD_REQUEST
+    data = request.get_json(silent=True) or {}
+    try:
+        hours = max(1, int(data.get("interval_hours") or _scheduler_interval_hours() or 4))
+    except (TypeError, ValueError):
+        hours = 4
+    global _scheduler_state
+    with _scheduler_lock:
+        _scheduler_state["enabled"] = True
+        _scheduler_state["interval_hours"] = hours
+    _scheduler_schedule_next()
+    with _scheduler_lock:
+        state = dict(_scheduler_state)
+    return jsonify({"ok": True, "scheduler": state})
+
+
+@app.route("/api/scheduler/stop", methods=["POST"])
+def api_scheduler_stop():
+    _scheduler_stop()
+    with _scheduler_lock:
+        state = dict(_scheduler_state)
+    return jsonify({"ok": True, "scheduler": state})
+
+
+# ─── Relances – routes ────────────────────────────────────────────────────────
+
+@app.route("/api/relances")
+def api_relances():
+    """Liste les candidatures en attente de relance (statut postule + date_relance_prevue <= today)."""
+    from main import normalize_status
+    histo = _lire_historique()
+    today = datetime.now().strftime("%Y-%m-%d")
+    dues = [
+        row for row in histo
+        if normalize_status(row.get("statut")) == "postule"
+        and (row.get("date_relance_prevue") or "9999") <= today
+    ]
+    upcoming = [
+        row for row in histo
+        if normalize_status(row.get("statut")) == "postule"
+        and today < (row.get("date_relance_prevue") or "9999") <= (
+            datetime.now() + timedelta(days=7)
+        ).strftime("%Y-%m-%d")
+    ]
+    return jsonify({
+        "ok": True,
+        "dues": dues,
+        "upcoming": upcoming,
+        "nb_dues": len(dues),
+        "nb_upcoming": len(upcoming),
+        "today": today,
+    })
+
+
+@app.route("/api/relances/generer", methods=["POST"])
+def api_relances_generer():
+    """
+    Génère un texte de relance pour une candidature donnée.
+    Body JSON : { "offer_signature": "...", "url": "...", "notes": "..." }
+    """
+    data = request.get_json(silent=True) or {}
+    offre_id = str(data.get("offer_signature") or data.get("id_adzuna") or "").strip()
+    url_cible = str(data.get("url") or "").strip()
+    if not offre_id and not url_cible:
+        return jsonify({"ok": False, "error": "offer_signature ou url requis"}), HTTPStatus.BAD_REQUEST
+
+    histo = _lire_historique()
+    row = None
+    for r in histo:
+        if _history_row_matches(r, offre_id, url_cible):
+            row = r
+            break
+    if row is None:
+        return jsonify({"ok": False, "error": "Candidature introuvable"}), HTTPStatus.NOT_FOUND
+
+    titre = str(row.get("titre") or "").strip()
+    entreprise = str(row.get("entreprise") or "").strip()
+    date_postulation = str(row.get("date_postulation") or "").strip()
+    notes = str(data.get("notes") or row.get("notes") or "").strip()
+
+    semaines = ""
+    if date_postulation:
+        try:
+            dt_post = datetime.strptime(date_postulation[:10], "%Y-%m-%d")
+            jours = (datetime.now() - dt_post).days
+            if jours >= 14:
+                semaines = f"{jours // 7} semaines"
+            elif jours >= 7:
+                semaines = "une semaine"
+            else:
+                semaines = f"{jours} jours"
+        except Exception:
+            pass
+
+    context_parts = [
+        f"Poste : {titre}" if titre else "",
+        f"Entreprise : {entreprise}" if entreprise else "",
+        f"Postulé il y a {semaines}." if semaines else "",
+        f"Notes : {notes}" if notes else "",
+    ]
+    context = "\n".join(p for p in context_parts if p)
+
+    entreprise_str = ("au sein de " + entreprise) if entreprise else ""
+    delai_str = (", envoyée il y a " + semaines) if semaines else ""
+    texte_relance = (
+        f"Objet : Relance candidature – {titre} chez {entreprise}\n\n"
+        f"Madame, Monsieur,\n\n"
+        f"Je me permets de vous recontacter au sujet de ma candidature au poste de {titre} "
+        f"{entreprise_str}{delai_str}.\n\n"
+        f"Toujours très motivé(e) par cette opportunité, je reste disponible pour un entretien "
+        f"ou tout échange à votre convenance.\n\n"
+        f"Dans l\'attente de votre retour, je vous adresse mes cordiales salutations.\n"
+    )
+
+    return jsonify({
+        "ok": True,
+        "texte": texte_relance,
+        "context": context,
+        "titre": titre,
+        "entreprise": entreprise,
+    })
+
+
+@app.route("/api/relances/marquer", methods=["POST"])
+def api_relances_marquer():
+    """
+    Marque une relance comme envoyée et repousse date_relance_prevue de N jours.
+    Body JSON : { "offer_signature": "...", "url": "...", "jours": 14 }
+    """
+    from main import normalize_status
+    data = request.get_json(silent=True) or {}
+    offre_id = str(data.get("offer_signature") or data.get("id_adzuna") or "").strip()
+    url_cible = str(data.get("url") or "").strip()
+    if not offre_id and not url_cible:
+        return jsonify({"ok": False, "error": "offer_signature ou url requis"}), HTTPStatus.BAD_REQUEST
+
+    try:
+        jours = max(1, int(data.get("jours") or 14))
+    except (TypeError, ValueError):
+        jours = 14
+
+    histo = _lire_historique()
+    updated = False
+    updated_index = -1
+    for index, row in enumerate(histo):
+        if not _history_row_matches(row, offre_id, url_cible):
+            continue
+        prochaine = (datetime.now() + timedelta(days=jours)).strftime("%Y-%m-%d")
+        histo[index]["date_relance_prevue"] = prochaine
+        existing_notes = str(histo[index].get("notes") or "")
+        relance_note = f"[Relance {datetime.now().strftime('%Y-%m-%d')}]"
+        if relance_note not in existing_notes:
+            histo[index]["notes"] = (existing_notes + "\n" + relance_note).strip()
+        updated = True
+        updated_index = index
+        break
+
+    if not updated:
+        return jsonify({"ok": False, "error": "Candidature introuvable"}), HTTPStatus.NOT_FOUND
+
+    _ecrire_historique(histo)
+    _maybe_launch_supabase_sync("relance_marquee")
+    return jsonify({"ok": True, "date_relance_prevue": histo[updated_index]["date_relance_prevue"]})
+
+
+# ─── Setup status – route ─────────────────────────────────────────────────────
+
+@app.route("/api/setup/status")
+def api_setup_status():
+    """Retourne l\'état de configuration pour le widget d\'onboarding."""
+    setup = get_setup_status()
+    return jsonify({"ok": True, **setup})
+
+
+# ─── Démarrage automatique du scheduler ──────────────────────────────────────
+_scheduler_autostart()
 
 
 if __name__ == "__main__":
@@ -2937,10 +3236,11 @@ if __name__ == "__main__":
     def _ouvrir_navigateur():
         if cloud_mode:
             return
-        # Wait until Flask is actually accepting connections before opening the page.
         for _ in range(30):
             try:
+                from urllib.request import urlopen
                 with urlopen(base_url, timeout=0.5):
+                    import webbrowser
                     webbrowser.open(base_url)
                     return
             except Exception:

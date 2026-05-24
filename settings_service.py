@@ -2,9 +2,12 @@ import importlib
 import json
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
+
+_reload_lock = threading.Lock()
 
 import requests
 from storage_service import BASE_DIR, PROFILE_PATH, read_json, write_json_atomic
@@ -445,19 +448,20 @@ def get_setup_status() -> dict:
 
 
 def _refresh_runtime_modules() -> None:
-    modules_to_reload = [
-        "main",
-        "agent_candidature",
-        "sources._common",
-        "sources.adzuna",
-        "sources.france_travail",
-        "sources.la_bonne_alternance",
-        "sources.remotive",
-    ]
-    for module_name in modules_to_reload:
-        module = sys.modules.get(module_name)
-        if module is not None:
-            importlib.reload(module)
+    """
+    Recharge uniquement sources._common, le seul module qui dépend
+    du profil de recherche (mots-clés, zone géo, types de contrat).
+    Protégé par un Lock pour éviter les race conditions en multi-thread.
+    Les autres modules (main, agent, sources/*.py) sont rechargés par
+    leurs propres mécanismes ou au prochain redémarrage du serveur.
+    """
+    with _reload_lock:
+        try:
+            module = sys.modules.get("sources._common")
+            if module is not None:
+                importlib.reload(module)
+        except Exception:
+            pass
 
 
 def save_settings(payload: dict) -> dict:

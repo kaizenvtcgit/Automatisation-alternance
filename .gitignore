@@ -8,6 +8,7 @@ __pycache__/
 
 # Local runtime artifacts
 app_server.pid
+agent.lock
 server_stdout.log
 server_stderr.log
 logs/

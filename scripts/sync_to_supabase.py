@@ -148,24 +148,22 @@ def _csv_category(row: dict) -> str:
 
 
 def _csv_family(row: dict) -> str:
-    return row.get("Famille détectée (motion / UX…)", row.get("Famille dÃ©tectÃ©e (motion / UXâ€¦)", ""))
-
-
-def _csv_query(row: dict) -> str:
-    return row.get("Requête qui a trouvé l'annonce", row.get("RequÃªte qui a trouvÃ© l'annonce", ""))
-
-
-def _csv_family(row: dict) -> str:
-    return row.get(
-        "Famille detectee",
-        row.get("Famille dÃ©tectÃ©e (motion / UXâ€¦)", row.get("Famille dÃƒÂ©tectÃƒÂ©e (motion / UXÃ¢â‚¬Â¦)", "")),
+    return (
+        row.get("Famille detectee")
+        or row.get("Famille détectée (motion / UX…)")
+        or row.get("Famille dÃ©tectÃ©e (motion / UXâ€¦)")
+        or row.get("Famille dÃƒÂ©tectÃƒÂ©e (motion / UXÃ¢â‚¬Â¦)")
+        or ""
     )
 
 
 def _csv_query(row: dict) -> str:
-    return row.get(
-        "Requete source",
-        row.get("RequÃªte qui a trouvÃ© l'annonce", row.get("RequÃƒÂªte qui a trouvÃƒÂ© l'annonce", "")),
+    return (
+        row.get("Requete source")
+        or row.get("Requête qui a trouvé l'annonce")
+        or row.get("RequÃªte qui a trouvÃ© l'annonce")
+        or row.get("RequÃƒÂªte qui a trouvÃƒÂ© l'annonce")
+        or ""
     )
 
 
@@ -534,17 +532,39 @@ def _table_upsert_url(base_url: str, table_name: str, on_conflict: str) -> str:
     return f"{base_url.rstrip('/')}/rest/v1/{table_name}?on_conflict={on_conflict}"
 
 
+def _is_user_scoped_mode(dataset: dict[str, list[dict]]) -> bool:
+    """
+    Détecte si les données contiennent des owner_user_id non-null.
+    Si oui, on utilise les index composites (offer_signature, owner_user_id)
+    créés par user_scoped_offer_tables.sql.
+    Si non, on utilise les index conditionnels globaux (offer_signature WHERE owner_user_id IS NULL).
+    """
+    for table in ("offer_scores", "offer_letters", "refused_offers"):
+        rows = dataset.get(table) or []
+        if any(isinstance(r, dict) and r.get("owner_user_id") for r in rows):
+            return True
+    return False
+
+
 def push_dataset(dataset: dict[str, list[dict]]) -> None:
     base_url = (os.environ.get("SUPABASE_URL") or "").strip()
     if not base_url:
         raise RuntimeError("SUPABASE_URL manquant dans l'environnement.")
     headers = _headers()
+
+    # Les 3 tables ci-dessous ont deux schémas possibles selon la migration appliquée :
+    # - schema.sql seul      → PK = offer_signature  (on_conflict=offer_signature)
+    # - + user_scoped_*.sql  → PK = id UUID + index (offer_signature, owner_user_id)
+    # On détecte automatiquement le mode à partir des données.
+    user_scoped = _is_user_scoped_mode(dataset)
+    scoped_conflict = "offer_signature,owner_user_id" if user_scoped else "offer_signature"
+
     table_conflicts = {
         "offers": "signature",
-        "offer_scores": "offer_signature",
-        "offer_letters": "offer_signature",
+        "offer_scores": scoped_conflict,
+        "offer_letters": scoped_conflict,
         "applications_history": "id",
-        "refused_offers": "offer_signature",
+        "refused_offers": scoped_conflict,
         "scan_runs": "id",
         "scan_run_sources": "id",
         "search_profiles": "slug",
@@ -583,11 +603,11 @@ def print_preview(dataset: dict[str, list[dict]]) -> None:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prépare ou exécute une synchronisation locale -> Supabase.")
+    parser = argparse.ArgumentParser(description="Prepare ou execute une synchronisation locale -> Supabase.")
     parser.add_argument(
         "--execute",
         action="store_true",
-        help="Exécute réellement l'envoi vers Supabase. Sans cette option, le script reste en aperçu.",
+        help="Execute reellement l'envoi vers Supabase. Sans cette option, le script reste en apercu.",
     )
     return parser.parse_args()
 
@@ -598,7 +618,7 @@ def main() -> int:
     if not args.execute:
         print_preview(dataset)
         print("")
-        print("Aucun envoi effectué. Lance avec --execute uniquement quand Supabase sera prêt.")
+        print("Aucun envoi effectue. Lance avec --execute uniquement quand Supabase sera pret.")
         return 0
 
     table_counts = {table_name: len(rows) for table_name, rows in dataset.items()}
@@ -609,7 +629,7 @@ def main() -> int:
         write_sync_state("failed", table_counts, str(exc))
         raise
     print("")
-    print("Synchronisation terminée.")
+    print("Synchronisation terminee.")
     return 0
 
 

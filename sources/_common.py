@@ -1,8 +1,38 @@
 """Utilitaires partagés : format commun, filtres métier, filtres géographiques."""
 
+import json
 import os
 import re
 import unicodedata
+from pathlib import Path
+
+
+def _read_profile_json() -> dict:
+    """
+    Lit profil_recherche.json en direct sans cache global.
+    Pas de cache pour éviter les race conditions en multi-thread gunicorn.
+    Retourne {} si absent ou invalide — les defaults internes prennent le relais.
+    """
+    try:
+        profile_path = Path(__file__).resolve().parent.parent / "export" / "profil_recherche.json"
+        if profile_path.exists():
+            data = json.loads(profile_path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return {}
+
+
+def _normalize_tag_list(value) -> list[str]:
+    """Normalise une valeur tag (list ou str CSV) en list[str] propre."""
+    if isinstance(value, list):
+        items = value
+    elif isinstance(value, str):
+        items = [v.strip() for v in value.split(",")]
+    else:
+        return []
+    return [str(item).strip() for item in items if str(item or "").strip()]
 
 # ─── Paramètres globaux ───────────────────────────────────────────────────────
 
@@ -30,25 +60,67 @@ def _env_list(name: str) -> list[str]:
 
 
 def dynamic_search_terms() -> dict:
+    """
+    Retourne les termes de recherche actifs.
+    Priorité : profil_recherche.json > variables d'environnement > liste vide.
+    Lecture directe du JSON à chaque appel (pas de cache, safe en multi-thread).
+    """
+    profile = _read_profile_json()
+
+    def _pick(profile_key: str, env_key: str, lowercase: bool = False) -> list[str]:
+        # Priorité profil JSON
+        val = _normalize_tag_list(profile.get(profile_key, []))
+        if not val:
+            val = _env_list(env_key)
+        return [item.lower() for item in val] if lowercase else val
+
     return {
-        "postes_cibles": _env_list("ALTERNANCE_TARGET_ROLES"),
-        "mots_cles_positifs": _env_list("ALTERNANCE_POSITIVE_KEYWORDS"),
-        "mots_cles_negatifs": _env_list("ALTERNANCE_NEGATIVE_KEYWORDS"),
-        "types_contrat": [item.lower() for item in _env_list("ALTERNANCE_CONTRACT_TYPES")],
+        "postes_cibles": _pick("postes_cibles", "ALTERNANCE_TARGET_ROLES"),
+        "mots_cles_positifs": _pick("mots_cles_positifs", "ALTERNANCE_POSITIVE_KEYWORDS"),
+        "mots_cles_negatifs": _pick("mots_cles_negatifs", "ALTERNANCE_NEGATIVE_KEYWORDS"),
+        "types_contrat": _pick("types_contrat", "ALTERNANCE_CONTRACT_TYPES", lowercase=True),
     }
 
 
 def dynamic_search_scope() -> dict:
-    radius_raw = str(os.environ.get("ALTERNANCE_RADIUS_KM", "30") or "30").strip()
+    """
+    Retourne le périmètre géographique actif.
+    Priorité : profil_recherche.json > variables d'environnement > valeurs par défaut.
+    """
+    profile = _read_profile_json()
+
+    # zone_mode
+    zone_mode = (
+        str(profile.get("zone_mode") or "").strip().lower()
+        or str(os.environ.get("ALTERNANCE_ZONE_MODE", "") or "").strip().lower()
+    )
+    # zone_geo
+    zone_geo = (
+        str(profile.get("zone_geo") or "").strip()
+        or str(os.environ.get("ALTERNANCE_ZONE_GEO", "") or "").strip()
+    )
+    # radius_km
+    radius_raw = str(
+        profile.get("radius_km")
+        or os.environ.get("ALTERNANCE_RADIUS_KM", "30")
+        or "30"
+    ).strip()
     try:
         radius_km = max(10, min(100, int(radius_raw)))
     except ValueError:
         radius_km = 30
+    # include_remote : profil JSON > env var globale
+    profile_remote = profile.get("include_remote")
+    if profile_remote is not None:
+        include_remote = bool(profile_remote)
+    else:
+        include_remote = INCLURE_OFFRES_REMOTE
+
     return {
-        "zone_mode": str(os.environ.get("ALTERNANCE_ZONE_MODE", "") or "").strip().lower(),
-        "zone_geo": str(os.environ.get("ALTERNANCE_ZONE_GEO", "") or "").strip(),
+        "zone_mode": zone_mode,
+        "zone_geo": zone_geo,
         "radius_km": radius_km,
-        "include_remote": INCLURE_OFFRES_REMOTE,
+        "include_remote": include_remote,
     }
 
 
@@ -508,6 +580,13 @@ def motion_en_priorite(titre: str, description: str) -> bool:
 
 def est_offre_exclue(titre: str, description: str) -> bool:
     titre_norm = titre.lower()
+
+    # Exclusion dynamique : mots_cles_negatifs du profil utilisateur
+    # (défensif — offer_matches_search_settings() fait déjà ce check sur le haystack complet)
+    profile_negatifs = _normalize_tag_list(_read_profile_json().get("mots_cles_negatifs", []))
+    for kw in profile_negatifs:
+        if texte_contient_mot_cle(titre_norm, kw):
+            return True
 
     # Exclusion sur le titre : emplois clairement hors-sujet
     for kw in _TITRES_EXCLUS:
